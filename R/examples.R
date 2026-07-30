@@ -1,7 +1,7 @@
 ######################################################
 ## Simulated-data OR pipeline -- example figures
 ##
-## Companion driver to analyse_sim2.R, on the same engine. Produces:
+## Companion driver to analyse_sim.R, on the same engine. Produces:
 ##   1. PR heatmap over (rho x th_ldw), faceted by l_min x method
 ##   2. Manhattan genome plots (-log10(q) and ld_w) per chromosome
 ##   3. genome-wide C-score panels
