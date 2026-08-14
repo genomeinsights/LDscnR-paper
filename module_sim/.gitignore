@@ -1,0 +1,4 @@
+# regenerable outputs (built by the 0x scripts)
+*.rds
+*.png
+*.log
