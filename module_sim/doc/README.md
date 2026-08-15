@@ -93,7 +93,24 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 13 | `13_cscore_2d.R [V c env] [method]` | 2-axis (ρ,q\*) **C-score** (poster's consistency def) → C-Manhattan + C-gated PR path; beats single-SNP, fixed ρ=0.95, and even the oracle best single cell |
 | 14 | `14_alpha_cscore.R [V c env]` | fold **α** into the sweep; test that C-benefit grows as α tightens & is larger for EMMAX (conservative) than LFMM (inflated=lenient, saturates). l_min=2 as a post-C filter |
 | 15 | `15_pr_auc.R [V c env]` | **headline**: standard trapezoidal **PR-AUC** — C-score (sweep tau_C, ρ/q\*/α folded in) vs single-SNP (sweep α); clustering fixed decay-relative ρ_ld=0.75/ρ_d=0.95≤500kb; l_min ∈ {1,2,4,8} as linetype. Retires the random-search AUC-PR\* (only needed for the raw unordered grid) |
-| 15b | `15b_pr_auc_aggregate.R [V c]` | replicate-average 15 over env1–5 → mean±SE PR-AUC vs l_min + per-env PR curves |
+| 15b | `15b_pr_auc_aggregate.R [V c]` | replicate-average 15 → mean±SE PR-AUC vs l_min + mean PR curves faceted by l_min (C-score coloured by tau_C) |
+| 16 | `16_besttau_manhattan.R [V c env] [l_min]` | joint-OR-frame Manhattan at best tau_C vs best α — which ORs are shared; l_min=1 shows the single-SNP FPs C removes |
+| 17 | `17_perm_null.R [V c env] [B]` | naive permutation null for tau_C → too permissive (breaks env↔structure confounding); FDR-tau_C≈0.06 ≪ PR-optimum |
+| 18 | `18_structured_null.R [V c env] [B]` | **structured** orthogonal-spatial null (same autocorrelation, orthogonal to env) → prices structure confounding back in; empirically portable |
+
+**tau_C guidance & calibration.** Empirical PR-optimum tau_C ≈ 0.35–0.5 ("called in ≳half the analyses"),
+stable across methods/env. **tau_C is not intrinsic** — it trades off with l_min and the α-grid (all reduce
+FP), so the optimal tau_C *shifts* with l_min (weaker filter → higher optimal tau_C; PR-AUC itself is
+l_min-invariant). This is why l_min stays a post-filter (out of C) and why any calibrated tau_C must be
+reported *with* its (l_min, α-grid). Truth-free calibration = the structured null (18): naive permutation
+(17) breaks the env↔structure confounding (→ tau_C≈0.06, too permissive); the orthogonal-spatial surrogate
+keeps the spatial autocorrelation but removes the true signal, so its empirical FDR prices in structure FPs.
+
+**Sim vs empirical validity notes.** Per-replicate GRMs correlate 0.31 (V2_c1, weak structure) vs 0.94
+(V1_c2) vs 0.95 (3sp sticklebacks) — GRM correlation reads out structure *strength*, not segregation
+independence. Per-simulation vs pooled-GRM EMMAX diverge (r≈0.65–0.75), so the pipeline correctly uses
+per-simulation EMMAX and pools only at the C-score level; a pooled-GRM EMMAX would be wrong (10 independent
+realizations sharing the same 160 grid-point individuals).
 
 **PR-AUC, not AUC-PR\*.** The C-score collapses the unordered ρ×q\*×α grid into one *ordered* knob (tau_C),
 so a standard monotonic PR-AUC (trapezoidal, `pr_auc()` in `_config.R`) applies — the random-search
