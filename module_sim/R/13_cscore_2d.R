@@ -96,4 +96,28 @@ p1 <- ggplot(cg, aes(Recall, Precision)) + geom_path(color = "grey60") +
   labs(title = sprintf("V%s_c%s_env%s [%s]: 2D (rho,q*) C-gated vs single-SNP vs fixed rho0.95", V, cc, env, mtag),
        subtitle = "path = C gate tau_C; black = references") + theme_bw(base_size = 11)
 ggsave(file.path(dir_fig, sprintf("cscore2d_pr_V%s_c%s_env%s_%s.png", V, cc, env, mtag)), p1, width = 7, height = 6, dpi = 150)
-cat("wrote cscore2d figure + rds\n")
+
+## C-score Manhattan: y = 2D consistency, colour = max r^2 with a QTN, triangle = true QTN
+mm <- copy(map); mm[, chr_num := as.integer(factor(Chr, levels = unique(Chr)))]
+clen <- mm[, .(len = max(Pos)), by = .(Chr, chr_num)][order(chr_num)]
+spg <- 0.005 * sum(clen$len); clen[, start := c(0, head(cumsum(len + spg), -1))]
+mm <- clen[, .(Chr, start)][mm, on = "Chr"][, x := Pos + start]
+cmid <- clen[, .(Chr, mid = start + len / 2)]; shade <- clen[chr_num %% 2 == 0, .(xmin = start, xmax = start + len)]
+qtnm <- mm[true_pos_QTN == TRUE]; bg <- mm[C == 0][sample(.N, min(.N, 15000))]
+pp <- mm[C > 0]; setorder(pp, max_LD_with_QTN)
+p2 <- ggplot() +
+  geom_rect(data = shade, aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf), fill = "grey93") +
+  geom_point(data = bg, aes(x, C), color = "grey80", size = 0.3, alpha = 0.3) +
+  geom_hline(yintercept = c(0.5, 0.9), linetype = 2, color = c("orange", "red"), linewidth = 0.3) +
+  geom_point(data = pp, aes(x, C, color = max_LD_with_QTN), size = 1) +
+  geom_point(data = qtnm, aes(x, y = -0.03), shape = 25, fill = "black", color = "black", size = 1.6) +
+  scale_color_gradientn(colors = c("#3A3A98","#5DC8CD","#F2E205","#F29724","#D62828"),
+                        limits = c(0, 1), name = expression(max~r^2~with~QTN)) +
+  scale_x_continuous(breaks = cmid$mid, labels = gsub("R([0-9]+)_Chr", "\\1.", cmid$Chr), expand = c(0.01, 0.01)) +
+  labs(x = "pooled chromosome", y = "C-score (2D rho x q* consistency)",
+       title = sprintf("V%s_c%s_env%s [%s]: 2D (rho,q*) C-score Manhattan", V, cc, env, mtag),
+       subtitle = "colour = max r^2 with a QTN; triangle = true QTN; dashed = tau_C 0.5 (orange) / 0.9 (red)") +
+  theme_bw(base_size = 9) + theme(panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(size = 6), legend.position = "top")
+ggsave(file.path(dir_fig, sprintf("cscore2d_manhattan_V%s_c%s_env%s_%s.png", V, cc, env, mtag)), p2, width = 16, height = 5, dpi = 150)
+cat("wrote cscore2d PR + Manhattan figures + rds\n")
