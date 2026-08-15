@@ -58,6 +58,32 @@ score_thresholds <- function(decay_sum, rho_r2 = 0.75, rho_d = 0.95) {
        dmax  = d_from_rho(median(ds$a), rho_d))
 }
 
+## Dedup-NEUTRAL scoring: like evaluate_ORs() but a region matching an ALREADY-
+## claimed true-positive QTN (a dedup loser -- an "extra" region for the same QTN)
+## is counted as NEITHER TP nor FP, it is dropped. This removes the clustering-
+## parameter sensitivity of performance: over-fragmenting a true region into N
+## pieces still yields 1 TP and 0 extra FP, so there is no incentive to tune
+## r2_link / distance to game the metric. Genuine FP (regions matching no true-
+## positive QTN) still count; over-merging is still penalised via recall (one
+## region can claim only one QTN). Uses diagnose_OR_classification() to identify
+## the dedup losers. Returns the same fields as evaluate_ORs().
+evaluate_ORs_qtn <- function(clusters, map, qtn_ld_table, r2_min_focal, d_max_focal) {
+  n_true <- as.data.table(map)[true_pos_QTN == TRUE, .N]
+  if (!length(clusters))
+    return(list(TP = 0L, FP = 0L, FN = n_true, extras = 0L,
+                Precision = NA_real_, Recall = 0, PR = 0))
+  dg <- diagnose_OR_classification(clusters, map, qtn_ld_table, r2_min_focal, d_max_focal)
+  extra <- dg$dropped_by_dedup == TRUE & dg$candidate_qtn_is_true_positive %in% TRUE
+  TP <- sum(dg$is_TP)                       # distinct true-positive QTN (one kept per QTN)
+  FP <- sum(!dg$is_TP & !extra)             # regions matching no true-positive QTN
+  FN <- n_true - TP
+  Precision <- if ((TP + FP) > 0) TP / (TP + FP) else NA_real_
+  Recall    <- if (n_true > 0)   TP / n_true else NA_real_
+  PR        <- if (!is.na(Precision) && !is.na(Recall)) Precision * Recall else NA_real_
+  list(TP = TP, FP = FP, FN = FN, extras = sum(extra),
+       Precision = Precision, Recall = Recall, PR = PR)
+}
+
 ## Method-AGNOSTIC second-level clustering: partition an arbitrary marker set
 ## (e.g. the UNION of every method's outlier SNPs) into regions with the SAME
 ## distance-restricted single-linkage rule ld_outlier_clusters() uses internally

@@ -50,9 +50,12 @@ for (nm in names(sets)) { h <- nsnp[, nm] > 0
       nm, sum(nsnp[, nm] == 1), sum(h), 100 * mean(nsnp[h, nm] == 1),
       sum(nsnp[, nm] == 1 & region_dt$is_TP))) }
 
+## dedup-neutral scoring: extras (duplicate regions for an already-claimed
+## true-positive QTN) count as neither TP nor FP -> clustering-parameter robust.
 score_mask <- function(mask_fun, tag) rbindlist(lapply(names(sets), function(nm) {
-  hit <- mask_fun(nm); ev <- evaluate_ORs(regions[hit], map, qtab, th$r2min, th$dmax)
-  data.table(filter = tag, method = nm, regions_hit = sum(hit), TP = ev$TP, FP = ev$FP, FN = ev$FN,
+  hit <- mask_fun(nm); ev <- evaluate_ORs_qtn(regions[hit], map, qtab, th$r2min, th$dmax)
+  data.table(filter = tag, method = nm, regions_hit = sum(hit), TP = ev$TP, FP = ev$FP,
+             FN = ev$FN, extras = ev$extras,
              Precision = round(ev$Precision, 3), Recall = round(ev$Recall, 3),
              PR = round(ev$PR, 3), F1 = round(2 * ev$TP / (2 * ev$TP + ev$FP + ev$FN), 3)) }))
 
