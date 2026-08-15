@@ -48,10 +48,12 @@ gen_surrogate <- function() { y <- Vk %*% (sqrt(Lv) * rnorm(n)); as.numeric(resi
 emmax_pooled <- function(Yv) { pv <- numeric(0)                        # fast EMMAX per file
   for (i in seq_along(PRE)) pv <- c(pv, setNames(fast_emmax_p(PRE[[i]], Yv), mk_i[[i]]))
   pv[map$marker] }
-Cscore <- function(pv) { calls <- unlist(lapply(RHO, function(rc) { lw <- LDW[, rc]
-    unlist(lapply(QSTAR, function(q) { thr <- stats::quantile(lw, q, na.rm = TRUE); cand <- which(lw >= thr)
-      qv <- stats::p.adjust(pv[cand], "BH"); unlist(lapply(ALPHA_C, function(al) map$marker[cand[qv < al]])) })) }))
-  tb <- table(calls); C <- setNames(numeric(nrow(map)), map$marker); C[names(tb)] <- as.numeric(tb) / ncell; C }
+Cscore <- function(pv) { cnt <- integer(nrow(map))          # per-marker counter (fast; no unlist+table)
+  for (rc in RHO) { lw <- LDW[, rc]
+    for (q in QSTAR) { thr <- stats::quantile(lw, q, na.rm = TRUE); cand <- which(lw >= thr)
+      if (!length(cand)) next; qv <- stats::p.adjust(pv[cand], "BH")
+      for (al in ALPHA_C) { h <- cand[qv < al]; if (length(h)) cnt[h] <- cnt[h] + 1L } } }
+  setNames(cnt / ncell, map$marker) }
 cat(sprintf("V%s_c%s_env%s: %d SNPs, B=%d structured surrogates (spatial l=%.2f)\n", V, cc, env, nrow(map), B, l))
 
 C_obs <- Cscore(emmax_pooled(Yobs)); n_obs <- vapply(TAU, function(t) sum(C_obs >= t), numeric(1))
