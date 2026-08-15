@@ -78,6 +78,28 @@ pr_auc <- function(recall, precision) {
   sum(diff(r) * (utils::head(p, -1) + utils::tail(p, -1)) / 2)
 }
 
+## Fast EMMAX for permutation/surrogate nulls: eigendecompose the (normalised)
+## kinship and rotate the genotypes ONCE (fast_emmax_setup), then a whitened per-SNP
+## F-test per phenotype (fast_emmax_p). Numerically identical to emmax() (cor 1.0,
+## max |diff -log10 p| ~1e-9); ~25x faster per phenotype. Reuses the package's REML
+## internals. Works for sim (per-file) and empirical (one genome) alike.
+fast_emmax_setup <- function(GTs, K) {
+  n <- nrow(GTs); one_n <- matrix(1, n, n) / n
+  Kn <- (n - 1) / sum((diag(n) - one_n) * K) * K; Xo <- matrix(1, n, 1)
+  ev <- eigen(Kn, symmetric = TRUE)
+  list(Kn = Kn, Xo = Xo, eigR = LDscnR:::emma.eigen.R.wo.Z(Kn, Xo), V = ev$vectors, lam = ev$values,
+       Xt = crossprod(ev$vectors, GTs), xot = as.numeric(crossprod(ev$vectors, Xo)), df2 = n - 2L)
+}
+fast_emmax_p <- function(pre, y) {
+  re <- LDscnR:::emma.REMLE(y, pre$Xo, pre$Kn, eig.R = pre$eigR)
+  wv <- 1 / sqrt(re$vg * pre$lam + re$ve); yt <- as.numeric(crossprod(pre$V, y)) * wv
+  xo <- pre$xot * wv; Xtw <- pre$Xt * wv; a2 <- sum(xo * xo)
+  ra <- yt - xo * (sum(xo * yt) / a2); RSS0 <- sum(ra * ra)
+  Rb <- Xtw - outer(xo, as.numeric(crossprod(xo, Xtw)) / a2)
+  RSSf <- RSS0 - as.numeric(crossprod(ra, Rb))^2 / colSums(Rb * Rb)
+  stats::pf((RSS0 / RSSf - 1) * pre$df2, 1, pre$df2, lower.tail = FALSE)
+}
+
 ## Dedup-NEUTRAL scoring: like evaluate_ORs() but a region matching an ALREADY-
 ## claimed true-positive QTN (a dedup loser -- an "extra" region for the same QTN)
 ## is counted as NEITHER TP nor FP, it is dropped. This removes the clustering-

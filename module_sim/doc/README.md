@@ -105,6 +105,12 @@ l_min-invariant). This is why l_min stays a post-filter (out of C) and why any c
 reported *with* its (l_min, α-grid). Truth-free calibration = the structured null (18): naive permutation
 (17) breaks the env↔structure confounding (→ tau_C≈0.06, too permissive); the orthogonal-spatial surrogate
 keeps the spatial autocorrelation but removes the true signal, so its empirical FDR prices in structure FPs.
+Structured-null result (V2_c1_env1): FDR≤0.05 at tau_C≈0.22 (vs naive 0.06); PR-optimum 0.35–0.5 sits at
+FDR≈0–0.02. Uses **fast EMMAX** (`fast_emmax_setup`/`fast_emmax_p` in `_config.R`: eigendecompose K + rotate
+genotypes once → whitened per-SNP F per phenotype; identical to `emmax()`, ~25× faster/phenotype). Surrogates
+are Gaussian-kernel MVN over coords + Gram-Schmidt; **Moran-spectral (MSR) surrogates were tried and were
+worse** here (0.69 vs 0.82 smoothness) because the env is near rank-1 (one dominant x-gradient MEM), so no
+orthogonal surrogate can match its autocorrelation exactly — the Gaussian approach is near the achievable ceiling.
 
 **Sim vs empirical validity notes.** Per-replicate GRMs correlate 0.31 (V2_c1, weak structure) vs 0.94
 (V1_c2) vs 0.95 (3sp sticklebacks) — GRM correlation reads out structure *strength*, not segregation

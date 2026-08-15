@@ -30,11 +30,12 @@ gcta_grm <- function(X){ p<-colMeans(X)/2; k<-p>0&p<1; X<-X[,k,drop=F]; p<-p[k]
 files <- list.files(SIM_DATA, full.names = TRUE,
                     pattern = sprintf("^adapt_bgs_chr[0-9]+_V%s_c%s_env%s\\.rds$", V, cc, env))
 reps <- as.integer(sub(".*_chr([0-9]+)_.*", "\\1", basename(files))); files <- files[order(reps)]
-Yobs <- COORDS <- NULL; GTl <- Kl <- maps <- ldws <- mk_i <- vector("list", length(files))
+Yobs <- COORDS <- NULL; PRE <- maps <- ldws <- mk_i <- vector("list", length(files))
 for (i in seq_along(files)) { d <- readRDS(files[i]); m <- as.data.table(d$map)
   m[, marker := paste0("R", i, "_", marker)][, Chr := paste0("R", i, "_", Chr)]
   if (is.null(Yobs)) { Yobs <- d$env$env; COORDS <- cbind(d$env$x, d$env$y) }
-  GTl[[i]] <- d$GTs; Kl[[i]] <- gcta_grm(d$GTs); lw <- d$ld_ws; rownames(lw) <- m$marker
+  PRE[[i]] <- fast_emmax_setup(d$GTs, gcta_grm(d$GTs))     # eigendecompose + rotate GTs ONCE
+  lw <- d$ld_ws; rownames(lw) <- m$marker
   maps[[i]] <- m; ldws[[i]] <- lw; mk_i[[i]] <- m$marker }
 map <- flag_true_positive_QTNs(rbindlist(maps, fill = TRUE)); LDW <- do.call(rbind, ldws)[map$marker, ]
 RHO <- colnames(LDW); ncell <- length(RHO) * length(QSTAR) * length(ALPHA_C); n <- length(Yobs)
@@ -44,8 +45,8 @@ Dm <- as.matrix(dist(COORDS)); l <- median(Dm[lower.tri(Dm)])
 Ks <- exp(-0.5 * (Dm / l)^2); eK <- eigen(Ks, symmetric = TRUE); Lv <- pmax(eK$values, 0); Vk <- eK$vectors
 gen_surrogate <- function() { y <- Vk %*% (sqrt(Lv) * rnorm(n)); as.numeric(resid(lm(y ~ Yobs))) }
 
-emmax_pooled <- function(Yv) { pv <- numeric(0)
-  for (i in seq_along(GTl)) pv <- c(pv, setNames(emmax(Y = Yv, X = GTl[[i]], K = Kl[[i]])$pval, mk_i[[i]]))
+emmax_pooled <- function(Yv) { pv <- numeric(0)                        # fast EMMAX per file
+  for (i in seq_along(PRE)) pv <- c(pv, setNames(fast_emmax_p(PRE[[i]], Yv), mk_i[[i]]))
   pv[map$marker] }
 Cscore <- function(pv) { calls <- unlist(lapply(RHO, function(rc) { lw <- LDW[, rc]
     unlist(lapply(QSTAR, function(q) { thr <- stats::quantile(lw, q, na.rm = TRUE); cand <- which(lw >= thr)
