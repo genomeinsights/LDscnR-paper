@@ -76,6 +76,8 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 07 | `07_consensus_manhattan.R [V c env] [MIN_SNP]` | **cheap**: 4-panel Manhattan on the shared frame (colour = shared region identity; `+` = single-SNP outlier) + a `>=MIN_SNP` figure |
 | 08 | `08_sweep_aggregate.R` | aggregate `consensus_*.rds` across env replicates → mean±SE Precision/Recall/PR/F1 per (condition, filter, method) + `figures/sweep_PR.png` |
 | 09 | `09_rmsc.R` | RMSC (discoveries vs `ld_w` quantile) for every dataset × method → `figures/rmsc_all.png` (interior peak ⇒ `ld_w` filter adds power; needs only `ld_w`+p, no genotypes) |
+| 10 | `10_cscore.R [V c env] [method]` | q\*-sweep **consistency (C-score)** as a q\*-robust alternative to a single RMSC q\*; C vs QTN-linkage diagnostic + C-gate PR sweep vs single-q\*/single-SNP |
+| 11 | `11_rho_qstar_heatmap.R [V c env]` | **poster heatmap**: outlier regions across the (ρ, q\*) LD-filtering grid (ρ = precomputed `ld_ws` column), EMMAX + LFMM |
 
 TP/FP counting is **dedup-neutral** (`evaluate_ORs_qtn`): a region matching an
 already-claimed true-positive QTN is dropped (neither TP nor FP), so performance is
