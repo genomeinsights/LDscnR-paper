@@ -78,7 +78,9 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 09 | `09_rmsc.R` | RMSC (discoveries vs `ld_w` quantile) for every dataset × method → `figures/rmsc_all.png` (interior peak ⇒ `ld_w` filter adds power; needs only `ld_w`+p, no genotypes) |
 | 10 | `10_cscore.R [V c env] [method]` | q\*-sweep **consistency (C-score)** as a q\*-robust alternative to a single RMSC q\*; C vs QTN-linkage diagnostic + C-gate PR sweep vs single-q\*/single-SNP |
 | 11 | `11_rho_qstar_heatmap.R [V c env]` | **poster heatmap**: total outlier regions across the (ρ, q\*) LD-filtering grid (ρ = precomputed `ld_ws` column), EMMAX + LFMM |
-| 12 | `12_rho_qstar_pr.R [V c env]` | **truth-aware** version: same grid coloured by PR (precision×recall, dedup-neutral) → the real sweet spot. V2_c1_env1: best at LOW ρ≈0.10–0.15 + moderate q\*, *not* ρ=0.95 (half the FP at equal TP) |
+| 12 | `12_rho_qstar_pr.R [V c env]` | **truth-aware** version: same grid coloured by PR (precision×recall, dedup-neutral) → the sweet spot. NB the best single (ρ,q\*) cell is UNSTABLE across env (ρ 0.05–0.95) → don't pick one, use the C-score |
+| 13 | `13_cscore_2d.R [V c env] [method]` | 2-axis (ρ,q\*) **C-score** (poster's consistency def) → C-Manhattan + C-gated PR path; beats single-SNP, fixed ρ=0.95, and even the oracle best single cell |
+| 14 | `14_alpha_cscore.R [V c env]` | fold **α** into the sweep; test that C-benefit grows as α tightens & is larger for EMMAX (conservative) than LFMM (inflated=lenient, saturates). l_min=2 as a post-C filter |
 
 TP/FP counting is **dedup-neutral** (`evaluate_ORs_qtn`): a region matching an
 already-claimed true-positive QTN is dropped (neither TP nor FP), so performance is
