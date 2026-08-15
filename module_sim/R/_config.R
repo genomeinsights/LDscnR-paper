@@ -54,11 +54,28 @@ pool_group <- function(pattern, data_dir = SIM_DATA) {
        decay = list(decay_sum = rbindlist(decs, fill = TRUE)))
 }
 
-## per-QTN LD/distance tolerances for TP matching, from the pooled decay fit
-score_thresholds <- function(decay_sum, rho_r2 = 0.75, rho_d = 0.95) {
+## per-QTN LD/distance tolerances for TP matching, from the pooled decay fit.
+## rho_r2=0.75 / rho_d=0.95 are decay-relative; dmax_cap bounds the distance (in
+## low gene flow the decay is so slow d_from_rho blows up to Mb-scale).
+score_thresholds <- function(decay_sum, rho_r2 = 0.75, rho_d = 0.95, dmax_cap = Inf) {
   ds <- as.data.table(decay_sum)
   list(r2min = ld_from_rho(median(ds$b), median(ds$c), rho_r2),
-       dmax  = d_from_rho(median(ds$a), rho_d))
+       dmax  = min(d_from_rho(median(ds$a), rho_d), dmax_cap))
+}
+
+## Precision-recall AUC (trapezoidal) for an ordered-threshold sweep: given the
+## (recall, precision) operating points a single ordered knob traces (tau_C, or
+## alpha), integrate precision over recall from 0. Ties in recall collapse to max
+## precision (upper envelope); handles the mild non-monotonicity from re-clustering
+## at each threshold. This is the STANDARD PR-AUC that the C-score enables (one
+## ordered knob) -- replaces the random-search AUC-PR* used for the raw unordered grid.
+pr_auc <- function(recall, precision) {
+  ok <- is.finite(recall) & is.finite(precision)
+  if (sum(ok) < 1L) return(NA_real_)
+  d <- data.table::data.table(r = recall[ok], p = precision[ok])[, .(p = max(p)), by = r]
+  data.table::setorder(d, r)
+  r <- c(0, d$r); p <- c(d$p[1], d$p)                 # integrate from recall 0
+  sum(diff(r) * (utils::head(p, -1) + utils::tail(p, -1)) / 2)
 }
 
 ## Dedup-NEUTRAL scoring: like evaluate_ORs() but a region matching an ALREADY-
@@ -105,16 +122,31 @@ evaluate_ORs_qtn <- function(clusters, map, qtn_ld_table, r2_min_focal, d_max_fo
   }
   out
 }
-cluster_regions <- function(markers, map, GTs, r2_link = 0.5, dcap = Inf) {
+## Thresholds are decay-relative (rho) and self-calibrate per chromosome when
+## `decay_sum` + `rho_ld`/`rho_d` are supplied: r2_link = ld_from_rho(b, c, rho_ld),
+## distance = min(d_from_rho(a_pred, rho_d), dcap_max). The dcap_max cap is
+## essential in low gene flow (slow decay -> d_from_rho ~Mb -> would merge a whole
+## chromosome into one cluster). Falls back to the scalar r2_link/dcap otherwise.
+cluster_regions <- function(markers, map, GTs, r2_link = 0.5, dcap = Inf,
+                            decay_sum = NULL, rho_ld = NULL, rho_d = NULL, dcap_max = Inf) {
   m <- as.data.table(map)[marker %in% markers]
+  r2_by <- d_by <- NULL
+  if (!is.null(decay_sum) && (!is.null(rho_ld) || !is.null(rho_d))) {
+    ds <- as.data.table(decay_sum); cc <- if ("c" %in% names(ds)) ds$c else rep(1, nrow(ds))
+    ac <- if ("a_pred" %in% names(ds)) ds$a_pred else ds$a
+    if (!is.null(rho_ld)) r2_by <- stats::setNames(ld_from_rho(ds$b, cc, rho_ld), ds$Chr)
+    if (!is.null(rho_d))  d_by  <- stats::setNames(pmin(d_from_rho(ac, rho_d), dcap_max), ds$Chr)
+  }
   out <- list()
   for (ch in unique(m$Chr)) {
     mk <- m[Chr == ch, marker]; pos <- m[Chr == ch, Pos]
+    r2c <- if (!is.null(r2_by) && !is.na(r2_by[ch])) r2_by[[ch]] else r2_link
+    dc  <- if (!is.null(d_by)  && !is.na(d_by[ch]))  d_by[[ch]]  else dcap
     if (length(mk) == 1L) { out <- c(out, list(mk)); next }
     R <- suppressWarnings(stats::cor(GTs[, mk], use = "pairwise.complete.obs")^2)
     R[!is.finite(R)] <- 0
-    cl <- stats::cutree(stats::hclust(stats::as.dist(1 - R), method = "single"), h = 1 - r2_link)
-    cl <- .split_gap(cl, pos, dcap)
+    cl <- stats::cutree(stats::hclust(stats::as.dist(1 - R), method = "single"), h = 1 - r2c)
+    cl <- .split_gap(cl, pos, dc)
     out <- c(out, split(mk, cl))
   }
   unname(out)

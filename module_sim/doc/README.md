@@ -92,6 +92,15 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 12 | `12_rho_qstar_pr.R [V c env]` | **truth-aware** version: same grid coloured by PR (precision×recall, dedup-neutral) → the sweet spot. NB the best single (ρ,q\*) cell is UNSTABLE across env (ρ 0.05–0.95) → don't pick one, use the C-score |
 | 13 | `13_cscore_2d.R [V c env] [method]` | 2-axis (ρ,q\*) **C-score** (poster's consistency def) → C-Manhattan + C-gated PR path; beats single-SNP, fixed ρ=0.95, and even the oracle best single cell |
 | 14 | `14_alpha_cscore.R [V c env]` | fold **α** into the sweep; test that C-benefit grows as α tightens & is larger for EMMAX (conservative) than LFMM (inflated=lenient, saturates). l_min=2 as a post-C filter |
+| 15 | `15_pr_auc.R [V c env]` | **headline**: standard trapezoidal **PR-AUC** — C-score (sweep tau_C, ρ/q\*/α folded in) vs single-SNP (sweep α); clustering fixed decay-relative ρ_ld=0.75/ρ_d=0.95≤500kb; l_min ∈ {1,2,4,8} as linetype. Retires the random-search AUC-PR\* (only needed for the raw unordered grid) |
+| 15b | `15b_pr_auc_aggregate.R [V c]` | replicate-average 15 over env1–5 → mean±SE PR-AUC vs l_min + per-env PR curves |
+
+**PR-AUC, not AUC-PR\*.** The C-score collapses the unordered ρ×q\*×α grid into one *ordered* knob (tau_C),
+so a standard monotonic PR-AUC (trapezoidal, `pr_auc()` in `_config.R`) applies — the random-search
+cummax AUC-PR\* (`auc_cummax_PR` in the paper engine) was only needed because the raw method had many
+unordered nuisance parameters. Clustering/TP-match thresholds are fixed decay-relative (ρ_ld=0.75 = the
+match r², ρ_d=0.95 capped at 500 kb to avoid merging a whole chromosome in low gene flow); l_min is a
+post-C filter, swept only to trace/compare curves.
 
 TP/FP counting is **dedup-neutral** (`evaluate_ORs_qtn`): a region matching an
 already-claimed true-positive QTN is dropped (neither TP nor FP), so performance is
