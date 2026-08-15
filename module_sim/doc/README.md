@@ -37,11 +37,16 @@ Va-qualified `true_pos_QTN` — not by containment.
 
 ```
 module_sim/
-  R/        scripts (_config.R + 01..08); run from LDscnR-paper/ as module_sim/R/<script>.R
-  data/     caches / scored results (*.rds) — regenerable, git-ignored
-  figures/  plots (*.png)                    — regenerable, git-ignored
-  doc/      this README
+  R/          live scripts (_config.R + 02..05, 10..14); run from LDscnR-paper/ as module_sim/R/<script>.R
+  R/archive/  superseded single-q* RMSC chain (01, 06a, 06b, 07, 08, 09) — kept for reference
+  data/       caches / scored results (*.rds) — regenerable, git-ignored
+  figures/    plots (*.png)                    — regenerable, git-ignored
+  doc/        this README
 ```
+**Current direction:** the single-q\* RMSC caller/comparison (01, 06a–09) is superseded by the
+**C-score** pipeline (10–14), which sweeps ρ/q\*/α and gates on consistency (tau_C) instead of
+trusting one fragile threshold. The archived chain still holds the legacy-vs-ours comparison,
+the ≥2-SNP result, and the RMSC-instability diagnostic that motivated the switch.
 `R/_config.R` sets `dir_data`/`dir_fig` (created on demand); every script reads/writes there.
 
 ## Scripts (in `R/`, run from `LDscnR-paper/`, e.g. `Rscript module_sim/R/06a_run_caller.R 2 1 1`)
