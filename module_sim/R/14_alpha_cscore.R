@@ -1,4 +1,8 @@
 ## module_sim/R/14_alpha_cscore.R
+## !! REPLICATE-AVERAGE: a SINGLE env is unreliable (env1 has repeatedly misled).
+## Run across env1-5 and report mean +/- SE. On 5-env average the alpha-stringency
+## and EMMAX>LFMM predictions below do NOT hold (env1 was a fluke); C-score still
+## robustly beats single-SNP at every alpha for both methods. !!
 ## Test the prediction: the C-score's benefit grows as the FDR threshold alpha
 ## gets more stringent (each single (rho,q*) run is then underpowered, so
 ## consistency across runs recovers signal no single run holds), and this is

@@ -1,4 +1,6 @@
 ## module_sim/R/13_cscore_2d.R
+## !! REPLICATE-AVERAGE: a SINGLE env is unreliable (env1 has repeatedly misled).
+## Run across env1-5 and report mean +/- SE before making any claim. !!
 ## The poster's full consistency score: sweep BOTH ld_w window (rho) and filtering
 ## threshold (q*), and score each SNP by the proportion of (rho, q*) cells in which
 ## it is called an outlier (candidate & BH-FDR-significant within candidates). This

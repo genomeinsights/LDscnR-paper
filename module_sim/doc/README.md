@@ -47,6 +47,12 @@ module_sim/
 **C-score** pipeline (10–14), which sweeps ρ/q\*/α and gates on consistency (tau_C) instead of
 trusting one fragile threshold. The archived chain still holds the legacy-vs-ours comparison,
 the ≥2-SNP result, and the RMSC-instability diagnostic that motivated the switch.
+
+**Replicate-average by default.** A single env is unreliable — env1 has repeatedly produced
+flukes (rosy candidate-first snapshot, a "low-ρ sweet spot", an "EMMAX≫LFMM α-effect") that all
+vanished when averaged over 5 env. Run any C-score / performance analysis across env1–5 and report
+mean ± SE; never make a claim from one env. (Confirmed robust: C-score beats single-SNP at every α
+for both methods, ΔPR ≈ 0.05–0.16; *not* robust: α-stringency trend and EMMAX-vs-LFMM ordering.)
 `R/_config.R` sets `dir_data`/`dir_fig` (created on demand); every script reads/writes there.
 
 ## Scripts (in `R/`, run from `LDscnR-paper/`, e.g. `Rscript module_sim/R/06a_run_caller.R 2 1 1`)
