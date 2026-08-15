@@ -17,7 +17,8 @@ env <- if (length(a) >= 3) a[3] else "1"
 TAUC    <- 0.35                                # best C-score gate (both methods)
 ALPHA   <- c(EMMAX = 0.05, LFMM = 0.02)        # best single-SNP alpha per method
 QSTAR   <- seq(0, 0.95, by = 0.05); ALPHA_C <- c(0.001, 0.01, 0.05, 0.1)
-LMIN    <- 2L; RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
+LMIN    <- if (length(a) >= 4) as.integer(a[4]) else 2L   # l_min=1 -> no single-SNP filter
+RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
 
 ## pool GTs + map + full ld_ws + decay
 files <- list.files(SIM_DATA, full.names = TRUE,
@@ -93,6 +94,6 @@ P <- panel("EMMAX C-score","nlq_emx") / panel("EMMAX single","nlq_emx") /
      panel("LFMM C-score","nlq_lfmm") / panel("LFMM single","nlq_lfmm") +
   plot_annotation(title=sprintf("V%s_c%s_env%s: C-score(tau=%.2f) vs single-SNP(best alpha), joint OR frame", V, cc, env, TAUC),
                   subtitle="colour = shared (>=2-set) OR identity (same across panels); grey = set-unique OR; triangle = true QTN")
-ggsave(file.path(dir_fig, sprintf("besttau_manhattan_V%s_c%s_env%s.png", V, cc, env)), P, width=16, height=10, dpi=150)
-saveRDS(list(sets=sets, regions=regions, lab=lab, nsnp=nsnp, support=support), file.path(dir_data, sprintf("besttau_V%s_c%s_env%s.rds", V, cc, env)))
+ggsave(file.path(dir_fig, sprintf("besttau_manhattan_lmin%d_V%s_c%s_env%s.png", LMIN, V, cc, env)), P, width=16, height=10, dpi=150)
+saveRDS(list(sets=sets, regions=regions, lab=lab, nsnp=nsnp, support=support), file.path(dir_data, sprintf("besttau_lmin%d_V%s_c%s_env%s.rds", LMIN, V, cc, env)))
 cat("wrote besttau_manhattan figure\n")
