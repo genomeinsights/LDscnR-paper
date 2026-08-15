@@ -16,12 +16,14 @@
 
 suppressMessages({ library(data.table); library(ggplot2) })
 mod   <- "/Users/petrikem/gitlab/LDscnR-paper/module_sim"
+dir_data <- file.path(mod, "data"); dir_fig <- file.path(mod, "figures")
+for (d in c(dir_data, dir_fig)) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 CONDS <- list(c("2", "1"), c("1", "2"))          # (V,c): moderate, hard-structure
 ENV   <- 1:5
 
 all <- rbindlist(lapply(CONDS, function(vc) {
   rbindlist(lapply(ENV, function(e) {
-    f <- file.path(mod, sprintf("consensus_V%s_c%s_env%s.rds", vc[1], vc[2], e))
+    f <- file.path(dir_data, sprintf("consensus_V%s_c%s_env%s.rds", vc[1], vc[2], e))
     if (!file.exists(f)) return(NULL)
     C <- readRDS(f)
     rbindlist(list(C$res, C$res_snpN, C$res_multi))[
@@ -60,6 +62,6 @@ p <- ggplot(agg, aes(Recall, Precision, color = method)) +
        subtitle = "rows = condition; cols = region filter; up-and-right = better",
        x = "Recall", y = "Precision") +
   theme_bw(base_size = 11) + theme(legend.position = "top")
-ggsave(file.path(mod, "sweep_PR.png"), p, width = 11, height = 7, dpi = 150)
-saveRDS(list(agg = agg, all = all, conds = CONDS, env = ENV), file.path(mod, "sweep_summary.rds"))
+ggsave(file.path(dir_fig, "sweep_PR.png"), p, width = 11, height = 7, dpi = 150)
+saveRDS(list(agg = agg, all = all, conds = CONDS, env = ENV), file.path(dir_data, "sweep_summary.rds"))
 cat("wrote sweep_PR.png + sweep_summary.rds\n")

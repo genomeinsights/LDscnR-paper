@@ -10,11 +10,13 @@
 
 suppressMessages({ library(data.table); library(ggplot2) })
 mod <- "/Users/petrikem/gitlab/LDscnR-paper/module_sim"
+dir_data <- file.path(mod, "data"); dir_fig <- file.path(mod, "figures")
+for (d in c(dir_data, dir_fig)) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 a   <- commandArgs(trailingOnly = TRUE)
 V   <- if (length(a) >= 1) a[1] else "1"
 cc  <- if (length(a) >= 2) a[2] else "2"
 env <- if (length(a) >= 3) a[3] else "3"
-m   <- as.data.table(readRDS(file.path(mod, sprintf("meta_V%s_c%s_env%s.rds", V, cc, env)))$map)
+m   <- as.data.table(readRDS(file.path(dir_data, sprintf("meta_V%s_c%s_env%s.rds", V, cc, env)))$map)
 
 ## genome coordinate transform (moduleB style)
 m[, chr_num := as.integer(factor(Chr, levels = unique(Chr)))]
@@ -43,7 +45,7 @@ p <- ggplot() +
   theme_bw(base_size = 9) +
   theme(panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(size = 6), legend.position = "top")
-ggsave(file.path(mod, sprintf("ldw_qtn_manhattan_V%s_c%s_env%s.png", V, cc, env)), p,
+ggsave(file.path(dir_fig, sprintf("ldw_qtn_manhattan_V%s_c%s_env%s.png", V, cc, env)), p,
        width = 16, height = 5.5, dpi = 150)
 
 ## quantify: among high-ld_w candidates, how many are actually QTN-linked?

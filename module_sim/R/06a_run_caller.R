@@ -10,7 +10,7 @@
 ## Cache (git-ignored): module_sim/cache_V{V}_c{c}_env{env}.rds
 ## Run from LDscnR-paper/:  Rscript module_sim/06a_run_caller.R [V c env]
 
-source("module_sim/_config.R")
+source("module_sim/R/_config.R")
 a   <- commandArgs(trailingOnly = TRUE)
 V   <- if (length(a) >= 1) a[1] else "2"
 cc  <- if (length(a) >= 2) a[2] else "1"
@@ -60,5 +60,5 @@ mapc <- map[, .(marker, Chr, Pos, emx_p, lfmm_p, type, true_pos_QTN)]
 saveRDS(list(sets = sets, regions = regions, lab = lab, qtab = qtab, map = mapc,
              th = th, dcap = dcap, total_true_QTN = totQTN,
              params = list(V = V, c = cc, env = env, FDR = FDR, rmsc_grid = RMSC_GRID)),
-        file.path(mod, sprintf("cache_V%s_c%s_env%s.rds", V, cc, env)))
+        file.path(dir_data, sprintf("cache_V%s_c%s_env%s.rds", V, cc, env)))
 cat("wrote cache_V", V, "_c", cc, "_env", env, ".rds\n", sep = "")

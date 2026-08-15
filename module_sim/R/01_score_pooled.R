@@ -6,7 +6,7 @@
 ## Run from LDscnR-paper/:  Rscript module_sim/01_score_pooled.R [V c env]
 ## Output (git-ignored): module_sim/score_V{V}_c{c}_env{env}.rds
 
-source("module_sim/_config.R")
+source("module_sim/R/_config.R")
 a   <- commandArgs(trailingOnly = TRUE)
 V   <- if (length(a) >= 1) a[1] else "1"
 cc  <- if (length(a) >= 2) a[2] else "2"
@@ -44,7 +44,7 @@ score <- function(pcol, lab) {
       dg$whole_chr_clusters, dg$median_span_fraction))
   saveRDS(list(clusters = as.data.table(r$clusters), candidates = r$candidates,
                qstar = r$ld_w_threshold, ev = ev, diagnostics = dg),
-          file.path(mod, sprintf("score_V%s_c%s_env%s_%s.rds", V, cc, env, lab)))
+          file.path(dir_data, sprintf("score_V%s_c%s_env%s_%s.rds", V, cc, env, lab)))
   ev
 }
 
@@ -52,4 +52,4 @@ cat("=== candidate-first + background null ===\n")
 invisible(score("emx_p",  "EMMAX"))
 invisible(score("lfmm_p", "LFMM"))
 saveRDS(list(map = map, decay = P$decay$decay_sum),
-        file.path(mod, sprintf("meta_V%s_c%s_env%s.rds", V, cc, env)))
+        file.path(dir_data, sprintf("meta_V%s_c%s_env%s.rds", V, cc, env)))

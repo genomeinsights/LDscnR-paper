@@ -18,6 +18,9 @@
 suppressMessages({ library(LDscnR); library(data.table); library(parallel) })
 
 mod      <- "/Users/petrikem/gitlab/LDscnR-paper/module_sim"
+dir_data <- file.path(mod, "data")        # caches / scored results (git-ignored)
+dir_fig  <- file.path(mod, "figures")     # plots (git-ignored)
+for (d in c(dir_data, dir_fig)) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 SIM_DATA <- Sys.getenv("LDSCNR_SIM_DATA",
                        unset = "/Volumes/Nemo/Nemo_sim/parsed_sim_data2")
 if (!dir.exists(SIM_DATA)) SIM_DATA <- "parsed_sim_data"   # fall back to local V2 subset

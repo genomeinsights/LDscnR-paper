@@ -11,6 +11,7 @@
 
 suppressMessages({ library(data.table); library(ggplot2) })
 mod <- "/Users/petrikem/gitlab/LDscnR-paper/module_sim"
+dir_fig <- file.path(mod, "figures"); if (!dir.exists(dir_fig)) dir.create(dir_fig, recursive = TRUE, showWarnings = FALSE)
 SIM_DATA <- Sys.getenv("LDSCNR_SIM_DATA",
                        unset = "/Volumes/Nemo/Nemo_sim/parsed_sim_data2")
 if (!dir.exists(SIM_DATA)) SIM_DATA <- "parsed_sim_data"
@@ -46,6 +47,6 @@ p <- ggplot(long, aes(ldw_q, colour = method)) +
        y = "raw F (points = raw, line = windowed median w=201; y clipped at 8)",
        title = sprintf("ld_w vs raw F per chromosome - V%s_c%s_env%s (Q = QTN-bearing top, N = neutral bottom)", V, cc, env)) +
   theme_bw(base_size = 9) + theme(legend.position = "top", strip.background = element_blank())
-ggsave(file.path(mod, sprintf("ldw_vs_rawF_V%s_c%s_env%s.png", V, cc, env)), p,
+ggsave(file.path(dir_fig, sprintf("ldw_vs_rawF_V%s_c%s_env%s.png", V, cc, env)), p,
        width = 15, height = 6, dpi = 140)
 cat("wrote", sprintf("ldw_vs_rawF_V%s_c%s_env%s.png", V, cc, env), "\n")

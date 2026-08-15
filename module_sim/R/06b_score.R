@@ -9,14 +9,14 @@
 ## Run from LDscnR-paper/:  Rscript module_sim/06b_score.R [V c env] [MIN_SNP]
 ## Output (git-ignored): module_sim/consensus_V{V}_c{c}_env{env}.rds
 
-source("module_sim/_config.R")
+source("module_sim/R/_config.R")
 a   <- commandArgs(trailingOnly = TRUE)
 V   <- if (length(a) >= 1) a[1] else "2"
 cc  <- if (length(a) >= 2) a[2] else "1"
 env <- if (length(a) >= 3) a[3] else "1"
 MIN_SNP <- if (length(a) >= 4) as.integer(a[4]) else 2L      # first-class >=k-SNP option
 
-C <- readRDS(file.path(mod, sprintf("cache_V%s_c%s_env%s.rds", V, cc, env)))
+C <- readRDS(file.path(dir_data, sprintf("cache_V%s_c%s_env%s.rds", V, cc, env)))
 map <- C$map; regions <- C$regions; sets <- C$sets; qtab <- C$qtab; th <- C$th
 lab <- C$lab; totQTN <- C$total_true_QTN
 cat(sprintf("V%s_c%s_env%s (cached): %d regions, %d true_pos_QTN | TP-match r2>%.2f dist<%.0fkb | MIN_SNP=%d\n",
@@ -69,4 +69,4 @@ cat("\n=== method-singletons removed (>=2 methods) ===\n"); print(res_multi)
 saveRDS(list(res = res, res_snpN = res_snpN, res_multi = res_multi, MIN_SNP = MIN_SNP,
              region_dt = region_dt, nsnp = nsnp, regions = regions, lab = lab, sets = sets,
              map = map, total_true_QTN = totQTN, params = C$params),
-        file.path(mod, sprintf("consensus_V%s_c%s_env%s.rds", V, cc, env)))
+        file.path(dir_data, sprintf("consensus_V%s_c%s_env%s.rds", V, cc, env)))

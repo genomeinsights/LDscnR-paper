@@ -33,11 +33,22 @@ chromosomes as a TP/FP bed. A cluster is a **TP** if it is LD- and
 distance-matched (`r2 > r2min`, `dist < dmax` from the decay fit) to a
 Va-qualified `true_pos_QTN` — not by containment.
 
-## Scripts (run from `LDscnR-paper/`)
+## Directory layout
+
+```
+module_sim/
+  R/        scripts (_config.R + 01..08); run from LDscnR-paper/ as module_sim/R/<script>.R
+  data/     caches / scored results (*.rds) — regenerable, git-ignored
+  figures/  plots (*.png)                    — regenerable, git-ignored
+  doc/      this README
+```
+`R/_config.R` sets `dir_data`/`dir_fig` (created on demand); every script reads/writes there.
+
+## Scripts (in `R/`, run from `LDscnR-paper/`, e.g. `Rscript module_sim/R/06a_run_caller.R 2 1 1`)
 
 | | script | what |
 |---|---|---|
-| — | `_config.R` | paths, engine source, `pool_group()`, `score_thresholds()` |
+| — | `_config.R` | paths, engine source, `pool_group()`, `score_thresholds()`, `cluster_regions()`, `evaluate_ORs_qtn()` |
 | 01 | `01_score_pooled.R [V c env]` | candidate-first + background null, TP/FP + FP-location + diagnostics (default V1 c2 env3) |
 | 02 | `02_ldw_vs_rawF.R [V c env]` | **mechanism figure**: raw F vs ld_w per chromosome (EMMAX flat/calibrated; LFMM inflated + LD-correlated on all chr incl. neutral) |
 | 03 | `03_ldw_qtn_manhattan.R [V c env]` | ld_w Manhattan coloured by `max r²` with a QTN — why c2 fails (77% of high-ld_w is structure LD, not QTN linkage) |
@@ -63,8 +74,12 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 06a | `06a_run_caller.R [V c env]` | **expensive, run once**: pool → outlier sets (single-SNP + `ld_w`+null) → shared region frame → QTN-LD table → `cache_*.rds` |
 | 06b | `06b_score.R [V c env] [MIN_SNP]` | **cheap, no genotypes**: score all/`>=MIN_SNP`-SNP/`>=2`-method views from the cache (MIN_SNP default 2) |
 | 07 | `07_consensus_manhattan.R [V c env] [MIN_SNP]` | **cheap**: 4-panel Manhattan on the shared frame (colour = shared region identity; `+` = single-SNP outlier) + a `>=MIN_SNP` figure |
+| 08 | `08_sweep_aggregate.R` | aggregate `consensus_*.rds` across env replicates → mean±SE Precision/Recall/PR/F1 per (condition, filter, method) + `figures/sweep_PR.png` |
 
-Outputs (`cache_*.rds`, `consensus_*.rds`, `*.png`) are regenerable and git-ignored.
+TP/FP counting is **dedup-neutral** (`evaluate_ORs_qtn`): a region matching an
+already-claimed true-positive QTN is dropped (neither TP nor FP), so performance is
+robust to clustering-parameter-driven fragmentation. Outputs (`data/*.rds`,
+`figures/*.png`) are regenerable and git-ignored.
 Only 06a touches genotypes, so iterating on scoring or plots costs seconds.
 
 ## Headline findings

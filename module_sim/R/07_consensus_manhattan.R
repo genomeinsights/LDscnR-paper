@@ -13,12 +13,14 @@
 
 suppressMessages({ library(data.table); library(ggplot2); library(patchwork) })
 mod <- "/Users/petrikem/gitlab/LDscnR-paper/module_sim"
+dir_data <- file.path(mod, "data"); dir_fig <- file.path(mod, "figures")
+for (d in c(dir_data, dir_fig)) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 a   <- commandArgs(trailingOnly = TRUE)
 V   <- if (length(a) >= 1) a[1] else "2"
 cc  <- if (length(a) >= 2) a[2] else "1"
 env <- if (length(a) >= 3) a[3] else "1"
 MIN_SNP <- if (length(a) >= 4) as.integer(a[4]) else 2L      # >=k-SNP filter for fig 2
-C   <- readRDS(file.path(mod, sprintf("consensus_V%s_c%s_env%s.rds", V, cc, env)))
+C   <- readRDS(file.path(dir_data, sprintf("consensus_V%s_c%s_env%s.rds", V, cc, env)))
 sets <- C$sets; regions <- C$regions; lab <- C$lab
 map <- as.data.table(C$map)                        # compact: marker,Chr,Pos,emx_p,lfmm_p,true_pos_QTN
 
@@ -89,7 +91,7 @@ make_fig <- function(drop_single_snp, suffix, subtitle) {
                          V, cc, env, if (drop_single_snp) " (single-SNP outliers removed)" else ""),
          subtitle = subtitle)
   fn <- sprintf("consensus_manhattan%s_V%s_c%s_env%s.png", suffix, V, cc, env)
-  ggsave(file.path(mod, fn), P, width = 16, height = 10, dpi = 150)
+  ggsave(file.path(dir_fig, fn), P, width = 16, height = 10, dpi = 150)
   cat("wrote", fn, "\n")
 }
 

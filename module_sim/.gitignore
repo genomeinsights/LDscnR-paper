@@ -1,4 +1,6 @@
-# regenerable outputs (built by the 0x scripts)
-*.rds
-*.png
+# regenerable outputs (built by the R/0x scripts; dirs recreated at runtime)
+data/*
+figures/*
+!data/.gitkeep
+!figures/.gitkeep
 *.log

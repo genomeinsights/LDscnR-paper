@@ -12,7 +12,7 @@
 ## Run from LDscnR-paper/:  Rscript module_sim/05_distance_cap.R [V c env]
 ## Output (git-ignored): module_sim/distance_cap_V{V}_c{c}_env{env}.rds
 
-source("module_sim/_config.R")
+source("module_sim/R/_config.R")
 a   <- commandArgs(trailingOnly = TRUE)
 V   <- if (length(a) >= 1) a[1] else "1"
 cc  <- if (length(a) >= 2) a[2] else "2"
@@ -50,4 +50,4 @@ res <- list(
   emx_500  = run("emx_p",  "EMMAX", 5e5),
   lfmm_rho = run("lfmm_p", "LFMM",  NULL),
   lfmm_500 = run("lfmm_p", "LFMM",  5e5))
-saveRDS(res, file.path(mod, sprintf("distance_cap_V%s_c%s_env%s.rds", V, cc, env)))
+saveRDS(res, file.path(dir_data, sprintf("distance_cap_V%s_c%s_env%s.rds", V, cc, env)))
