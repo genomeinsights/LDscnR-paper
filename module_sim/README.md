@@ -44,7 +44,28 @@ Va-qualified `true_pos_QTN` — not by containment.
 | 04 | `04_structure_null.R` | structure-aware null on the stickleback demo → **over-corrects** (loses Eda); no single null spans both regimes |
 | 05 | `05_distance_cap.R [V c env]` | decay-derived vs fixed-500kb cap → cap fragments clusters but hurts precision; structure diagnostics are cap-invariant |
 
-Outputs (`*.rds`, `*.png`) are regenerable and git-ignored.
+### Legacy (single-SNP) vs ours, on a shared region frame
+
+The real baseline is **plain single-SNP EMMAX / LFMM** (BH-FDR outliers, *no* null —
+permuting a genome-wide single-SNP scan is impractical; the cluster null is feasible
+for us only because candidate-first clustering collapses the test to a few clusters).
+To compare fairly we build **one method-agnostic region frame**: union every method's
+outlier SNPs, cluster once (`cluster_regions()`), label each region TP/FP by the same
+QTN rule, and score each method by the regions it hits — so a single-SNP hit and an
+`ld_w` hit at the same locus are the *same* detection. Two support axes matter:
+**method support** (is a region shared across methods?) and **SNP support** (a
+*single-SNP outlier* is a region a method tags with only one SNP — mostly false).
+
+This is split into an expensive cache step and cheap scoring/plot steps:
+
+| | script | what |
+|---|---|---|
+| 06a | `06a_run_caller.R [V c env]` | **expensive, run once**: pool → outlier sets (single-SNP + `ld_w`+null) → shared region frame → QTN-LD table → `cache_*.rds` |
+| 06b | `06b_score.R [V c env] [MIN_SNP]` | **cheap, no genotypes**: score all/`>=MIN_SNP`-SNP/`>=2`-method views from the cache (MIN_SNP default 2) |
+| 07 | `07_consensus_manhattan.R [V c env] [MIN_SNP]` | **cheap**: 4-panel Manhattan on the shared frame (colour = shared region identity; `+` = single-SNP outlier) + a `>=MIN_SNP` figure |
+
+Outputs (`cache_*.rds`, `consensus_*.rds`, `*.png`) are regenerable and git-ignored.
+Only 06a touches genotypes, so iterating on scoring or plots costs seconds.
 
 ## Headline findings
 

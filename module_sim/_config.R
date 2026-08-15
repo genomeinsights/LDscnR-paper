@@ -57,3 +57,36 @@ score_thresholds <- function(decay_sum, rho_r2 = 0.75, rho_d = 0.95) {
   list(r2min = ld_from_rho(median(ds$b), median(ds$c), rho_r2),
        dmax  = d_from_rho(median(ds$a), rho_d))
 }
+
+## Method-AGNOSTIC second-level clustering: partition an arbitrary marker set
+## (e.g. the UNION of every method's outlier SNPs) into regions with the SAME
+## distance-restricted single-linkage rule ld_outlier_clusters() uses internally
+## -- single-linkage on 1 - r^2 within chromosome (join at r2_link), then split
+## each block wherever consecutive members are more than `dcap` apart. Returns a
+## list of member-marker vectors (one per region). Because it is built once from
+## the pooled outlier set, a single-SNP hit and an ld_w hit at the same locus
+## land in the SAME region and are scored as one detection.
+.split_gap <- function(cl, pos, dcap) {
+  if (!is.finite(dcap)) return(cl)
+  out <- integer(length(cl)); nxt <- 0L
+  for (g in unique(cl)) {
+    gi <- which(cl == g); o <- order(pos[gi])
+    run <- integer(length(gi)); run[o] <- cumsum(c(TRUE, diff(pos[gi][o]) > dcap))
+    out[gi] <- nxt + run; nxt <- nxt + max(run)
+  }
+  out
+}
+cluster_regions <- function(markers, map, GTs, r2_link = 0.5, dcap = Inf) {
+  m <- as.data.table(map)[marker %in% markers]
+  out <- list()
+  for (ch in unique(m$Chr)) {
+    mk <- m[Chr == ch, marker]; pos <- m[Chr == ch, Pos]
+    if (length(mk) == 1L) { out <- c(out, list(mk)); next }
+    R <- suppressWarnings(stats::cor(GTs[, mk], use = "pairwise.complete.obs")^2)
+    R[!is.finite(R)] <- 0
+    cl <- stats::cutree(stats::hclust(stats::as.dist(1 - R), method = "single"), h = 1 - r2_link)
+    cl <- .split_gap(cl, pos, dcap)
+    out <- c(out, split(mk, cl))
+  }
+  unname(out)
+}
