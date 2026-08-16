@@ -96,7 +96,8 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 15b | `15b_pr_auc_aggregate.R [V c]` | replicate-average 15 → mean±SE PR-AUC vs l_min + mean PR curves faceted by l_min (C-score coloured by tau_C) |
 | 16 | `16_besttau_manhattan.R [V c env] [l_min]` | joint-OR-frame Manhattan at best tau_C vs best α — which ORs are shared; l_min=1 shows the single-SNP FPs C removes |
 | 17 | `17_perm_null.R [V c env] [B]` | naive permutation null for tau_C → too permissive (breaks env↔structure confounding); FDR-tau_C≈0.06 ≪ PR-optimum |
-| 18 | `18_structured_null.R [V c env] [B]` | **structured** orthogonal-spatial null (same autocorrelation, orthogonal to env) → prices structure confounding back in; empirically portable |
+| 18 | `18_structured_null.R [V c env] [B]` | **structured** orthogonal-spatial null (same autocorrelation, orthogonal to env) → prices structure confounding back in; empirically portable; fast EMMAX + per-marker-counter C-sweep (~8 s/surrogate) |
+| 18b | `18b_structured_null_aggregate.R [V c]` | replicate-average 18 → **pooled** ratio-of-means FDR–tau_C over env1–5 (+ per-env spread) |
 
 **tau_C guidance & calibration.** Empirical PR-optimum tau_C ≈ 0.35–0.5 ("called in ≳half the analyses"),
 stable across methods/env. **tau_C is not intrinsic** — it trades off with l_min and the α-grid (all reduce
@@ -105,8 +106,16 @@ l_min-invariant). This is why l_min stays a post-filter (out of C) and why any c
 reported *with* its (l_min, α-grid). Truth-free calibration = the structured null (18): naive permutation
 (17) breaks the env↔structure confounding (→ tau_C≈0.06, too permissive); the orthogonal-spatial surrogate
 keeps the spatial autocorrelation but removes the true signal, so its empirical FDR prices in structure FPs.
-Structured-null result (V2_c1_env1): FDR≤0.05 at tau_C≈0.22 (vs naive 0.06); PR-optimum 0.35–0.5 sits at
-FDR≈0–0.02. Uses **fast EMMAX** (`fast_emmax_setup`/`fast_emmax_p` in `_config.R`: eigendecompose K + rotate
+Structured-null result — **replicate-averaged over env1–5** (18b, pooled ratio-of-means, l_min=2, α∈{.001–.1}):
+FDR≤0.05 at tau_C≈0.46, FDR≤0.10 at ≈0.24; the PR-optimum band 0.35–0.5 maps to pooled FDR 0.03–0.06, so the
+performance-optimal and FDR-controlled tau_C **converge** there. **Aggregate with pooled ratio-of-means, not
+mean-of-ratios** (per-env FDR = n_null/n_obs with n_obs 10–70 goes non-monotone; one low-discovery env inflates
+the mean). The **per-env spread is large and mechanistic, not noise**: weak-signal replicates make no high-C
+discoveries (nothing to calibrate); a high-structure replicate needs tau_C≈0.7 while clean ones need ≈0.02–0.18,
+and the pooled value is set by the worst high-structure replicate that still makes discoveries. **Practical
+consequence: do not transfer a universal tau_C constant — run the structured null on the target dataset itself**
+(cheap now, ~13 min); the sim only certifies that the null yields a sensible, PR-optimum-aligned tau_C.
+Uses **fast EMMAX** (`fast_emmax_setup`/`fast_emmax_p` in `_config.R`: eigendecompose K + rotate
 genotypes once → whitened per-SNP F per phenotype; identical to `emmax()`, ~25× faster/phenotype). Surrogates
 are Gaussian-kernel MVN over coords + Gram-Schmidt; **Moran-spectral (MSR) surrogates were tried and were
 worse** here (0.69 vs 0.82 smoothness) because the env is near rank-1 (one dominant x-gradient MEM), so no
