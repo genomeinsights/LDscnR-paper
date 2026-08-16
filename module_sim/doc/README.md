@@ -116,6 +116,7 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 26b | `26b_lmin_truthfree_aggregate.R [V c]` | **replicate-averaged** 26 (env1–5): the null-based objective picks the **same l_min optimum as the true PR-AUC** ⇒ truth-free l_min selection validated at the region level (pooled cor(est_TP,real_TP)=0.64) |
 | 27 | `27_clustersize_vs_C.R [V c]` | cluster size vs C coloured TP/FP: TP-fraction rises monotone with size (**singletons ~99.9% FP**, 20+ ~60% TP) — the l_min mechanism visualised |
 | 28 | `28_fold_validation.R [V c]` | **folded (poster) vs per-SNP (sim) C**: PR-AUC → per-SNP ≥ folded everywhere (folding neutral EMMAX / worse LFMM) ⇒ **keep per-SNP C + post-l_min, don't fold clustering/l_min into C** |
+| 29 | `29_lfmm_gc_sim.R [V c]` | **validate the empirical calibration on the sim**: EMMAX structured-null tau_C → quantile-map (genomic control) to LFMM → score vs truth. LFMM finds **more true ORs** (5.2 vs 4.4, higher recall) at comparable precision (0.63 vs 0.61) ⇒ GC-map realises LFMM's power under EMMAX-anchored FP control (LFMM FP higher + more variable = power-vs-stability trade) |
 
 **tau_C guidance & calibration.** Empirical PR-optimum tau_C ≈ 0.35–0.5 ("called in ≳half the analyses"),
 stable across methods/env. **tau_C is not intrinsic** — it trades off with l_min and the α-grid (all reduce
@@ -205,3 +206,16 @@ EMMAX more conservative (the folded C borrows strength across cluster members).
 The sim machinery transfers once its defaults are re-set for the dense data
 (α=0.05, direct-r² clustering, l_min=10); the earlier "fails on 3sp" was
 default-transfer, not the method.
+
+**Full coherent run + engine reconciliation** (`16`–`18`). `16` runs the *complete*
+sim machinery on 3sp with a single **reconciled engine** — fast EMMAX with one GRM for
+both observed and null. An all-markers GCTA GRM over-corrects (absorbs the concentrated
+ecotype signal); the coherent choice is a **GCTA GRM from low-ld_w markers (ld_w_095<0.05)**
+— the recipe's neutral-background GRM — which recovers Chr4/Eda. Pipeline: per-SNP C (α=0.05)
+→ genetic structured null → **l_min=10 region-FDR** (structure surrogates ≈never make ≥10-SNP
+clusters, so the region filter is a strong clean FP control) → tau_C → ORs. EMMAX → **5 ORs
+incl Eda/Chr4**. LFMM has no fast null, so it inherits EMMAX's calibration via **genomic
+control** (quantile-map EMMAX's tau_C onto LFMM's C scale) → 29 ORs across 14 chr — its
+higher power on the polygenic stickleback genome (validated on the sim, `29`), not inflation.
+`17` regenerates the two-panel C-Manhattan from the saved run (no null re-run); `18` draws the
+**poster-style −log10(q) Manhattan** with each OR a distinct colour (poster palette).
