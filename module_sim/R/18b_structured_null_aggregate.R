@@ -38,7 +38,7 @@ pe <- R[, .(tau05 = { ok <- tau[FDR <= 0.05 & n_obs > 0]; if (length(ok)) min(ok
 cat(sprintf("=== STRUCTURED-null tau_C, POOLED over %d env (V%s_c%s) ===\n", length(f), V, cc))
 print(agg[tau %in% seq(0.1, 1, 0.1), .(tau, FDR = round(FDR,3), n_obs, n_null = round(n_null,1))])
 cat("\nper-env tau_C (spread):\n"); print(pe)
-cat(sprintf("\nPooled tau_C: FDR<=0.10 -> %.2f | FDR<=0.05 -> %.2f  (l_min=2, alpha in {.001-.1}; PR-optimum ~0.35-0.5)\n",
+cat(sprintf("\nPooled tau_C: FDR<=0.10 -> %.2f | FDR<=0.05 -> %.2f  (PER-SNP C, alpha .001-.1; NO l_min filter; PR-optimum ~0.35-0.5)\n",
             t10, t05))
 
 p <- ggplot() +

@@ -20,7 +20,7 @@ V   <- if (length(a) >= 1) a[1] else "2"
 cc  <- if (length(a) >= 2) a[2] else "1"
 env <- if (length(a) >= 3) a[3] else "1"
 QSTAR   <- seq(0, 0.95, by = 0.05)
-ALPHA_C <- c(0.001, 0.01, 0.05, 0.1)          # alpha folded into the C-score sweep
+ALPHA_C <- c(0.001, 0.01, 0.05, 0.1)          # alpha SWEPT on sim (reviewer evidence; motivates fixing alpha empirically -- 15c)
 TAUC    <- seq(0.05, 1.0, by = 0.05)          # C-gate sweep (the ordered knob)
 ALPHA_S <- c(0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1)  # single-SNP alpha sweep
 LMIN_SET <- c(1L, 2L, 4L, 8L)                 # post-C region-size filter, shown as linetype
