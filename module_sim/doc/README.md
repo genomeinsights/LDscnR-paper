@@ -94,10 +94,28 @@ This is split into an expensive cache step and cheap scoring/plot steps:
 | 14 | `14_alpha_cscore.R [V c env]` | fold **α** into the sweep; test that C-benefit grows as α tightens & is larger for EMMAX (conservative) than LFMM (inflated=lenient, saturates). l_min=2 as a post-C filter |
 | 15 | `15_pr_auc.R [V c env]` | **headline**: standard trapezoidal **PR-AUC** — C-score (sweep tau_C, ρ/q\*/α folded in) vs single-SNP (sweep α); clustering fixed decay-relative ρ_ld=0.75/ρ_d=0.95≤500kb; l_min ∈ {1,2,4,8} as linetype. Retires the random-search AUC-PR\* (only needed for the raw unordered grid) |
 | 15b | `15b_pr_auc_aggregate.R [V c]` | replicate-average 15 → mean±SE PR-AUC vs l_min + mean PR curves faceted by l_min (C-score coloured by tau_C) |
+| 15c | `15c_alpha_need.R [V c]` | is the α sweep needed? PR-AUC of α-swept vs α=0.05-fixed C-score (mean 5 env, l_min=2) → EMMAX Δ≈0, LFMM marginal ⇒ **fix α=0.05 empirically, keep the sweep on sim as reviewer evidence** |
 | 16 | `16_besttau_manhattan.R [V c env] [l_min]` | joint-OR-frame Manhattan at best tau_C vs best α — which ORs are shared; l_min=1 shows the single-SNP FPs C removes |
 | 17 | `17_perm_null.R [V c env] [B]` | naive permutation null for tau_C → too permissive (breaks env↔structure confounding); FDR-tau_C≈0.06 ≪ PR-optimum |
 | 18 | `18_structured_null.R [V c env] [B]` | **structured** orthogonal-spatial null (same autocorrelation, orthogonal to env) → prices structure confounding back in; empirically portable; fast EMMAX + per-marker-counter C-sweep (~8 s/surrogate) |
 | 18b | `18b_structured_null_aggregate.R [V c]` | replicate-average 18 → **pooled** ratio-of-means FDR–tau_C over env1–5 (+ per-env spread) |
+| 18d | `18d_null_bundle.R [V c env] [B]` | **null bundle**: one structured-null run saves per-surrogate sparse C + an edge cache over the union universe → FDR at ANY l_min later (l_min never enters null *generation*) |
+| 18e | `18e_null_fdr.R [V c env]` | extract FDR(tau_C, l_min) from a bundle (18d) as a pure lookup; per-SNP + region curves; the calibrated tau_C falls as l_min rises |
+
+**Ad-hoc cache + analysis layer** (touch genotypes once, then everything is a lookup — the 06a/06b split applied to the C-score chain):
+
+| # | Script | Purpose |
+|---|--------|---------|
+| 20 | `20_build_cache.R [V c env…]` | **build the cache**: per-(V,c,env) `{map, LDW, decay_sum, th, qtab, edges}`; `cluster_from_cache` validated identical to `cluster_regions`. Downstream C-score/tau_C/PR-AUC need no genotypes |
+| 21 | `21_estimate.R [V c]` | ad-hoc estimators from the cache (`prauc_cscore`, `load_cache`); reproduces the α-need PR-AUC in seconds. `source()` for the helpers |
+| 22 | `22_tauc_by_method.R [V c]` | best tau_C per method (EMMAX ≈0.53 / LFMM ≈0.33 PR-optimum) + the C-distribution shift; a **shared tau_C≈0.35 costs <0.012** (flat plateau) |
+| 23 | `23_calibrate_against_emmax.R [V c]` | **genomic control on the C-score**: quantile-map other methods onto EMMAX's null-anchored tau_C (one null calibrates all methods); LFMM-referenced tau_C is higher (controls its inflation) |
+| 24 | `24_winning_range.R [V c]` | the tau_C range where the C-score PR beats single-SNP's best — ~half of [0.05,0.95] for both methods; the win is a **broad plateau, not a knife-edge** |
+| 25 | `25_tauc_lmin_surface.R [V c]` | tau_C × l_min power surface: PR frontier + TP-vs-FP by l_min + the mechanism (high-C **singletons ~92% FP**, ≥10-SNP clusters ~73% TP). l_min=2 optimal on sim; l_min≥5 hurts (kills small true regions) |
+| 26 | `26_lmin_truthfree.R [V c env]` | truth-free l_min diagnostic (single env): `est_TP = obs − null` vs real TP; the null estimates **yield well, precision only as a structure-FDR** |
+| 26b | `26b_lmin_truthfree_aggregate.R [V c]` | **replicate-averaged** 26 (env1–5): the null-based objective picks the **same l_min optimum as the true PR-AUC** ⇒ truth-free l_min selection validated at the region level (pooled cor(est_TP,real_TP)=0.64) |
+| 27 | `27_clustersize_vs_C.R [V c]` | cluster size vs C coloured TP/FP: TP-fraction rises monotone with size (**singletons ~99.9% FP**, 20+ ~60% TP) — the l_min mechanism visualised |
+| 28 | `28_fold_validation.R [V c]` | **folded (poster) vs per-SNP (sim) C**: PR-AUC → per-SNP ≥ folded everywhere (folding neutral EMMAX / worse LFMM) ⇒ **keep per-SNP C + post-l_min, don't fold clustering/l_min into C** |
 
 **tau_C guidance & calibration.** Empirical PR-optimum tau_C ≈ 0.35–0.5 ("called in ≳half the analyses"),
 stable across methods/env. **tau_C is not intrinsic** — it trades off with l_min and the α-grid (all reduce
@@ -158,3 +176,32 @@ Only 06a touches genotypes, so iterating on scoring or plots costs seconds.
    span whole chromosomes). Tightening the distance cap does not help (05); the
    structure-aware null over-corrects the good regime (04). The honest output in
    c2 is "unreliable", not a forced call.
+5. **The C-score is per-SNP; clustering + l_min stay post-filters.** Folding
+   clustering+l_min *into* C (poster style) buys nothing on the sim — per-SNP C ≥
+   folded C at every l_min (neutral for EMMAX, worse for LFMM) and costs more
+   compute (28). Keep the per-SNP C, apply l_min afterward.
+6. **l_min is a dataset-dependent post-filter with a clear mechanism.** High-C
+   singletons are ~92–99% false; TP-fraction rises monotonically with cluster
+   size (27), so l_min prunes FP preferentially — but too high an l_min kills small
+   true regions (l_min=2 optimal on the sparse sim, l_min=10 on the dense 3sp; 25).
+   The optimum is **selectable without truth**: the structured null estimates
+   yield well enough that its l_min optimum matches the true PR-AUC's (26b), and
+   SNP-density-per-LD-block sets the scale.
+7. **α is fixed at 0.05 empirically** (the null prices in anticonservativeness), but
+   **swept on the sim** as reviewer evidence that the sweep is redundant (15c). The
+   sim keeps the α-sweep; empirical (`module_sticklebacks/`) fixes α=0.05.
+
+## Empirical application — `module_sticklebacks/` (3sp)
+
+The C-score machinery applied to the three-spine stickleback data (no ground
+truth; deliverable = which loci, and comparison to the poster's own pipeline):
+`09` observed per-SNP C; `10` structured null (genetic-structure surrogates
+`y ~ MVN(0, GRM) ⊥ ecotype`); `11` per-SNP C Manhattan; `12` l_min=10 Manhattan;
+`13` cluster size vs C (clustering **r²=0.1 / 0.5 Mb split** → Chr1 inversion = one
+cluster, Chr4 = ~5 loci); `14` **reverse-engineers the poster Manhattan** with the
+poster's own functions (folded cluster-membership C, `summarise_stability`); `15`
+the same figure from the **sim per-SNP C** — LFMM ≈ identical to the poster,
+EMMAX more conservative (the folded C borrows strength across cluster members).
+The sim machinery transfers once its defaults are re-set for the dense data
+(α=0.05, direct-r² clustering, l_min=10); the earlier "fails on 3sp" was
+default-transfer, not the method.
