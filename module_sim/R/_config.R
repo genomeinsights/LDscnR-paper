@@ -173,3 +173,78 @@ cluster_regions <- function(markers, map, GTs, r2_link = 0.5, dcap = Inf,
   }
   unname(out)
 }
+
+## ---- ad-hoc cache layer -----------------------------------------------------
+## Consistency C-score as a fast per-marker COUNTER (no unlist+table): fraction of
+## (rho x q* x alpha) cells where a SNP is a candidate (ld_w >= quantile(q*)) AND
+## BH-FDR<alpha among candidates. LDW columns = rho. Returns named vector over
+## rownames(LDW). Consolidated from 09/10/15c/18 (was copy-pasted).
+## alpha default is the SINGLE conventional 0.05. rho and q* span their full [0,1] domain
+## so sweeping them is assumption-free, but alpha has no natural range. EMPIRICAL data:
+## fix alpha=0.05 -- the structured-null tau_C calibration already prices in any
+## anticonservativeness (inflated p raise the null C as much as the observed C -> the FDR
+## ratio pushes tau_C up). SIMULATED data: callers pass an explicit alpha GRID so a
+## reviewer can see the alpha dependence; it motivates the fixed empirical choice (15c:
+## alpha-swept vs alpha=0.05 PR-AUC delta ~0 for EMMAX, marginal for LFMM).
+cscore_count <- function(pv, LDW, rho = colnames(LDW), qstar = seq(0, 0.95, by = 0.05),
+                         alpha = 0.05) {
+  stopifnot(length(pv) == nrow(LDW))
+  ncell <- length(rho) * length(qstar) * length(alpha); cnt <- integer(nrow(LDW))
+  for (rc in rho) { lw <- LDW[, rc]
+    for (q in qstar) { thr <- stats::quantile(lw, q, na.rm = TRUE); cand <- which(lw >= thr)
+      if (!length(cand)) next; qv <- stats::p.adjust(pv[cand], "BH")
+      for (al in alpha) { h <- cand[qv < al]; if (length(h)) cnt[h] <- cnt[h] + 1L } } }
+  stats::setNames(cnt / ncell, rownames(LDW))
+}
+
+## Cache the r^2 linkage graph among a candidate `universe` so clustering any gated
+## SUBSET later needs NO genotypes: cluster_regions()'s single-linkage-on-r^2 step =
+## connected components of {pairs with r^2 >= r2c(chr)}; the position gap-split is
+## applied at query time (cluster_from_cache). Edges stored as marker-name pairs.
+## r2_link / dcap (scalars) DIRECTLY set the clustering r^2 / distance and OVERRIDE the
+## decay-relative rho_ld/rho_d -- use these to match a fixed-r^2 convention (e.g. the 3sp
+## poster clusters at r^2>0.4, NOT a decay-relative rho, which maps to r^2~0.1 and
+## massively overclusters). Leave them NULL to keep the decay-relative behaviour.
+build_edge_cache <- function(universe, map, GTs, decay_sum, rho_ld = 0.75,
+                             rho_d = 0.95, dcap_max = 5e5, r2_link = NULL, dcap = NULL) {
+  m <- as.data.table(map)[marker %in% universe]
+  ds <- as.data.table(decay_sum); ac <- if ("a_pred" %in% names(ds)) ds$a_pred else ds$a
+  cc <- if ("c" %in% names(ds)) ds$c else rep(1, nrow(ds))
+  r2_by <- stats::setNames(ld_from_rho(ds$b, cc, rho_ld), ds$Chr)
+  d_by  <- stats::setNames(pmin(d_from_rho(ac, rho_d), dcap_max), ds$Chr)
+  chrs <- unique(m$Chr)
+  stats::setNames(lapply(chrs, function(ch) {
+    mk <- m[Chr == ch, marker]; pos <- m[Chr == ch, Pos]
+    r2c <- if (!is.null(r2_link)) r2_link else if (!is.na(r2_by[ch])) r2_by[[ch]] else 0.5
+    dc  <- if (!is.null(dcap)) dcap else if (!is.na(d_by[ch])) d_by[[ch]] else Inf
+    ed <- NULL
+    if (length(mk) > 1L) {
+      R <- suppressWarnings(stats::cor(GTs[, mk], use = "pairwise.complete.obs")^2)
+      R[!is.finite(R)] <- 0; R[lower.tri(R, diag = TRUE)] <- 0
+      w <- which(R >= r2c, arr.ind = TRUE)
+      if (nrow(w)) ed <- data.table(a = mk[w[, 1]], b = mk[w[, 2]])
+    }
+    list(marker = mk, pos = pos, r2c = r2c, dc = dc, edges = ed)
+  }), chrs)
+}
+
+## Reconstruct cluster_regions() output for a gated subset `mk` from an edge cache --
+## connected components of the induced r^2 subgraph, then the position gap-split.
+## Faithful to cluster_regions() provided `mk` is a subset of the cached universe.
+cluster_from_cache <- function(mk, edge_cache) {
+  mk <- unique(mk); out <- list()
+  for (E in edge_cache) {
+    inmk <- E$marker %in% mk; mkc <- E$marker[inmk]; if (!length(mkc)) next
+    posc <- E$pos[inmk]
+    if (length(mkc) == 1L) { out <- c(out, list(mkc)); next }
+    comp <- stats::setNames(seq_along(mkc), mkc)          # union-find lite
+    if (!is.null(E$edges) && nrow(E$edges)) {
+      ee <- E$edges[a %in% mkc & b %in% mkc]
+      for (r in seq_len(nrow(ee))) { ca <- comp[[ee$a[r]]]; cb <- comp[[ee$b[r]]]
+        if (ca != cb) comp[comp == cb] <- ca }
+    }
+    cl <- .split_gap(as.integer(factor(comp)), posc, E$dc)
+    out <- c(out, split(mkc, cl))
+  }
+  unname(out)
+}
