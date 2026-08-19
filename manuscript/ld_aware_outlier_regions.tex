@@ -663,6 +663,29 @@ complexity-reduction default---the same rule in both regimes. Caveat: $\lambda$
 guards only against global deflation, so the $w_j$ axis, not $\lambda$, is what
 forecloses regional signal absorption.}
 
+This structure-model dependence has a sharp empirical consequence that reconciles the
+simulated and the real analyses. On the coalescent simulations, where population
+structure is simple and well captured by a handful of latent factors, LFMM is at least
+as powerful as EMMAX---a marginally higher region-detection PR-AUC---and its heavier
+score tail is genuine power. On the real stickleback genome the ranking reverses:
+against the independent Kingman EcoPeaks the EMMAX regions are far more concentrated
+(a $19.5\times$ region-level overlap, and a per-SNP C-score whose bins predict EcoPeak
+membership monotonically, Spearman $\rho = 0.21$), whereas LFMM casts a wider, noisier
+net whose \emph{highest}-scoring SNPs are the \emph{least} likely to be real (enrichment
+\emph{declines} with $C$, $\rho = 0.06$). The economical explanation is that the
+continental-scale isolation-by-distance and demography of the real panel are not fully
+absorbed by five latent factors, so residual structure inflates the LFMM baseline, while
+the explicit, $w_j$-pruned kinship corrects it directly. The general lesson is that a
+method's simulated power is a \emph{best case}, realised only when its structure model
+happens to fit: clean simulated structure flatters the latent-factor engine, and a
+structure-rich real genome rewards the explicit-kinship one---so simulation benchmarks
+should not be read as fixed method rankings. Two caveats keep this honest. The Kingman
+truth is a set of sharp, discrete peaks that matches EMMAX's specific detection profile,
+so LFMM's additional, diffuse detections are penalised rather than credited at the region
+level; but the SNP-level C-score comparison is internal to the real data, does not depend
+on that truth set, and on its own shows the LFMM score to be miscalibrated where the
+EMMAX score is not.
+
 \section{Supplementary: calibrating the kinship on the simulations}
 \label{sec:supp-grm}
 
