@@ -1,0 +1,419 @@
+
+########## 01_reproduce_current_C2 ##########
+[1] loaded cached grid core (B=200)
+
+[2a] B=100 (prototype config): 175 cells, 134 usable (>=1 significant region)
+[2b] B=200 (all available)  : 175 cells, 134 usable
+[2c] cells producing >=1 OBSERVED region: 134 ; of those, usable (>=1 significant): 134
+     -> every productive cell is usable: TRUE. The 'usable' restriction therefore
+        removes only the 41 cells where the method finds NOTHING, i.e. |U| carries
+        no information about null danger on this dataset.
+
+[3] reproduction vs committed region_stability2.csv (B=100, by=chr):
+    loci: ref 20 / new 20 ; usable cells: ref 134 / new 134
+    max |delta n_cells_sig| = 0 ; exact match on all loci: TRUE
+
+[3] prototype aggregation `by = chr` -> 20 'loci' (i.e. chromosomes)
+    intended  `by = chr, cl` (10 kb consensus merge) -> 126 loci
+    => the committed score is a per-CHROMOSOME statistic, not a per-locus one.
+               locus stability n_cells_sig best_q max_score
+              <char>     <num>       <int>  <num>     <num>
+ 1:  Chr1:1.04-27.28     1.000         134 0.0198     38.01
+ 2: Chr20:0.18-16.11     0.746         100 0.0149      6.92
+ 3:  Chr7:0.27-27.72     0.507          68 0.0149      2.22
+ 4:   Chr5:1.61-6.83     0.448          60 0.0198      3.06
+ 5: Chr17:6.55-11.10     0.448          60 0.0260      1.67
+ 6:  Chr4:4.69-31.26     0.410          55 0.0165      1.34
+ 7:  Chr16:0.71-5.34     0.351          47 0.0165      1.29
+ 8: Chr13:1.22-16.92     0.269          36 0.0260      0.72
+ 9: Chr12:0.41-16.55     0.254          34 0.0260      0.92
+10:  Chr3:0.10-13.03     0.209          28 0.0165      0.46
+11: Chr10:6.36-15.42     0.194          26 0.0165      0.52
+12: Chr18:1.24-14.82     0.187          25 0.0260      0.59
+13: Chr11:0.23-15.74     0.157          21 0.0260      0.36
+14: Chr14:5.45-14.97     0.142          19 0.0260      0.38
+15: Chr15:1.48-14.88     0.090          12 0.0260      0.25
+16:  Chr9:0.30-16.06     0.075          10 0.0260      0.17
+17:  Chr2:0.41-22.52     0.075          10 0.0361      0.24
+18:  Chr8:1.50-10.90     0.067           9 0.0260      0.15
+19:  Chr21:7.33-7.96     0.052           7 0.0337      0.12
+20:   Chr6:4.90-4.90     0.007           1 0.0260      0.02
+               locus stability n_cells_sig best_q max_score
+              <char>     <num>       <int>  <num>     <num>
+
+[4] Monte Carlo resolution: B=200 -> p floor = 1/(B+1) = 0.00498 ; B=100 -> 0.00990
+    regions with emp_p at the floor (full B, over all cells): 352 of 1267 rows
+    single-usable-cell check: min attainable non-zero stability = 1/134 = 0.0075
+    loci significant in exactly 1 cell: Chr6:4.90-4.90 (stability 0.007)
+
+[4] Spearman(stability, .) : span=0.757  maxC=0.861  C-mass=0.988  -log10(best_q)=0.716
+
+[4] wrote results/current_C2_reproduction.csv + grid_cells_B{100,full}.csv
+
+########## 03_anchor_loci ##########
+[1] anchor set: 17 regions at tau=0.05 l_min=3 rho_ld=0.60
+[1] matches committed EMMAX region set (17 rows): TRUE
+    sizes: 3 3 3 3 3 4 4 4 4 5 5 5 9 10 22 33 245
+[2] rule 'any': 1 s ; detected cells = 700 ; significant cells = 700
+[2] rule 'ovl50': 1 s ; detected cells = 700 ; significant cells = 700
+[2] rule 'rec50': 1 s ; detected cells = 259 ; significant cells = 259
+[2] rule 'span': 1 s ; detected cells = 700 ; significant cells = 700
+
+[3] anchor scores by matching rule (D = detection, Q = significance):
+                         label      D_any    D_ovl50    D_rec50     D_span
+                        <char>      <num>      <num>      <num>      <num>
+ 1: A02_Chr1:21.50-21.93Mb*inv 0.76571429 0.76571429 0.12000000 0.76571429
+ 2:      A15_Chr20:0.18-0.26Mb 0.57142857 0.57142857 0.12000000 0.57142857
+ 3:     A09_Chr7:11.55-11.66Mb 0.38857143 0.38857143 0.09142857 0.38857143
+ 4:       A08_Chr5:2.48-2.50Mb 0.34285714 0.34285714 0.14857143 0.34285714
+ 5:      A12_Chr17:6.55-6.77Mb 0.32000000 0.32000000 0.06857143 0.32000000
+ 6:     A06_Chr4:27.55-27.55Mb 0.29714286 0.29714286 0.17142857 0.29714286
+ 7:      A13_Chr17:9.94-9.94Mb 0.26857143 0.26857143 0.07428571 0.26857143
+ 8:    A11_Chr12:16.52-16.55Mb 0.19428571 0.19428571 0.07428571 0.19428571
+ 9:     A04_Chr4:22.51-22.51Mb 0.14857143 0.14857143 0.14285714 0.14857143
+10:      A14_Chr18:5.61-5.61Mb 0.14285714 0.14285714 0.10857143 0.14285714
+11: A07_Chr4:12.81-12.81Mb*Eda 0.13714286 0.13714286 0.06857143 0.13714286
+12:      A16_Chr20:3.67-3.67Mb 0.11428571 0.11428571 0.05142857 0.11428571
+13:     A01_Chr1:27.28-27.28Mb 0.09142857 0.09142857 0.06285714 0.09142857
+14:    A10_Chr12:15.55-15.55Mb 0.07428571 0.07428571 0.05714286 0.07428571
+15:      A17_Chr20:8.89-8.90Mb 0.05714286 0.05714286 0.05142857 0.05714286
+16:     A05_Chr4:25.67-25.99Mb 0.05142857 0.05142857 0.03428571 0.05142857
+17:     A03_Chr3:13.03-13.03Mb 0.03428571 0.03428571 0.03428571 0.03428571
+         Q_any    Q_ovl50    Q_rec50     Q_span
+         <num>      <num>      <num>      <num>
+ 1: 0.76571429 0.76571429 0.12000000 0.76571429
+ 2: 0.57142857 0.57142857 0.12000000 0.57142857
+ 3: 0.38857143 0.38857143 0.09142857 0.38857143
+ 4: 0.34285714 0.34285714 0.14857143 0.34285714
+ 5: 0.32000000 0.32000000 0.06857143 0.32000000
+ 6: 0.29714286 0.29714286 0.17142857 0.29714286
+ 7: 0.26857143 0.26857143 0.07428571 0.26857143
+ 8: 0.19428571 0.19428571 0.07428571 0.19428571
+ 9: 0.14857143 0.14857143 0.14285714 0.14857143
+10: 0.14285714 0.14285714 0.10857143 0.14285714
+11: 0.13714286 0.13714286 0.06857143 0.13714286
+12: 0.11428571 0.11428571 0.05142857 0.11428571
+13: 0.09142857 0.09142857 0.06285714 0.09142857
+14: 0.07428571 0.07428571 0.05714286 0.07428571
+15: 0.05714286 0.05714286 0.05142857 0.05714286
+16: 0.05142857 0.05142857 0.03428571 0.05142857
+17: 0.03428571 0.03428571 0.03428571 0.03428571
+
+[3] rank agreement between rules (Spearman on Q; top-5 overlap):
+    any    vs ovl50  : rho = +1.000 ; top5 overlap = 1.00
+    any    vs rec50  : rho = +0.806 ; top5 overlap = 0.60
+    any    vs span   : rho = +1.000 ; top5 overlap = 1.00
+    ovl50  vs rec50  : rho = +0.806 ; top5 overlap = 0.60
+    ovl50  vs span   : rho = +1.000 ; top5 overlap = 1.00
+    rec50  vs span   : rho = +0.806 ; top5 overlap = 0.60
+
+[3] chaining/ambiguity (fraction of detected cells where >1 called region matches):
+                         label mean_nmatch ambig
+                        <char>       <num> <num>
+ 1:      A15_Chr20:0.18-0.26Mb        1.03  0.03
+ 2:     A01_Chr1:27.28-27.28Mb        1.00  0.00
+ 3: A02_Chr1:21.50-21.93Mb*inv        1.00  0.00
+ 4:     A03_Chr3:13.03-13.03Mb        1.00  0.00
+ 5:     A04_Chr4:22.51-22.51Mb        1.00  0.00
+ 6:     A05_Chr4:25.67-25.99Mb        1.00  0.00
+ 7:     A06_Chr4:27.55-27.55Mb        1.00  0.00
+ 8: A07_Chr4:12.81-12.81Mb*Eda        1.00  0.00
+ 9:       A08_Chr5:2.48-2.50Mb        1.00  0.00
+10:     A09_Chr7:11.55-11.66Mb        1.00  0.00
+11:    A10_Chr12:15.55-15.55Mb        1.00  0.00
+12:    A11_Chr12:16.52-16.55Mb        1.00  0.00
+13:      A12_Chr17:6.55-6.77Mb        1.00  0.00
+14:      A13_Chr17:9.94-9.94Mb        1.00  0.00
+15:      A14_Chr18:5.61-5.61Mb        1.00  0.00
+16:      A16_Chr20:3.67-3.67Mb        1.00  0.00
+17:      A17_Chr20:8.89-8.90Mb        1.00  0.00
+
+[3b] detection vs significance, per rule (cells detected / cells significant):
+    any    : detected =  700 ; significant =  700 ; detected-but-NOT-significant = 0
+    ovl50  : detected =  700 ; significant =  700 ; detected-but-NOT-significant = 0
+    rec50  : detected =  259 ; significant =  259 ; detected-but-NOT-significant = 0
+    span   : detected =  700 ; significant =  700 ; detected-but-NOT-significant = 0
+    -> if the last column is 0, the location-matched significance layer is VACUOUS
+       on this dataset: the score collapses exactly onto detection stability.
+
+[4] BH behaviour among DETECTED cells (rule = rec50):
+                         label cells_detected frac_raw_p_sig frac_BH_sig
+                        <char>          <int>          <num>       <num>
+ 1:     A01_Chr1:27.28-27.28Mb             11              1           1
+ 2: A02_Chr1:21.50-21.93Mb*inv             21              1           1
+ 3:     A03_Chr3:13.03-13.03Mb              6              1           1
+ 4:     A04_Chr4:22.51-22.51Mb             25              1           1
+ 5:     A05_Chr4:25.67-25.99Mb              6              1           1
+ 6:     A06_Chr4:27.55-27.55Mb             30              1           1
+ 7: A07_Chr4:12.81-12.81Mb*Eda             12              1           1
+ 8:       A08_Chr5:2.48-2.50Mb             26              1           1
+ 9:     A09_Chr7:11.55-11.66Mb             16              1           1
+10:    A10_Chr12:15.55-15.55Mb             10              1           1
+11:    A11_Chr12:16.52-16.55Mb             13              1           1
+12:      A12_Chr17:6.55-6.77Mb             12              1           1
+13:      A13_Chr17:9.94-9.94Mb             13              1           1
+14:      A14_Chr18:5.61-5.61Mb             19              1           1
+15:      A15_Chr20:0.18-0.26Mb             21              1           1
+16:      A16_Chr20:3.67-3.67Mb              9              1           1
+17:      A17_Chr20:8.89-8.90Mb              9              1           1
+    median_emp_p   median_q at_p_floor median_ntested lost_to_BH
+           <num>      <num>      <num>          <num>      <num>
+ 1:  0.019900498 0.02487562  0.0000000           39.0          0
+ 2:  0.014925373 0.02353617  0.0000000            9.0          0
+ 3:  0.004975124 0.02265458  1.0000000           50.0          0
+ 4:  0.024875622 0.02487562  0.0000000           16.0          0
+ 5:  0.029850746 0.03026115  0.0000000           50.0          0
+ 6:  0.024875622 0.02487562  0.0000000           14.5          0
+ 7:  0.014925373 0.02487562  0.0000000           23.0          0
+ 8:  0.014925373 0.02370838  0.0000000            8.5          0
+ 9:  0.004975124 0.02203269  1.0000000           16.0          0
+10:  0.019900498 0.02523099  0.0000000           33.0          0
+11:  0.024875622 0.02615129  0.0000000           19.0          0
+12:  0.019900498 0.02487562  0.0000000           23.0          0
+13:  0.019900498 0.02487562  0.0000000           19.0          0
+14:  0.019900498 0.02487562  0.0000000           19.0          0
+15:  0.004975124 0.01990050  1.0000000            9.0          0
+16:  0.024875622 0.02625760  0.0000000           39.0          0
+17:  0.009950249 0.02363184  0.4444444           27.0          0
+
+[4] Spearman(n_tested, fraction of anchors BH-significant) = NA
+
+[5] wrote results/anchor_locus_grid_detail.csv (2975 rows), anchor_matching_rules.csv, anchor_bh_behaviour.csv
+
+########## 02_compare_denominators ##########
+[1] |G| = 175 ; |U| = 134 ; availability A = 0.766 (B = 200)
+
+[2] denominator variants on the 17 fixed anchor loci:
+                         label   S_U   S_G     D     Q Q_over_D
+                        <char> <num> <num> <num> <num>    <num>
+ 1:     A06_Chr4:27.55-27.55Mb 0.224 0.171 0.171 0.171        1
+ 2:       A08_Chr5:2.48-2.50Mb 0.194 0.149 0.149 0.149        1
+ 3:     A04_Chr4:22.51-22.51Mb 0.187 0.143 0.143 0.143        1
+ 4: A02_Chr1:21.50-21.93Mb*inv 0.157 0.120 0.120 0.120        1
+ 5:      A15_Chr20:0.18-0.26Mb 0.157 0.120 0.120 0.120        1
+ 6:      A14_Chr18:5.61-5.61Mb 0.142 0.109 0.109 0.109        1
+ 7:     A09_Chr7:11.55-11.66Mb 0.119 0.091 0.091 0.091        1
+ 8:    A11_Chr12:16.52-16.55Mb 0.097 0.074 0.074 0.074        1
+ 9:      A13_Chr17:9.94-9.94Mb 0.097 0.074 0.074 0.074        1
+10: A07_Chr4:12.81-12.81Mb*Eda 0.090 0.069 0.069 0.069        1
+11:      A12_Chr17:6.55-6.77Mb 0.090 0.069 0.069 0.069        1
+12:     A01_Chr1:27.28-27.28Mb 0.082 0.063 0.063 0.063        1
+13:    A10_Chr12:15.55-15.55Mb 0.075 0.057 0.057 0.057        1
+14:      A16_Chr20:3.67-3.67Mb 0.067 0.051 0.051 0.051        1
+15:      A17_Chr20:8.89-8.90Mb 0.067 0.051 0.051 0.051        1
+16:     A03_Chr3:13.03-13.03Mb 0.045 0.034 0.034 0.034        1
+17:     A05_Chr4:25.67-25.99Mb 0.045 0.034 0.034 0.034        1
+
+[3] rank agreement between variants (Spearman; top-5 overlap):
+        a        b spearman top5_overlap
+   <char>   <char>    <num>        <num>
+1:    S_U      S_G        1            1
+2:    S_G        D        1            1
+3:    S_G Q_over_D       NA            1
+4:      D Q_over_D       NA            1
+5:    S_U Q_over_D       NA            1
+
+[4] S^U inflates every locus by the factor |G|/|U| = 1.31 (identical rankings
+    when every significant cell is usable, which it is by definition:
+    S^U == S_G * |G|/|U| exactly for all loci: TRUE
+    => the conditional denominator is a pure RESCALING here: it changes the
+       reported magnitude (and so its interpretability) but not the ranking.
+
+[5] pathology check: a locus significant in exactly 1 usable cell scores
+    S^U = 1/134 = 0.0075 now, but would score S^U = 1.0 if |U| = 1.
+    S^G for that same locus is 1/175 = 0.0057 regardless of how dead the grid is.
+[6] rule any    : Spearman(anchor S_G, prototype per-chromosome score) = +0.372
+[6] rule ovl50  : Spearman(anchor S_G, prototype per-chromosome score) = +0.372
+[6] rule rec50  : Spearman(anchor S_G, prototype per-chromosome score) = +0.065
+[6] rule span   : Spearman(anchor S_G, prototype per-chromosome score) = +0.372
+    (8 distinct prototype values are shared among the 17 anchors -- 7 of the 17
+     anchors sit on a chromosome that carries another anchor, so the prototype
+     cannot separate them at all.)
+
+[7] anchor S_G ranking by matching rule:
+    any    vs ovl50  : rho = +1.000 ; top5 overlap = 1.00
+    any    vs rec50  : rho = +0.806 ; top5 overlap = 0.60
+    any    vs span   : rho = +1.000 ; top5 overlap = 1.00
+    ovl50  vs rec50  : rho = +0.806 ; top5 overlap = 0.60
+    ovl50  vs span   : rho = +1.000 ; top5 overlap = 1.00
+    rec50  vs span   : rho = +0.806 ; top5 overlap = 0.60
+
+[7] top-5 anchors under each rule:
+    any    : A02_Chr1:21.50-21.93Mb*inv | A15_Chr20:0.18-0.26Mb | A09_Chr7:11.55-11.66Mb | A08_Chr5:2.48-2.50Mb | A12_Chr17:6.55-6.77Mb
+    ovl50  : A02_Chr1:21.50-21.93Mb*inv | A15_Chr20:0.18-0.26Mb | A09_Chr7:11.55-11.66Mb | A08_Chr5:2.48-2.50Mb | A12_Chr17:6.55-6.77Mb
+    rec50  : A06_Chr4:27.55-27.55Mb | A08_Chr5:2.48-2.50Mb | A04_Chr4:22.51-22.51Mb | A02_Chr1:21.50-21.93Mb*inv | A15_Chr20:0.18-0.26Mb
+    span   : A02_Chr1:21.50-21.93Mb*inv | A15_Chr20:0.18-0.26Mb | A09_Chr7:11.55-11.66Mb | A08_Chr5:2.48-2.50Mb | A12_Chr17:6.55-6.77Mb
+
+[7] wrote results/C2_variant_comparison.csv, anchor_vs_prototype.csv
+
+########## 04_grid_sensitivity ##########
+[1] breakpoint tau axis: 25 of 25 tau values change the region set: 0.02 0.04 0.06 0.08 0.10 0.12 0.14 0.16 0.18 0.20 0.22 0.24 0.26 0.28 0.30 0.32 0.34 0.36 0.38 0.40 0.42 0.44 0.46 0.48 0.50
+
+[2] S_G under six grids (fixed anchors):
+                         label G1_original G2_coarse G3_breakpoint G4_tau_low
+                        <char>       <num>     <num>         <num>      <num>
+ 1:     A06_Chr4:27.55-27.55Mb       0.171      0.12         0.240      0.330
+ 2:       A08_Chr5:2.48-2.50Mb       0.149      0.00         0.160      0.286
+ 3:     A04_Chr4:22.51-22.51Mb       0.143      0.12         0.200      0.275
+ 4: A02_Chr1:21.50-21.93Mb*inv       0.120      0.00         0.120      0.231
+ 5:      A15_Chr20:0.18-0.26Mb       0.120      0.00         0.120      0.231
+ 6:      A14_Chr18:5.61-5.61Mb       0.109      0.12         0.152      0.209
+ 7:     A09_Chr7:11.55-11.66Mb       0.091      0.00         0.112      0.176
+ 8:    A11_Chr12:16.52-16.55Mb       0.074      0.00         0.104      0.143
+ 9:      A13_Chr17:9.94-9.94Mb       0.074      0.00         0.104      0.143
+10: A07_Chr4:12.81-12.81Mb*Eda       0.069      0.00         0.080      0.132
+11:      A12_Chr17:6.55-6.77Mb       0.069      0.00         0.096      0.132
+12:     A01_Chr1:27.28-27.28Mb       0.063      0.00         0.088      0.121
+13:    A10_Chr12:15.55-15.55Mb       0.057      0.00         0.080      0.110
+14:      A16_Chr20:3.67-3.67Mb       0.051      0.00         0.072      0.099
+15:      A17_Chr20:8.89-8.90Mb       0.051      0.00         0.064      0.099
+16:     A03_Chr3:13.03-13.03Mb       0.034      0.00         0.048      0.066
+17:     A05_Chr4:25.67-25.99Mb       0.034      0.00         0.048      0.066
+    G5_tau_high G6_tau_sparse
+          <num>         <num>
+ 1:           0         0.159
+ 2:           0         0.190
+ 3:           0         0.159
+ 4:           0         0.111
+ 5:           0         0.111
+ 6:           0         0.111
+ 7:           0         0.111
+ 8:           0         0.079
+ 9:           0         0.079
+10:           0         0.111
+11:           0         0.063
+12:           0         0.079
+13:           0         0.063
+14:           0         0.048
+15:           0         0.095
+16:           0         0.048
+17:           0         0.048
+
+[3] agreement with the original grid:
+            grid spearman top5_overlap pearson
+          <char>    <num>        <num>   <num>
+1:     G2_coarse    0.537          0.6   0.623
+2: G3_breakpoint    0.983          0.8   0.948
+3:    G4_tau_low    1.000          1.0   1.000
+4:   G5_tau_high       NA          0.4      NA
+5: G6_tau_sparse    0.894          0.8   0.906
+
+[4] ranks of the named / small loci under each grid (1 = most stable):
+                         label G1_original G2_coarse G3_breakpoint G4_tau_low
+                        <char>       <int>     <int>         <int>      <int>
+ 1:     A04_Chr4:22.51-22.51Mb           3         1             2          3
+ 2: A02_Chr1:21.50-21.93Mb*inv           4         4             5          4
+ 3:      A14_Chr18:5.61-5.61Mb           6         1             4          6
+ 4: A07_Chr4:12.81-12.81Mb*Eda          10         4            12         10
+ 5:     A01_Chr1:27.28-27.28Mb          12         4            11         12
+ 6:    A10_Chr12:15.55-15.55Mb          13         4            12         13
+ 7:      A16_Chr20:3.67-3.67Mb          14         4            14         14
+ 8:      A17_Chr20:8.89-8.90Mb          14         4            15         14
+ 9:     A03_Chr3:13.03-13.03Mb          16         4            16         16
+10:     A05_Chr4:25.67-25.99Mb          16         4            16         16
+    G5_tau_high G6_tau_sparse
+          <int>         <int>
+ 1:           1             2
+ 2:           1             4
+ 3:           1             4
+ 4:           1             4
+ 5:           1            10
+ 6:           1            13
+ 7:           1            15
+ 8:           1             9
+ 9:           1            15
+10:           1            15
+
+[4] (small = anchors with <= 4 SNPs: 9 of 17)
+[4] wrote results/grid_sensitivity.csv + grid_sensitivity_agreement.csv
+
+########## 05_null_resolution ##########
+[1] B = 200 ; p floor = 1/(B+1) = 0.00498 ; (prototype cap B=100 -> 0.00990)
+[2] naive (distinct-p) bound m <= alpha*(B+1) = 10.1 would block 32 of 134 productive cells;
+    but 32 of those actually DO produce significant regions, because their p-values
+    are tied at the floor and BH rejects tied sets together.
+[2] tie-aware condition (p0 <= alpha*k/m) predicts the cell's outcome correctly in 100 of 134 cells
+    -> the operative driver of per-cell significance is the FRACTION of regions at the
+       p-value floor (median 0.29, range 0.00-0.67), i.e. how many regions the null
+       fails to rebuild AT ALL -- not the strength of any individual region.
+[2] a cell where EVERY region is at the floor rejects every one of them: 0 such cells
+    lmin cells m_median m_max median_frac_floor cells_with_sig
+   <int> <int>    <int> <int>             <num>          <int>
+1:     1    25       21   134              0.26             25
+2:     2    25        8    61              0.33             25
+3:     3    25        3    39              0.50             25
+4:     5    24        2    16              0.24             24
+5:    10    14        1     8              0.00             14
+6:    15    11        1     6              0.00             11
+7:    20    10        1     5              0.00             10
+[4] B =  25 : mean S_G = 0.0871 ; anchors with S_G>0 = 17
+[4] B =  50 : mean S_G = 0.0864 ; anchors with S_G>0 = 17
+[4] B = 100 : mean S_G = 0.0857 ; anchors with S_G>0 = 17
+[4] B = 150 : mean S_G = 0.0871 ; anchors with S_G>0 = 17
+[4] B = 200 : mean S_G = 0.0871 ; anchors with S_G>0 = 17
+       B mean_S_G n_pos spearman_vs_Bmin top5_vs_Bmin spearman_vs_full
+   <int>    <num> <int>            <num>        <num>            <num>
+1:    25   0.0871    17            1.000            1            1.000
+2:    50   0.0864    17            1.000            1            1.000
+3:   100   0.0857    17            0.999            1            0.999
+4:   150   0.0871    17            1.000            1            1.000
+5:   200   0.0871    17            1.000            1            1.000
+   top5_vs_full
+          <num>
+1:            1
+2:            1
+3:            1
+4:            1
+5:            1
+
+[4] wrote results/null_resolution.csv + null_resolution_subsampling.csv
+
+########## 06_make_figures ##########
+[fig] wrote 5 figures to module_C2/figures
+
+########## 07_sim_validation ##########
+[0] loaded cached sim grid
+
+[1] mean stability by truth, per env:
+     env is_true     n          D          Q        QD
+   <int>  <lgcl> <int>      <num>      <num>     <num>
+1:     1   FALSE    31 0.07701613 0.07701613 1.0000000
+2:     1    TRUE     4 0.29062500 0.29062500 1.0000000
+3:     2   FALSE   130 0.11298077 0.11182692 0.9923077
+4:     2    TRUE     6 0.68333333 0.68333333 1.0000000
+5:     3    TRUE     9 0.53472222 0.53472222 1.0000000
+6:     3   FALSE    32 0.10312500 0.10117187 0.9687500
+7:     4   FALSE    36 0.08263889 0.08263889 1.0000000
+8:     4    TRUE     7 0.60178571 0.60178571 1.0000000
+9:     5    TRUE     1 0.07500000 0.07500000 1.0000000
+
+[1] replicate-averaged over 5 envs:
+   is_true     n         D          Q        QD
+    <lgcl> <int>     <num>      <num>     <num>
+1:   FALSE   229 0.0939402 0.09316345 0.9902644
+2:    TRUE    27 0.4370933 0.43709325 1.0000000
+[1] per-env Wilcoxon Q ~ truth p: 0.000688 4.93e-05 1.2e-07 6.21e-08 NA
+
+[2] PR-AUC by ranking (per env):
+     env PR_stability_Q PR_detection_D PR_QoverD   PR_maxC   PR_size  base_rate
+   <int>          <num>          <num>     <num>     <num>     <num>      <num>
+1:     1      0.7678571      0.7678571 0.1519880 0.8750000 0.5476190 0.11428571
+2:     2      0.7847222      0.7847222 0.0560010 0.9107143 0.6627345 0.04411765
+3:     3      0.9500000      0.9500000 0.4536488 0.9278139 0.8567901 0.21951220
+4:     4      1.0000000      1.0000000 0.2981864 1.0000000 0.9682540 0.16279070
+5:     5      1.0000000      1.0000000 1.0000000 1.0000000 1.0000000 1.00000000
+
+[2] replicate-averaged PR-AUC (mean +- SE over 5 envs):
+     PR_stability_Q PR_detection_D PR_QoverD PR_maxC PR_size base_rate
+mean          0.901          0.901     0.392   0.943   0.807     0.308
+SE            0.052          0.052     0.166   0.025   0.088     0.175
+
+[2] wrote results/sim_validation_prauc.csv + sim_anchor_scores.csv
+[3] wrote figures/fig6_sim_truth.png
+Warning messages:
+1: In stats::cor(cellwise$n_tested, cellwise$n_sig/pmax(cellwise$n_rawsig,  :
+  the standard deviation is zero
+2: In stats::cor(vv("G1_original"), vv(n)[GR$G1_original$label]) :
+  the standard deviation is zero
+3: In melt.data.table(V[, .(label, S_U, S_G, D, Q_over_D)], id.vars = "label",  :
+  'measure.vars' [S_U, S_G, D, Q_over_D, ...] are not all of the same type. By order of hierarchy, the molten data value column will be of type 'double'. All measure variables not of type 'double' will be coerced too. Check DETAILS in ?melt.data.table for more on coercion.

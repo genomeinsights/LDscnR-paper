@@ -1,0 +1,131 @@
+[1] anchor set: 17 regions at tau=0.05 l_min=3 rho_ld=0.60
+[1] matches committed EMMAX region set (17 rows): TRUE
+    sizes: 3 3 3 3 3 4 4 4 4 5 5 5 9 10 22 33 245
+[2] rule 'any': 1 s ; detected cells = 700 ; significant cells = 700
+[2] rule 'ovl50': 1 s ; detected cells = 700 ; significant cells = 700
+[2] rule 'rec50': 1 s ; detected cells = 259 ; significant cells = 259
+[2] rule 'span': 1 s ; detected cells = 700 ; significant cells = 700
+
+[3] anchor scores by matching rule (D = detection, Q = significance):
+                         label      D_any    D_ovl50    D_rec50     D_span
+                        <char>      <num>      <num>      <num>      <num>
+ 1: A02_Chr1:21.50-21.93Mb*inv 0.76571429 0.76571429 0.12000000 0.76571429
+ 2:      A15_Chr20:0.18-0.26Mb 0.57142857 0.57142857 0.12000000 0.57142857
+ 3:     A09_Chr7:11.55-11.66Mb 0.38857143 0.38857143 0.09142857 0.38857143
+ 4:       A08_Chr5:2.48-2.50Mb 0.34285714 0.34285714 0.14857143 0.34285714
+ 5:      A12_Chr17:6.55-6.77Mb 0.32000000 0.32000000 0.06857143 0.32000000
+ 6:     A06_Chr4:27.55-27.55Mb 0.29714286 0.29714286 0.17142857 0.29714286
+ 7:      A13_Chr17:9.94-9.94Mb 0.26857143 0.26857143 0.07428571 0.26857143
+ 8:    A11_Chr12:16.52-16.55Mb 0.19428571 0.19428571 0.07428571 0.19428571
+ 9:     A04_Chr4:22.51-22.51Mb 0.14857143 0.14857143 0.14285714 0.14857143
+10:      A14_Chr18:5.61-5.61Mb 0.14285714 0.14285714 0.10857143 0.14285714
+11: A07_Chr4:12.81-12.81Mb*Eda 0.13714286 0.13714286 0.06857143 0.13714286
+12:      A16_Chr20:3.67-3.67Mb 0.11428571 0.11428571 0.05142857 0.11428571
+13:     A01_Chr1:27.28-27.28Mb 0.09142857 0.09142857 0.06285714 0.09142857
+14:    A10_Chr12:15.55-15.55Mb 0.07428571 0.07428571 0.05714286 0.07428571
+15:      A17_Chr20:8.89-8.90Mb 0.05714286 0.05714286 0.05142857 0.05714286
+16:     A05_Chr4:25.67-25.99Mb 0.05142857 0.05142857 0.03428571 0.05142857
+17:     A03_Chr3:13.03-13.03Mb 0.03428571 0.03428571 0.03428571 0.03428571
+         Q_any    Q_ovl50    Q_rec50     Q_span
+         <num>      <num>      <num>      <num>
+ 1: 0.76571429 0.76571429 0.12000000 0.76571429
+ 2: 0.57142857 0.57142857 0.12000000 0.57142857
+ 3: 0.38857143 0.38857143 0.09142857 0.38857143
+ 4: 0.34285714 0.34285714 0.14857143 0.34285714
+ 5: 0.32000000 0.32000000 0.06857143 0.32000000
+ 6: 0.29714286 0.29714286 0.17142857 0.29714286
+ 7: 0.26857143 0.26857143 0.07428571 0.26857143
+ 8: 0.19428571 0.19428571 0.07428571 0.19428571
+ 9: 0.14857143 0.14857143 0.14285714 0.14857143
+10: 0.14285714 0.14285714 0.10857143 0.14285714
+11: 0.13714286 0.13714286 0.06857143 0.13714286
+12: 0.11428571 0.11428571 0.05142857 0.11428571
+13: 0.09142857 0.09142857 0.06285714 0.09142857
+14: 0.07428571 0.07428571 0.05714286 0.07428571
+15: 0.05714286 0.05714286 0.05142857 0.05714286
+16: 0.05142857 0.05142857 0.03428571 0.05142857
+17: 0.03428571 0.03428571 0.03428571 0.03428571
+
+[3] rank agreement between rules (Spearman on Q; top-5 overlap):
+    any    vs ovl50  : rho = +1.000 ; top5 overlap = 1.00
+    any    vs rec50  : rho = +0.806 ; top5 overlap = 0.60
+    any    vs span   : rho = +1.000 ; top5 overlap = 1.00
+    ovl50  vs rec50  : rho = +0.806 ; top5 overlap = 0.60
+    ovl50  vs span   : rho = +1.000 ; top5 overlap = 1.00
+    rec50  vs span   : rho = +0.806 ; top5 overlap = 0.60
+
+[3] chaining/ambiguity (fraction of detected cells where >1 called region matches):
+                         label mean_nmatch ambig
+                        <char>       <num> <num>
+ 1:      A15_Chr20:0.18-0.26Mb        1.03  0.03
+ 2:     A01_Chr1:27.28-27.28Mb        1.00  0.00
+ 3: A02_Chr1:21.50-21.93Mb*inv        1.00  0.00
+ 4:     A03_Chr3:13.03-13.03Mb        1.00  0.00
+ 5:     A04_Chr4:22.51-22.51Mb        1.00  0.00
+ 6:     A05_Chr4:25.67-25.99Mb        1.00  0.00
+ 7:     A06_Chr4:27.55-27.55Mb        1.00  0.00
+ 8: A07_Chr4:12.81-12.81Mb*Eda        1.00  0.00
+ 9:       A08_Chr5:2.48-2.50Mb        1.00  0.00
+10:     A09_Chr7:11.55-11.66Mb        1.00  0.00
+11:    A10_Chr12:15.55-15.55Mb        1.00  0.00
+12:    A11_Chr12:16.52-16.55Mb        1.00  0.00
+13:      A12_Chr17:6.55-6.77Mb        1.00  0.00
+14:      A13_Chr17:9.94-9.94Mb        1.00  0.00
+15:      A14_Chr18:5.61-5.61Mb        1.00  0.00
+16:      A16_Chr20:3.67-3.67Mb        1.00  0.00
+17:      A17_Chr20:8.89-8.90Mb        1.00  0.00
+
+[3b] detection vs significance, per rule (cells detected / cells significant):
+    any    : detected =  700 ; significant =  700 ; detected-but-NOT-significant = 0
+    ovl50  : detected =  700 ; significant =  700 ; detected-but-NOT-significant = 0
+    rec50  : detected =  259 ; significant =  259 ; detected-but-NOT-significant = 0
+    span   : detected =  700 ; significant =  700 ; detected-but-NOT-significant = 0
+    -> if the last column is 0, the location-matched significance layer is VACUOUS
+       on this dataset: the score collapses exactly onto detection stability.
+
+[4] BH behaviour among DETECTED cells (rule = rec50):
+                         label cells_detected frac_raw_p_sig frac_BH_sig
+                        <char>          <int>          <num>       <num>
+ 1:     A01_Chr1:27.28-27.28Mb             11              1           1
+ 2: A02_Chr1:21.50-21.93Mb*inv             21              1           1
+ 3:     A03_Chr3:13.03-13.03Mb              6              1           1
+ 4:     A04_Chr4:22.51-22.51Mb             25              1           1
+ 5:     A05_Chr4:25.67-25.99Mb              6              1           1
+ 6:     A06_Chr4:27.55-27.55Mb             30              1           1
+ 7: A07_Chr4:12.81-12.81Mb*Eda             12              1           1
+ 8:       A08_Chr5:2.48-2.50Mb             26              1           1
+ 9:     A09_Chr7:11.55-11.66Mb             16              1           1
+10:    A10_Chr12:15.55-15.55Mb             10              1           1
+11:    A11_Chr12:16.52-16.55Mb             13              1           1
+12:      A12_Chr17:6.55-6.77Mb             12              1           1
+13:      A13_Chr17:9.94-9.94Mb             13              1           1
+14:      A14_Chr18:5.61-5.61Mb             19              1           1
+15:      A15_Chr20:0.18-0.26Mb             21              1           1
+16:      A16_Chr20:3.67-3.67Mb              9              1           1
+17:      A17_Chr20:8.89-8.90Mb              9              1           1
+    median_emp_p   median_q at_p_floor median_ntested lost_to_BH
+           <num>      <num>      <num>          <num>      <num>
+ 1:  0.019900498 0.02487562  0.0000000           39.0          0
+ 2:  0.014925373 0.02353617  0.0000000            9.0          0
+ 3:  0.004975124 0.02265458  1.0000000           50.0          0
+ 4:  0.024875622 0.02487562  0.0000000           16.0          0
+ 5:  0.029850746 0.03026115  0.0000000           50.0          0
+ 6:  0.024875622 0.02487562  0.0000000           14.5          0
+ 7:  0.014925373 0.02487562  0.0000000           23.0          0
+ 8:  0.014925373 0.02370838  0.0000000            8.5          0
+ 9:  0.004975124 0.02203269  1.0000000           16.0          0
+10:  0.019900498 0.02523099  0.0000000           33.0          0
+11:  0.024875622 0.02615129  0.0000000           19.0          0
+12:  0.019900498 0.02487562  0.0000000           23.0          0
+13:  0.019900498 0.02487562  0.0000000           19.0          0
+14:  0.019900498 0.02487562  0.0000000           19.0          0
+15:  0.004975124 0.01990050  1.0000000            9.0          0
+16:  0.024875622 0.02625760  0.0000000           39.0          0
+17:  0.009950249 0.02363184  0.4444444           27.0          0
+
+[4] Spearman(n_tested, fraction of anchors BH-significant) = NA
+Warning message:
+In stats::cor(cellwise$n_tested, cellwise$n_sig/pmax(cellwise$n_rawsig,  :
+  the standard deviation is zero
+
+[5] wrote results/anchor_locus_grid_detail.csv (2975 rows), anchor_matching_rules.csv, anchor_bh_behaviour.csv
