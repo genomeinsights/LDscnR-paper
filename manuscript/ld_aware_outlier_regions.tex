@@ -604,6 +604,54 @@ set, and on the coverage-adjusted rotation-null scale the global-specific fold i
 fact the higher of the two. It is the identity of the individual loci, not the raw
 tally, that is informative.
 
+The external control also validates the \emph{operating point}, not just the region
+list. Sweeping the same $\tau_C \times \ell_{\min}$ grid used for the structure-null
+landscape (Section~\ref{sec:null}) and scoring each cell's overlap with the
+global-specific EcoPeaks, both the precision (fraction of regions on an EcoPeak) and
+the rotation-null fold enrichment peak in the low-$\tau_C$, low-to-moderate-$\ell_{\min}$
+corner, and the operating point used above ($\tau_C = 0.05$, $\ell_{\min} = 3$) sits at
+the F1-optimum of precision and recall (Fig.~\ref{fig:sweep}). Recall saturates at
+${\sim}0.28$ because most global EcoPeaks are Pacific-derived and absent from the
+Atlantic panel, so precision and fold are the informative axes---and on both the chosen
+point is near-optimal. The structure-aware null, which uses no truth, and the Kingman
+EcoPeaks, an external truth, thus agree on where to operate.
+
+The C-score is moreover validated as a graded per-SNP statistic, not only at the region
+level. Binning every SNP by its C-score---the fraction of $(\rho, q^*)$ cells in which it
+was a valid local-LD outlier candidate---and measuring global-specific EcoPeak membership
+per bin, EMMAX SNPs with any $C > 0$ are enriched $24$--$53$-fold over the $1.3\%$
+genome-wide rate, with a positive trend in $C$ (Spearman $\rho = 0.21$ over
+${\sim}790{,}000$ SNPs; Fig.~\ref{fig:cscore-enrich}). The LFMM C-score behaves
+oppositely: enrichment is present but \emph{declines} with $C$ ($22$-fold down to
+$4$-fold; $\rho = 0.06$), so its highest-scoring SNPs are the \emph{least} likely to be
+genuine---the signature of an inflated, structure-driven baseline. The EMMAX C-score is
+thus an externally calibrated measure of a SNP's outlier evidence and LFMM's is not, the
+same specificity/sensitivity split seen at the region level.
+
+\begin{figure}[t]
+  \centering
+  % \includegraphics[width=\linewidth]{kingman_sweep_EMMAX_c155specific}
+  \fbox{\parbox[c][0.34\linewidth][c]{\linewidth}{\centering\itshape
+    Figure placeholder: overlap of the EMMAX regions with the global-specific EcoPeaks
+    over the $\tau_C \times \ell_{\min}$ grid---raw overlap, precision, recall,
+    rotation-null fold, F1, and region count. The paper operating point
+    ($\tau_C = 0.05$, $\ell_{\min} = 3$) marks both the F1 sweet spot and the high-fold
+    zone; the strict-corner ``high precision'' is trivial (one or two regions).}}
+  \caption{Calibrating the operating point against an external positive control.}
+  \label{fig:sweep}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  % \includegraphics[width=0.9\linewidth]{kingman_cscore_enrichment}
+  \fbox{\parbox[c][0.24\linewidth][c]{\linewidth}{\centering\itshape
+    Figure placeholder: fold enrichment of global-specific EcoPeak membership by per-SNP
+    C-score bin, relative to the genome-wide rate. EMMAX (all $C>0$ bins $24$--$53\times$,
+    trend positive) versus LFMM (enrichment declines with $C$).}}
+  \caption{The per-SNP C-score predicts Kingman EcoPeak overlap for EMMAX but not LFMM.}
+  \label{fig:cscore-enrich}
+\end{figure}
+
 \begin{figure}[t]
   \centering
   % \includegraphics[width=0.78\linewidth]{fig5_venn_emmax17}
