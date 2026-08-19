@@ -423,12 +423,7 @@ application (3sp; clear-peak contrast).}
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=\linewidth]{viz_negctrl_lin}
-  \fbox{\parbox[c][0.32\linewidth][c]{\linewidth}{\centering\itshape
-    Figure placeholder: per-chromosome tail mass, ranked, for a detectable
-    (gene-flow) versus a structure-dominated (low-dispersal) regime. Detectable:
-    a few chromosomes spike above a flat near-zero bulk. Undetectable: a gradual
-    ramp with no floor.}}
+  \includegraphics[width=\linewidth]{viz_negctrl_lin}
   \caption{Detectability from the shape of the per-chromosome tail-mass profile.}
   \label{fig:detect}
 \end{figure}
@@ -630,36 +625,21 @@ same specificity/sensitivity split seen at the region level.
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=\linewidth]{kingman_sweep_EMMAX_c155specific}
-  \fbox{\parbox[c][0.34\linewidth][c]{\linewidth}{\centering\itshape
-    Figure placeholder: overlap of the EMMAX regions with the global-specific EcoPeaks
-    over the $\tau_C \times \ell_{\min}$ grid---raw overlap, precision, recall,
-    rotation-null fold, F1, and region count. The paper operating point
-    ($\tau_C = 0.05$, $\ell_{\min} = 3$) marks both the F1 sweet spot and the high-fold
-    zone; the strict-corner ``high precision'' is trivial (one or two regions).}}
+  \includegraphics[width=\linewidth]{kingman_sweep_EMMAX_c155specific}
   \caption{Calibrating the operating point against an external positive control.}
   \label{fig:sweep}
 \end{figure}
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=0.9\linewidth]{kingman_cscore_enrichment}
-  \fbox{\parbox[c][0.24\linewidth][c]{\linewidth}{\centering\itshape
-    Figure placeholder: fold enrichment of global-specific EcoPeak membership by per-SNP
-    C-score bin, relative to the genome-wide rate. EMMAX (all $C>0$ bins $24$--$53\times$,
-    trend positive) versus LFMM (enrichment declines with $C$).}}
+  \includegraphics[width=0.9\linewidth]{kingman_cscore_enrichment}
   \caption{The per-SNP C-score predicts Kingman EcoPeak overlap for EMMAX but not LFMM.}
   \label{fig:cscore-enrich}
 \end{figure}
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=0.78\linewidth]{fig5_venn_emmax17}
-  \fbox{\parbox[c][0.30\linewidth][c]{\linewidth}{\centering\itshape
-    Figure placeholder: Venn of the $17$ EMMAX outlier regions against the two
-    Kingman \emph{specific} EcoPeak sets. Three regions---the chromosome-1
-    inversion, \textit{Eda}, and chromosome-20 (8.9\,Mb)---fall in both cohorts;
-    two are global-only, two Pacific-only, and ten overlap no specific EcoPeak.}}
+  \includegraphics[width=0.78\linewidth]{fig5_venn_emmax17}
   \caption{Overlap of the 3sp LD-aware outlier regions with the independently
   derived Kingman EcoPeaks.}
   \label{fig:venn}
