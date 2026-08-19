@@ -325,10 +325,15 @@ environmental labels among the discrete sampling units for a parallel, patchy
 habitat contrast. The basis must match how the environment is actually
 distributed. A mismatched basis---a smooth kernel imposed on a parallel
 contrast---injects autocorrelation absent from both the environment and the
-kinship correction, inflating the surrogate scans and over-charging the null. The
-number of null peaks per surrogate is a direct calibration check: a well-specified
-null produces at most a handful, whereas a surrogate that rivals the observed scan
-in peak count is inflated and mis-specified (Section~\ref{sec:threenull}).
+kinship correction, inflating the surrogate scans; the number of null peaks per
+surrogate is a direct calibration check, a well-specified null producing at most a
+handful while a mis-specified one rivals the observed scan in peak count. Crucially,
+the \emph{location-matched} region test is robust to such global inflation: because
+the excess null peaks are scattered, they rarely fall on any particular observed
+locus, so an inflated basis does not erase regions indiscriminately but instead
+flags only the loci it specifically and repeatedly reconstructs. This robustness is
+a concrete advantage of a region-level location-matched null over a pooled
+genome-wide count (Section~\ref{sec:threenull}).
 
 \paragraph{Relationship to existing methods.}
 Structure-aware surrogate nulls are well established outside genome scans.
@@ -427,7 +432,7 @@ application (3sp; clear-peak contrast).}
   \label{fig:detect}
 \end{figure}
 
-\subsection{Three structure nulls on a stickleback marine--freshwater scan}
+\subsection{Structure nulls on a stickleback marine--freshwater scan}
 \label{sec:threenull}
 
 We applied the scan to a three-spine stickleback (\textit{Gasterosteus aculeatus})
@@ -437,9 +442,9 @@ at $q \le 0.05$ (minimum $q \approx 0.06$), whereas the LD-aware C-score yields
 $17$ outlier regions ($1729$ markers with $C > 0$) that recover the known
 architecture---the chromosome-1 inversion, the \textit{Eda} region on
 chromosome~4, and peaks on chromosomes 5, 7, 17 and 20. Holding this observed
-region set fixed, we read it against three surrogate nulls that differ only in
-their structure basis (Table~\ref{tab:threenull}); the median number of C-score
-peaks per surrogate is the calibration diagnostic that interprets each.
+region set fixed, we read it against four surrogate nulls that differ only in their
+structure basis (Table~\ref{tab:threenull}); the median number of C-score peaks per
+surrogate is the calibration diagnostic that interprets each.
 
 The \emph{genetic} basis is silent. Drawn from the same kinship the scan conditions
 on, it produces a median of \emph{zero} peaks per surrogate and not one null region
@@ -450,60 +455,81 @@ clustering artifacts---but, because the surrogate is absorbed by the correction,
 cannot itself apportion signal between the ecotype contrast and population
 structure.
 
-The \emph{permutation} null does apportion it. Shuffling the marine/freshwater
-label among the $35$ populations preserves population structure while breaking the
-ecotype--genotype link; it rebuilds the chromosome-1 inversion at matching strength
-in only ${\sim}1.5\%$ of permutations ($p = 0.015$), but rebuilds the
-\textit{Eda}/chromosome-4 peaks ${\sim}11\%$ of the time ($p = 0.10$). The
-inversion is thus the more ecotype-specific signal, whereas chromosome-4
-differentiation is shared broadly enough across populations that label permutation
-reproduces it; seven of the $17$ regions reach $p < 0.05$. A pooled genome-wide
-count-FDR against the same null is far blunter---dominated by a few permutations
-that light up whole structured blocks, it retains essentially one region---so the
-location-matched test is what makes this null usable.
+The \emph{permutation} nulls do apportion it, and none of the $17$ regions is
+reproduced. Shuffling the marine/freshwater label among all $35$ populations
+(preserving population structure while breaking the ecotype--genotype link) rebuilds
+no region at its own locus more than occasionally: every region clears $p < 0.05$
+(median location-matched overlap $0.01$). A \emph{regional} refinement---permuting
+the label only \emph{within} each of four localities, so that each locality's
+ecotype composition is held fixed and only the within-region marine--freshwater
+contrast is shuffled---is the sharper test of \emph{parallel} adaptation, since a
+locus whose signal recurs within regions cannot be rebuilt by a within-region
+shuffle. All $17$ regions again clear $p < 0.05$, the chromosome-1 inversion and
+\textit{Eda} among them ($p = 0.015$ each). The permutation nulls thus place every
+region above population structure and, specifically, above the within-region
+reshuffling that would expose a merely between-region (clinal) signal. We note that
+a \emph{pooled} genome-wide count-FDR against the same permutation null is far
+blunter---dominated by the rare permutation that lights up a whole structured block,
+it retains essentially one region---so the location-matched test is what makes these
+nulls usable.
 
-The \emph{spatial} basis instead \emph{over}-charges the null. A Gaussian random
-field over the sampling coordinates carpets the genome with a median of $792$ peaks
-per surrogate---against $1729$ observed---so surrogate regions overlap the observed
-loci by sheer density (median overlap $0.59$) and nothing survives, the inversion
-included ($p = 0.26$). The diagnosis is mis-specification, not a real spatial
-confound: a smooth field carries autocorrelation the genetic kinship does not
-remove, so the surrogate scans are globally inflated, and the peak-count diagnostic
-($792 \gg 0$) flags this directly. The mismatch is structural---marine--freshwater
-divergence is a \emph{parallel} habitat contrast, the same freshwater alleles
-recruited at independent, geographically scattered sites, which is exactly the
-pattern a smooth field cannot represent. On the simulations, where the environment
-genuinely is a smooth gradient, the identical spatial null is well calibrated and
-recovers the causal regions (Section~\ref{sec:null}); it fails here only because
-the basis does not match the data.
+The \emph{spatial} basis is the informative outlier. A Gaussian random field over
+the sampling coordinates is globally \emph{inflated}: it emits a median of $792$
+peaks per surrogate, against $1729$ observed, because a smooth field carries
+autocorrelation the genetic kinship does not remove---the peak-count diagnostic
+($792 \gg 0$) flags this directly. Yet the location-matched region test is
+\emph{robust} to that inflation: the excess null peaks are scattered, so they rarely
+fall on a given locus, and $15$ of the $17$ regions still clear $p < 0.05$. The two
+exceptions are precisely the chromosome-1 inversion ($p = 0.26$, overlap $0.43$) and
+\textit{Eda} ($p = 0.44$, overlap $0.44$)---the two large-effect loci whose
+differentiation is strongly clinal, so that a smooth spatial surrogate reconstructs
+them. Critically, these are the same two loci the \emph{regional} permutation
+certifies as within-region parallel signals: the spatial and regional nulls
+\emph{disagree} exactly at the inversion and \textit{Eda}, and they disagree because
+the spatial basis is the wrong model for a parallel contrast. Marine--freshwater
+divergence recruits the same freshwater alleles at independent, scattered sites; a
+smooth field cannot represent that and so mis-attributes the inversion and
+\textit{Eda} to geography, whereas the within-region permutation---matched to the
+parallel structure---shows their signal recurs within localities. On the
+simulations, where the environment genuinely is a smooth gradient, the identical
+spatial null is well calibrated and recovers the causal regions
+(Section~\ref{sec:null}); here it errs only where the basis does not match the data,
+and the mismatch is diagnosable both from the peak count and from the disagreement
+with the correctly specified null.
 
-Together the three nulls give a specificity-then-attribution reading: the genetic
-null certifies that the regions are real method output, and the permutation
-null---matched to the discrete, parallel structure of the contrast---ranks them by
-how far each exceeds population structure, placing the inversion ahead of the
-broadly shared chromosome-4 differentiation.
+Together the nulls give a specificity-then-attribution reading. The genetic null
+certifies that the regions are real method output; the permutation nulls place all
+$17$ above population structure and above the within-region reshuffling that a
+purely clinal signal could not survive; and the spatial null, read against the
+regional one, both illustrates the basis-matching principle and demonstrates that
+the location-matched region test is robust to a mis-specified, inflated null.
 
 \begin{table}[h]
   \centering
-  \begin{tabular}{llccc}
+  \small
+  \begin{tabular}{llcccc}
     \hline
-    null (basis) & controls for & med.\ null & Chr1 inv. & \textit{Eda}/Chr4 \\
-                 &              & peaks/surr. & $p$ & $p$ \\
+    null (basis) & controls for & med.\ null & Chr1 inv. & \textit{Eda}/Chr4 & regions \\
+                 &              & peaks/surr. & $p$ & $p$ & $p<0.05$ \\
     \hline
-    genetic (MVN, $\mathbf{K}$) & method specificity   & $0$   & $0.010^{\dagger}$ & $0.010^{\dagger}$ \\
-    permutation (among pops)    & population structure  & $6$   & $0.015$           & $0.105$ \\
-    spatial (GP kernel)         & spatial autocorr.\    & $792$ & $0.264$           & $0.702$ \\
+    genetic (MVN, $\mathbf{K}$)        & specificity (method)     & $0$   & $0.010^{\dagger}$ & $0.010^{\dagger}$ & $17/17$ \\
+    perm., global (among pops)         & population structure     & $6$   & $0.015$           & $0.015$           & $17/17$ \\
+    perm., regional (within locality)  & within-region parallel   & $6$   & $0.015$           & $0.015$           & $17/17$ \\
+    spatial (GP kernel)                & spatial autocorrelation  & $792$ & $0.264$           & $0.443$           & $15/17$ \\
     \hline
   \end{tabular}
-  \caption{Three structure nulls on the stickleback scan (observed: $1729$
-  C-score markers forming $17$ regions). The median number of C-score peaks per
-  surrogate is the null-calibration diagnostic: the genetic basis is silent
-  (a specificity control on the method), the permutation basis fires only
-  occasionally (attribution against population structure), and the spatial basis is
-  globally inflated ($792 \gg 0$)---a smooth field mismatched to a parallel habitat
-  contrast. Region $p$-values are location-matched overlap tests
-  (Section~\ref{sec:null}). $^{\dagger}$~$p$-floor $1/(1+B)$ at $B = 100$; the
-  permutation and spatial nulls use $B = 200$.}
+  \caption{Four structure nulls on the stickleback scan (observed: $1729$ C-score
+  markers forming $17$ regions). The median number of C-score peaks per surrogate is
+  the null-calibration diagnostic: the genetic basis is silent (a specificity
+  control on the method), the permutation bases fire only occasionally, and the
+  spatial basis is globally inflated ($792 \gg 0$)---a smooth field mismatched to a
+  parallel habitat contrast. Despite that inflation the location-matched region test
+  retains $15/17$ regions under the spatial null; the two it does not are the
+  strongly clinal chromosome-1 inversion and \textit{Eda}, which the within-locality
+  permutation nonetheless certifies as within-region parallel signals. Region
+  $p$-values are location-matched overlap tests (Section~\ref{sec:null}).
+  $^{\dagger}$~$p$-floor $1/(1+B)$ at $B = 100$ (genetic); the permutation and
+  spatial nulls use $B = 200$ (floor $0.005$).}
   \label{tab:threenull}
 \end{table}
 

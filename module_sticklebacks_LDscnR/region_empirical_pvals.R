@@ -74,9 +74,11 @@ null_regs <- lapply(null$C_surr, regstats)
 
 ## ---- 3. location-matched empirical p per observed region -------------
 ## for each perm: best score among null regions overlapping the observed locus
-overlap_best <- function(chr, lo, hi, nr) {
+## NB: args are o_* (not lo/hi) so they do not collide with nr's columns inside
+## the data.table `[`, where bare lo/hi bind to the columns of nr.
+overlap_best <- function(o_chr, o_lo, o_hi, nr) {
   if (!nrow(nr)) return(0)
-  h <- nr[Chr == chr & lo <= hi & hi >= lo]      # same chromosome, position ranges intersect
+  h <- nr[Chr == o_chr & lo <= o_hi & hi >= o_lo]   # same chromosome, position ranges intersect
   if (!nrow(h)) 0 else max(h$score)
 }
 emp <- rbindlist(lapply(seq_len(nrow(obs)), function(i) {
