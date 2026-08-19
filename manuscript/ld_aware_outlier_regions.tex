@@ -17,6 +17,7 @@
 \graphicspath{{figures/}}
 \usepackage[round]{natbib}
 \usepackage{booktabs}
+\usepackage{longtable}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
 \usepackage{xcolor}
@@ -576,6 +577,33 @@ the result is the \emph{convergence} of a negative and a positive control---the
 structure nulls show the peaks are not artifacts, and the independent data show they
 mark real, recurrent adaptation loci; neither line alone would carry the claim.
 
+The scan and clustering threshold trade specificity for sensitivity, and the
+Kingman comparison exposes the trade cleanly. The tight EMMAX set used above ($17$
+regions, $1.2$\,Mb) is the specific end---$19.5\times$ global-specific overlap---and
+every one of its regions is corroborated by at least one other set
+(Table~\ref{tab:crossset}). Running the LFMM scan at the same $\ell_{\min} = 3$
+instead casts a wide net ($136$ regions, $37$\,Mb, $\sim\!10\%$ of the genome): it
+recovers more EcoPeaks in absolute terms ($9$ global- and $28$ Pacific-specific
+regions) but at much weaker per-region enrichment ($1.9\times$ and $1.3\times$), and
+$78$ of its $136$ regions are singletons found by no other set. Raising $\ell_{\min}$
+to $10$ removes regions from both scans without adding any (the $\ell_{\min}=10$
+sets are strict subsets of the $\ell_{\min}=3$ sets). The tight EMMAX set is thus
+the natural primary, with LFMM a sensitive complement---and the cross-set table is
+itself a robustness statement: the loci recovered by several method/threshold
+combinations and by Kingman (the chromosome-1 inversion in all six columns; Chr5:$2.5$
+and Chr20:$0.18$ in five) are the most secure.
+
+A few regions overlap a Pacific-specific but not a global-specific EcoPeak---for
+example Chr4:$25.7$ and Chr5:$2.5$ in the EMMAX set, and many more in the broader
+LFMM set---loci flagged as recurrent marine--freshwater targets in the Pacific and
+independently recovered in the Atlantic 3sp panel, i.e.\ candidate cases of
+cross-basin parallel adaptation at loci the global analysis does not single out. The
+\emph{count} of such Pacific-only overlaps should not be over-interpreted: the
+Pacific-specific set covers roughly seven times more genome than the global-specific
+set, and on the coverage-adjusted rotation-null scale the global-specific fold is in
+fact the higher of the two. It is the identity of the individual loci, not the raw
+tally, that is informative.
+
 \begin{figure}[t]
   \centering
   % \includegraphics[width=0.78\linewidth]{fig5_venn_emmax17}
@@ -675,6 +703,99 @@ stickleback genome.
   especially at small $\ell_{\min}$.}
   \label{tab:grm-prauc}
 \end{table}
+
+\subsection{Cross-set corroboration of the stickleback outlier regions}
+\label{sec:supp-crossset}
+
+Table~\ref{tab:crossset} lists every consensus locus recovered by at least two of
+six sets: the four 3sp scans---EMMAX and LFMM, each clustered at $\ell_{\min}=3$
+(E3, L3) and $\ell_{\min}=10$ (E10, L10)---and the two Kingman \emph{specific}
+EcoPeak sets (global, Glob; Pacific, Pac). Regions are merged across sets by overlap
+(a $10$\,kb join tolerance) and ordered by how many sets recover them. Fifty-six
+loci are shared by two or more sets; every EMMAX region and every $\ell_{\min}=10$
+region is among them (none is a singleton), whereas $78$ of the $136$ LFMM
+$\ell_{\min}=3$ regions are singletons recovered by no other set (final row). The
+most secure loci head the table---the chromosome-1 inversion in all six columns,
+Chr5:$2.5$ and Chr20:$0.18$ in five.
+
+\begin{longtable}{lcccccc}
+\caption{Consensus 3sp outlier loci recovered by $\ge 2$ of six sets. E3/E10: EMMAX
+at $\ell_{\min}=3/10$; L3/L10: LFMM at $\ell_{\min}=3/10$; Glob/Pac: Kingman
+global-/Pacific-specific EcoPeaks. A \checkmark\ marks a set with a region (or peak)
+overlapping the locus. The final row counts regions unique to a single set.}
+\label{tab:crossset}\\
+\toprule
+Locus (gasAcu1, Mb) & E3 & E10 & L3 & L10 & Glob & Pac \\
+\midrule
+\endfirsthead
+\toprule
+Locus (gasAcu1, Mb) & E3 & E10 & L3 & L10 & Glob & Pac \\
+\midrule
+\endhead
+\midrule
+\multicolumn{7}{r}{\footnotesize\emph{continued on next page}}\\
+\endfoot
+\midrule
+\textit{unique (1 set only)} & $0$ & $0$ & $78$ & $0$ & --- & --- \\
+\bottomrule
+\endlastfoot
+Chr1:21.07 (inversion) & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+Chr5:2.48 & \checkmark & \checkmark & \checkmark & \checkmark &  & \checkmark \\
+Chr20:0.18 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark &  \\
+Chr4:11.10 &  &  & \checkmark & \checkmark & \checkmark & \checkmark \\
+Chr4:20.89 & \checkmark &  & \checkmark & \checkmark &  & \checkmark \\
+Chr4:25.23 & \checkmark &  & \checkmark & \checkmark &  & \checkmark \\
+Chr12:16.47 & \checkmark &  & \checkmark & \checkmark & \checkmark &  \\
+Chr14:11.00 &  &  & \checkmark & \checkmark & \checkmark & \checkmark \\
+Chr1:12.33 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr1:26.93 & \checkmark &  & \checkmark & \checkmark &  &  \\
+Chr4:9.43 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr4:12.81 (Eda) & \checkmark &  &  &  & \checkmark & \checkmark \\
+Chr4:14.03 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr4:26.49 & \checkmark &  & \checkmark & \checkmark &  &  \\
+Chr7:11.55 & \checkmark & \checkmark & \checkmark &  &  &  \\
+Chr7:17.99 &  &  & \checkmark &  & \checkmark & \checkmark \\
+Chr8:9.26 &  &  & \checkmark &  & \checkmark & \checkmark \\
+Chr11:0.00 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr11:6.11 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr11:8.86 &  &  & \checkmark &  & \checkmark & \checkmark \\
+Chr12:11.75 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr12:15.55 & \checkmark &  & \checkmark & \checkmark &  &  \\
+Chr16:11.54 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr16:16.48 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr17:6.45 & \checkmark &  & \checkmark & \checkmark &  &  \\
+Chr17:9.94 & \checkmark &  & \checkmark & \checkmark &  &  \\
+Chr18:0.80 &  &  & \checkmark & \checkmark &  & \checkmark \\
+Chr18:5.61 & \checkmark &  & \checkmark & \checkmark &  &  \\
+Chr20:8.89 & \checkmark &  &  &  & \checkmark & \checkmark \\
+Chr21:7.00 &  &  & \checkmark &  & \checkmark & \checkmark \\
+Chr1:8.87 &  &  & \checkmark &  &  & \checkmark \\
+Chr2:9.43 &  &  & \checkmark & \checkmark &  &  \\
+Chr2:22.52 &  &  & \checkmark & \checkmark &  &  \\
+Chr3:3.76 &  &  & \checkmark & \checkmark &  &  \\
+Chr3:6.72 &  &  & \checkmark & \checkmark &  &  \\
+Chr3:13.03 & \checkmark &  & \checkmark &  &  &  \\
+Chr4:24.72 &  &  & \checkmark &  &  & \checkmark \\
+Chr5:1.55 &  &  & \checkmark & \checkmark &  &  \\
+Chr6:1.40 &  &  & \checkmark & \checkmark &  &  \\
+Chr7:0.06 &  &  & \checkmark & \checkmark &  &  \\
+Chr7:6.95 &  &  & \checkmark &  &  & \checkmark \\
+Chr7:10.53 &  &  & \checkmark & \checkmark &  &  \\
+Chr7:14.49 &  &  & \checkmark &  &  & \checkmark \\
+Chr8:0.11 &  &  & \checkmark & \checkmark &  &  \\
+Chr8:1.45 &  &  & \checkmark & \checkmark &  &  \\
+Chr8:5.52 &  &  & \checkmark &  &  & \checkmark \\
+Chr8:10.33 &  &  & \checkmark & \checkmark &  &  \\
+Chr10:6.24 &  &  & \checkmark & \checkmark &  &  \\
+Chr11:11.99 &  &  & \checkmark & \checkmark &  &  \\
+Chr12:2.48 &  &  & \checkmark & \checkmark &  &  \\
+Chr14:14.94 &  &  & \checkmark & \checkmark &  &  \\
+Chr16:4.23 &  &  & \checkmark & \checkmark &  &  \\
+Chr20:2.21 &  &  & \checkmark & \checkmark &  &  \\
+Chr20:3.67 & \checkmark &  & \checkmark &  &  &  \\
+Chr20:6.25 &  &  & \checkmark &  &  & \checkmark \\
+Chr21:2.18 &  &  & \checkmark &  &  & \checkmark \\
+\end{longtable}
 
 \bibliographystyle{plainnat}
 \bibliography{references}
