@@ -345,6 +345,40 @@ against the genetic and both permutation nulls (largest $q_R = 0.025$), and $14$
 $17$ against the spatial null---these are false-discovery-controlled region calls,
 not nominal $p$-values.
 
+\paragraph{A second-tier consistency score over the operating grid.}
+The operating point $(\tauc, \lmin)$ is itself a nuisance choice, and selecting the
+cell that maximises the number of significant regions would re-introduce, at the grid
+level, exactly the multiple-testing problem the region-level FDR controls within a
+cell. We resolve it as the C-score resolves the marker-level nuisance parameters---by
+integration. Over a grid $\mathcal{G}$ of operating points, let each cell $g$ yield
+its significant regions (those with $q_R(g) < \alpha_R$ at a region-level FDR target
+$\alpha_R$, here $0.05$), and let
+$\mathcal{U} = \{\, g \in \mathcal{G} : g \text{ yields}\ge 1 \text{ significant region}\,\}$
+be the \emph{usable} grid---the part of parameter space in which the method finds
+anything at all. The second-tier C-score of a genomic locus $\ell$ is the fraction of
+usable cells in which it is recovered as a significant region,
+\begin{equation}
+  C^{(2)}_\ell \;=\; \frac{1}{|\mathcal{U}|} \sum_{g \in \mathcal{U}}
+    \mathbb{1}\!\left[\,\exists\ \text{a region } R \ni \ell \ \text{with}\ q_R(g) < \alpha_R \,\right]
+    \;\in\; (0, 1].
+  \label{eq:cscore2}
+\end{equation}
+This is Eq.~\ref{eq:cscore} one level up: the marker C-score integrates
+candidacy-and-significance over the $(\rho, q^*)$ grid, while $C^{(2)}$ integrates
+region significance over the $(\tauc, \lmin)$ grid---two nested grids, the same
+consistency principle. It is robust to grid selection by construction: a locus
+significant only in the single cell that maximises the count scores
+$C^{(2)} = 1/|\mathcal{U}| \approx 0$, so credibility requires significance
+\emph{across} operating points rather than at a cherry-picked one. And it grades
+regions by parameter-robustness---$C^{(2)} \to 1$ marks a locus significant
+throughout the usable space, whereas a small but positive $C^{(2)}$ marks one
+significant only in a narrow slice and hence \emph{fragile} to the threshold choice.
+Like the marker C-score, $C^{(2)}$ is a consistency ranking, not a hard filter; it
+does not abolish parameter dependence but lifts it from the choice of a single cell
+to the choice of a grid \emph{range} and a null---a broad, reportable choice rather
+than a cherry-pick. We therefore report the ranked loci together with the grid range,
+treating low-$C^{(2)}$ regions explicitly as parameter-sensitive.
+
 The surrogate basis encodes \emph{which} confounder is controlled, and this is a
 modelling choice rather than a technicality. A \emph{genetic} basis, drawing the
 surrogate from the same $\mathbf{K}$ the scan already conditions on, asks whether
@@ -638,16 +672,31 @@ fact the higher of the two. It is the identity of the individual loci, not the r
 tally, that is informative.
 
 The external control also validates the \emph{operating point}, not just the region
-list. Sweeping the same $\tau_C \times \ell_{\min}$ grid used for the structure-null
-landscape (Section~\ref{sec:null}) and scoring each cell's overlap with the
-global-specific EcoPeaks, both the precision (fraction of regions on an EcoPeak) and
-the rotation-null fold enrichment peak in the low-$\tau_C$, low-to-moderate-$\ell_{\min}$
-corner, and the operating point used above ($\tau_C = 0.05$, $\ell_{\min} = 3$) sits at
-the F1-optimum of precision and recall (Fig.~\ref{fig:sweep}). Recall saturates at
-${\sim}0.28$ because most global EcoPeaks are Pacific-derived and absent from the
-Atlantic panel, so precision and fold are the informative axes---and on both the chosen
-point is near-optimal. The structure-aware null, which uses no truth, and the Kingman
-EcoPeaks, an external truth, thus agree on where to operate.
+list. We swept the same $\tau_C \times \ell_{\min}$ grid used for the structure-null
+landscape (Section~\ref{sec:null}) and scored each cell's overlap with the
+global-specific EcoPeaks (Fig.~\ref{fig:sweep}). Two of the four scored quantities
+divide by the number of regions in a cell and are therefore not estimable when a cell
+holds only a handful: a single region that happens to hit gives a precision of $1$, and a
+near-empty rotation null gives an arbitrarily large fold. Cells with fewer than five
+regions are masked throughout. This is a severe restriction for EMMAX---only $33$ of the
+$270$ cells survive it, the C-score falling below five regions almost everywhere outside
+the low-$\tau_C$ column---and a mild one for LFMM, where $247$ cells survive because a
+large block of SNPs carries $C$ near $1$ at every threshold.
+
+On the masked grid the precision (fraction of regions on an EcoPeak) does peak in the
+low-$\tau_C$ corner, reaching $0.40$ at $\tau_C = 0.05$, $\ell_{\min} = 6$--$9$. The
+rotation-null fold does not: it is largest along the $\ell_{\min} = 1$ edge at high
+$\tau_C$ ($46\times$ at $\tau_C = 0.70$), in cells sitting at the masking floor, so it
+should be read as a consistency check rather than as an optimisation target. The
+operating point used above ($\tau_C = 0.05$, $\ell_{\min} = 3$) is not the F1 maximum---
+that falls at $\tau_C = 0.10$, $\ell_{\min} = 1$ ($F_1 = 0.197$ against $0.189$)---but it
+ranks third of the $33$ estimable cells and carries the higher precision of the two
+($0.29$ versus $0.20$). Recall saturates at ${\sim}0.28$ because most global EcoPeaks are
+Pacific-derived and absent from the Atlantic panel; since recall is capped by biology
+rather than by the threshold, F1 should not be over-weighted here, and precision is the
+axis on which the chosen point is close to the best available. The structure-aware null,
+which uses no truth, and the Kingman EcoPeaks, an external truth, thus point to the same
+corner of the grid, without either singling out one cell.
 
 The C-score is moreover validated as a graded per-SNP statistic, not only at the region
 level. Binning every SNP by its C-score---the fraction of $(\rho, q^*)$ cells in which it
@@ -673,7 +722,11 @@ finely graded strength of evidence.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{kingman_sweep_EMMAX_c155specific}
-  \caption{Calibrating the operating point against an external positive control.}
+  \caption{Calibrating the operating point against an external positive control. Cells
+  holding fewer than five regions are masked in the precision, fold and F1 panels, where
+  those statistics are not estimable; only $33$ of $270$ cells survive for EMMAX. The
+  cross marks the operating point used in the text and the circle the F1 maximum---they
+  are adjacent but not identical.}
   \label{fig:sweep}
 \end{figure}
 
