@@ -45,10 +45,26 @@ false-discovery level; markers are then clustered into regions by LD, and
 regions are retained by a size filter. We calibrate the detection threshold with
 a \emph{structure-aware null} that requires no per-locus permutation, and we
 provide a \emph{detectability} diagnostic that flags datasets in which structure,
-rather than signal, dominates. \todo{results one-liner}
+rather than signal, dominates. We validate the method on coalescent simulations,
+where its region-detection precision--recall matches a latent-factor scan (LFMM),
+and on a real stickleback genome scored against an independent set of recurrent
+marine--freshwater adaptation peaks. On the real genome the ranking inverts: the
+latent-factor scan inflates on the panel's continental-scale structure---flagging
+${\sim}10\%$ of the genome, with its highest-scoring variants the least
+reproducible---while the LD-aware scan, built on an explicit LD-independent kinship,
+stays concentrated on independently corroborated loci. Simulated power is thus a best
+case that need not transfer to a structure-rich real genome.
 \end{abstract}
 
 \section{Introduction}
+
+Methods for detecting selection and genotype--environment association are almost
+universally benchmarked on simulations, and a method's standing in the field rests
+heavily on that performance; yet the population structure of a simulation is typically
+far simpler than that of a real sampled genome, so a method that leads on simulated
+benchmarks can be the one that inflates on real data---precisely where its model of the
+confounding structure ceases to fit.
+
 \todo{Introduction: genome scans for selection / genotype--environment
 association; the problems of population and spatial structure, of per-locus
 multiple testing, and of over-interpreting structure artifacts; the LD-support
