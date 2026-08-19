@@ -47,3 +47,19 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+.positai
+
+# LDscnR module outputs (regenerable, large: bundles, caches, figures, results)
+module_sticklebacks_LDscnR/data/
+module_sticklebacks_LDscnR/figures/
+module_sticklebacks_LDscnR/results/
+module_sim_LDscnR/data/
+module_sim_LDscnR/figures/
+module_sim_LDscnR/results/
+
+# LaTeX build artifacts
+manuscript/*.aux
+manuscript/*.bbl
+manuscript/*.blg
+manuscript/*.log
+manuscript/*.out
