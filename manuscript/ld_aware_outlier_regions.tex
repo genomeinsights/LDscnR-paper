@@ -301,6 +301,35 @@ same quantile in the target method's distribution. This places the two methods
 at a common false-positive anchor even when their raw score scales differ by an
 order of magnitude.
 
+\paragraph{Region-level empirical $p$-values and the choice of structure basis.}
+The region-level FDR above sets a single genome-wide operating point; where
+individual regions are of interest we additionally assign each its own empirical
+$p$-value by \emph{location-matched} overlap. Scoring a region $R$ by its summed
+C-mass $s_R = \sum_{j\in R} C_j$, we take as its $p$-value the fraction of
+surrogates that produce a region overlapping $R$'s genomic span with mass at least
+$s_R$, $p_R = \bigl(1 + \#\{b : s^{\mathrm{null}}_{b,R} \ge s_R\}\bigr)/(1+B)$.
+This test is deliberately \emph{local}: a signal confined to part of the sampled
+range need not be reproduced by a structure-preserving surrogate at its own locus,
+so a genuinely range-restricted adaptation peak---one that a pooled, genome-wide
+count-FDR would charge to structure---can still separate from the null here.
+
+The surrogate basis encodes \emph{which} confounder is controlled, and this is a
+modelling choice rather than a technicality. A \emph{genetic} basis, drawing the
+surrogate from the same $\mathbf{K}$ the scan already conditions on, asks whether
+the pipeline manufactures regions from structured-but-null data; because that
+structure is absorbed by the correction, it is a \emph{specificity} control on the
+method itself. A basis \emph{not} in the correction instead tests
+\emph{attribution} against a named confounder: a smooth spatial kernel over
+coordinates for a continuous environmental gradient, or a permutation of the
+environmental labels among the discrete sampling units for a parallel, patchy
+habitat contrast. The basis must match how the environment is actually
+distributed. A mismatched basis---a smooth kernel imposed on a parallel
+contrast---injects autocorrelation absent from both the environment and the
+kinship correction, inflating the surrogate scans and over-charging the null. The
+number of null peaks per surrogate is a direct calibration check: a well-specified
+null produces at most a handful, whereas a surrogate that rivals the observed scan
+in peak count is inflated and mis-specified (Section~\ref{sec:threenull}).
+
 \paragraph{Relationship to existing methods.}
 Structure-aware surrogate nulls are well established outside genome scans.
 Preserving spatial autocorrelation while breaking the association between two
@@ -397,6 +426,86 @@ application (3sp; clear-peak contrast).}
   \caption{Detectability from the shape of the per-chromosome tail-mass profile.}
   \label{fig:detect}
 \end{figure}
+
+\subsection{Three structure nulls on a stickleback marine--freshwater scan}
+\label{sec:threenull}
+
+We applied the scan to a three-spine stickleback (\textit{Gasterosteus aculeatus})
+marine--freshwater dataset: $117$ individuals from $35$ populations spanning a
+continental range (latitude $47$--$75^\circ$\,N). Single-SNP EMMAX resolves nothing
+at $q \le 0.05$ (minimum $q \approx 0.06$), whereas the LD-aware C-score yields
+$17$ outlier regions ($1729$ markers with $C > 0$) that recover the known
+architecture---the chromosome-1 inversion, the \textit{Eda} region on
+chromosome~4, and peaks on chromosomes 5, 7, 17 and 20. Holding this observed
+region set fixed, we read it against three surrogate nulls that differ only in
+their structure basis (Table~\ref{tab:threenull}); the median number of C-score
+peaks per surrogate is the calibration diagnostic that interprets each.
+
+The \emph{genetic} basis is silent. Drawn from the same kinship the scan conditions
+on, it produces a median of \emph{zero} peaks per surrogate and not one null region
+overlapping any of the $17$, which therefore all sit at the $p$-floor. This is the
+specificity statement---the C-score-plus-clustering pipeline does not fabricate
+regions from structured-but-null data, so the observed peaks are signal, not
+clustering artifacts---but, because the surrogate is absorbed by the correction, it
+cannot itself apportion signal between the ecotype contrast and population
+structure.
+
+The \emph{permutation} null does apportion it. Shuffling the marine/freshwater
+label among the $35$ populations preserves population structure while breaking the
+ecotype--genotype link; it rebuilds the chromosome-1 inversion at matching strength
+in only ${\sim}1.5\%$ of permutations ($p = 0.015$), but rebuilds the
+\textit{Eda}/chromosome-4 peaks ${\sim}11\%$ of the time ($p = 0.10$). The
+inversion is thus the more ecotype-specific signal, whereas chromosome-4
+differentiation is shared broadly enough across populations that label permutation
+reproduces it; seven of the $17$ regions reach $p < 0.05$. A pooled genome-wide
+count-FDR against the same null is far blunter---dominated by a few permutations
+that light up whole structured blocks, it retains essentially one region---so the
+location-matched test is what makes this null usable.
+
+The \emph{spatial} basis instead \emph{over}-charges the null. A Gaussian random
+field over the sampling coordinates carpets the genome with a median of $792$ peaks
+per surrogate---against $1729$ observed---so surrogate regions overlap the observed
+loci by sheer density (median overlap $0.59$) and nothing survives, the inversion
+included ($p = 0.26$). The diagnosis is mis-specification, not a real spatial
+confound: a smooth field carries autocorrelation the genetic kinship does not
+remove, so the surrogate scans are globally inflated, and the peak-count diagnostic
+($792 \gg 0$) flags this directly. The mismatch is structural---marine--freshwater
+divergence is a \emph{parallel} habitat contrast, the same freshwater alleles
+recruited at independent, geographically scattered sites, which is exactly the
+pattern a smooth field cannot represent. On the simulations, where the environment
+genuinely is a smooth gradient, the identical spatial null is well calibrated and
+recovers the causal regions (Section~\ref{sec:null}); it fails here only because
+the basis does not match the data.
+
+Together the three nulls give a specificity-then-attribution reading: the genetic
+null certifies that the regions are real method output, and the permutation
+null---matched to the discrete, parallel structure of the contrast---ranks them by
+how far each exceeds population structure, placing the inversion ahead of the
+broadly shared chromosome-4 differentiation.
+
+\begin{table}[h]
+  \centering
+  \begin{tabular}{llccc}
+    \hline
+    null (basis) & controls for & med.\ null & Chr1 inv. & \textit{Eda}/Chr4 \\
+                 &              & peaks/surr. & $p$ & $p$ \\
+    \hline
+    genetic (MVN, $\mathbf{K}$) & method specificity   & $0$   & $0.010^{\dagger}$ & $0.010^{\dagger}$ \\
+    permutation (among pops)    & population structure  & $6$   & $0.015$           & $0.105$ \\
+    spatial (GP kernel)         & spatial autocorr.\    & $792$ & $0.264$           & $0.702$ \\
+    \hline
+  \end{tabular}
+  \caption{Three structure nulls on the stickleback scan (observed: $1729$
+  C-score markers forming $17$ regions). The median number of C-score peaks per
+  surrogate is the null-calibration diagnostic: the genetic basis is silent
+  (a specificity control on the method), the permutation basis fires only
+  occasionally (attribution against population structure), and the spatial basis is
+  globally inflated ($792 \gg 0$)---a smooth field mismatched to a parallel habitat
+  contrast. Region $p$-values are location-matched overlap tests
+  (Section~\ref{sec:null}). $^{\dagger}$~$p$-floor $1/(1+B)$ at $B = 100$; the
+  permutation and spatial nulls use $B = 200$.}
+  \label{tab:threenull}
+\end{table}
 
 \section{Discussion}
 \todo{Why region-level + consistency-score framing makes the null affordable and
