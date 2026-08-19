@@ -533,6 +533,62 @@ the location-matched region test is robust to a mis-specified, inflated null.
   \label{tab:threenull}
 \end{table}
 
+\subsection{External validation against an independent dataset}
+\label{sec:kingman}
+
+The structure nulls are negative controls: they establish that the regions are not
+method artifacts (genetic) and that they exceed population, within-region and
+spatial structure (the permutation and spatial nulls). What no within-sample null
+can do is confirm that a region is \emph{biologically} real rather than merely
+non-spurious. Independent recovery of the same loci in a separate dataset and
+pipeline is the complementary positive control.
+
+We compared the $17$ regions against the recurrent marine--freshwater EcoPeaks of
+\citet{kingman2021predicting}, which come from independent cohorts (a global panel
+and a North-Eastern Pacific panel), an independently implemented SNP-based ecotype
+test, and a different genome assembly (gasAcu1-4, lifted to common coordinates).
+The regions overlap the global-specific EcoPeaks $19.5\times$ more than a
+within-chromosome rotation null ($5/17$ regions, $p = 5\times10^{-4}$, $B = 2000$)
+and the Pacific-specific set $2.4\times$ ($p = 0.04$). Three regions coincide with
+\emph{both} cohorts' specific peaks (Fig.~\ref{fig:venn}), among them the
+chromosome-1 inversion---recovered by four independent routes: the EMMAX and the
+LFMM 3sp scans, the published global EcoPeak (SNP $p = 4.5\times10^{-15}$), and the
+strongest suggestive peak in the geographically matched North-European cohort.
+\textit{Eda} likewise falls on a strong EcoPeak in both cohorts
+($p \approx 10^{-14}$); as a weak four-SNP cluster it is a detection-margin signal,
+present at $\ell_{\min} = 3$ but lost at $\ell_{\min} = 10$, so its recovery is real
+but parameter-sensitive.
+
+Three points keep the comparison honest. First, the overlap is far stronger against
+this tight $17$-region set than against a looser $\ell_{\min} = 10$ clustering ($40$
+regions over $21$\,Mb), where dilution drops the global-specific overlap to
+$1.4\times$ ($p = 0.33$)---the region set, not just the data, matters. Second, the
+signal is geographically coherent. A rank-based enrichment of low Kingman
+$p$-values inside the $17$ regions is strongest for the ocean-basin-matched
+Northern-European cohort ($34\times$ among the top $1\%$ of SNPs, $p = 0.002$) and
+remains high for the global ($26\times$, $p = 0.004$) and North-Eastern Pacific
+($18\times$, $p = 0.002$) cohorts; independently, $5$ of the $41$ Northern-European
+suggestive peaks fall inside the regions ($15\times$, $p = 2\times10^{-4}$). Since
+the 3sp panel is North-European Atlantic, the matched cohort giving the strongest
+signal is the expected pattern, and it locates the residual weakness of the raw
+published-peak overlap in geography rather than in the method. Third, the force of
+the result is the \emph{convergence} of a negative and a positive control---the
+structure nulls show the peaks are not artifacts, and the independent data show they
+mark real, recurrent adaptation loci; neither line alone would carry the claim.
+
+\begin{figure}[t]
+  \centering
+  % \includegraphics[width=0.78\linewidth]{fig5_venn_emmax17}
+  \fbox{\parbox[c][0.30\linewidth][c]{\linewidth}{\centering\itshape
+    Figure placeholder: Venn of the $17$ EMMAX outlier regions against the two
+    Kingman \emph{specific} EcoPeak sets. Three regions---the chromosome-1
+    inversion, \textit{Eda}, and chromosome-20 (8.9\,Mb)---fall in both cohorts;
+    two are global-only, two Pacific-only, and ten overlap no specific EcoPeak.}}
+  \caption{Overlap of the 3sp LD-aware outlier regions with the independently
+  derived Kingman EcoPeaks.}
+  \label{fig:venn}
+\end{figure}
+
 \section{Discussion}
 \todo{Why region-level + consistency-score framing makes the null affordable and
 is robust on saturated genomes; the detectability safeguard; limitations
