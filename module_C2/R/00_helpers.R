@@ -228,3 +228,83 @@ c2_anchor_grid <- function(core, anchors, B, rule = "any", thr = 0.5,
   res[, sig := detected & !is.na(q_R) & q_R < C2$FDR]
   res[]
 }
+
+## =====================================================================
+## Null-admissible operating grid (second iteration)
+## =====================================================================
+
+## The GRID is seq(0.02, 0.50, 0.02) x LMINS = 175 cells. tau_C = 0.05 is a
+## REFERENCE coordinate appended to the cache for anchor construction -- it is NOT
+## a grid member and must never enter an admissibility denominator.
+C2$REF_TAU  <- 0.05
+C2$is_grid_tau <- function(x) x %in% C2$TAUS
+
+## ---- per-cell null behaviour ----------------------------------------
+## Absent surrogate indices mean "this surrogate produced no region", so every
+## statistic is taken over all B surrogates, not over the b values present.
+c2_null_cell <- function(core, tau, lmin, B) {
+  S <- core$by_tau[[as.character(tau)]]$surr
+  S <- S[size >= lmin]
+  nreg <- integer(B); nmk <- integer(B)
+  if (nrow(S)) {
+    a <- S[, .(n = .N, m = sum(size)), by = b]
+    nreg[a$b] <- a$n; nmk[a$b] <- a$m
+  }
+  k <- sum(nreg > 0)
+  ci <- stats::binom.test(k, B)$conf.int          # Clopper-Pearson (exact)
+  data.table(tau = tau, lmin = lmin,
+             p_null_any = k / B, p_null_lo = ci[1], p_null_hi = ci[2], k_null = k,
+             mean_null_regions = mean(nreg),
+             q50_null_regions = stats::quantile(nreg, 0.50, names = FALSE),
+             q90_null_regions = stats::quantile(nreg, 0.90, names = FALSE),
+             q95_null_regions = stats::quantile(nreg, 0.95, names = FALSE),
+             q99_null_regions = stats::quantile(nreg, 0.99, names = FALSE),
+             max_null_regions = max(nreg),
+             mean_null_markers = mean(nmk),
+             mean_null_coverage = mean(nmk) / length(core$D$universe))
+}
+
+## ---- markers covered by observed regions in a cell -------------------
+c2_obs_markers <- function(core, tau, lmin) {
+  ct <- core$by_tau[[as.character(tau)]]
+  keep <- which(ct$obs$size >= lmin)
+  if (!length(keep)) return(character(0))
+  unique(unlist(ct$mk[keep], use.names = FALSE))
+}
+
+## ---- anchor detection over an arbitrary cell set ---------------------
+## Detection ONLY (significance is handled separately, and is tested for
+## redundancy rather than assumed). `thr` is the anchor-marker retention
+## fraction |A n R| / |A|; `recip` additionally demands |A n R| / |R| >= thr.
+c2_detect_grid <- function(core, anchors, cells, thr = 0.5, recip = FALSE) {
+  A <- anchors$mk; alab <- names(A)
+  out <- list()
+  for (tau in unique(cells$tau)) {
+    ct <- core$by_tau[[as.character(tau)]]
+    lms <- cells[tau == ..tau]$lmin
+    nO <- nrow(ct$obs)
+    rec <- rcp <- matrix(0, length(A), max(nO, 1L))
+    if (nO) for (j in seq_len(nO)) {
+      Rj <- ct$mk[[j]]
+      for (i in seq_along(A)) {
+        n <- length(intersect(A[[i]], Rj))
+        if (n) { rec[i, j] <- n / length(A[[i]]); rcp[i, j] <- n / length(Rj) }
+      }
+    }
+    for (lm in lms) {
+      keep <- which(ct$obs$size >= lm)
+      if (!length(keep)) {
+        out[[length(out) + 1L]] <- data.table(tau = tau, lmin = lm, label = alab,
+                                              detected = FALSE, n_match = 0L, best_rec = 0)
+        next
+      }
+      sr <- rec[, keep, drop = FALSE]; sp <- rcp[, keep, drop = FALSE]
+      hit <- sr >= thr & (if (recip) sp >= thr else TRUE)
+      out[[length(out) + 1L]] <- data.table(
+        tau = tau, lmin = lm, label = alab,
+        detected = rowSums(hit) > 0, n_match = rowSums(hit),
+        best_rec = vapply(seq_along(A), function(i) max(sr[i, ]), numeric(1)))
+    }
+  }
+  rbindlist(out)
+}

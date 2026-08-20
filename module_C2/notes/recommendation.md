@@ -206,3 +206,89 @@ measure actually computes on these data.
   usable cell.
 * That physical overlap identifies two regions as the same LD signal.
 * That it validates the method in simulation *beyond* what `maxC` already achieves.
+
+---
+
+# Iteration 2 — the null-informed admissible grid
+
+Full detail in [`null_admissible_grid.md`](null_admissible_grid.md). Scripts
+`R/08`–`R/13`. This iteration asked whether the null can *exclude* cells rather than
+the analyst *choosing* one, and then assess signals across what remains.
+
+## Answers to the eight iteration-2 questions
+
+**1. Is there a defensible null-derived admissible grid?**
+A rule can be written down cleanly and applied honestly, but it does not identify a
+real feature of the data. `p_null_any` is a **smooth continuum** from 0.025 to 0.755
+with a median gap between sorted values of 0.0000 and no break anywhere; it is
+**never zero** on any of the 175 cells. So there is no natural boundary to discover —
+only a tolerance to impose. The rule is also not the "lenient corner" that motivated
+it: null-region production is governed by `l_min` (Spearman -0.970), not `tau_C`
+(-0.216), so admissibility is essentially a minimum-region-size requirement wearing a
+different name.
+
+**2. Is the boundary stable at B = 200?**
+**No, at the tolerances of interest.** At `eps = 0.05` the Clopper-Pearson
+upper-bound rule retains **zero cells**: not one cell can be *shown* at B = 200 to
+have `p_null_any <= 0.05`. At `eps = 0.10`, 29 % of retained cells are statistically
+indistinguishable from failing. Separating `eps = 0.05` from `eps = 0.10` is beyond
+this null's resolution (a cell at 20/200 has CI [0.062, 0.150]). Only `eps = 0.20` is
+reasonably resolved (13 % ambiguous).
+
+**3. Does excluding null-prone cells materially improve interpretation?**
+It materially *changes* interpretation; whether that is an improvement is not
+established. Zero-support regions go 0/17 (full) → 4/17 (`P20`) → 9/17 (`P10`) →
+12/17 (`U10`) → **17/17** (`P05`, `C001`). Past `eps = 0.10` the filter does not
+sharpen the region set, it deletes it — mechanically, because 9 of the 17 reference
+regions have ≤ 4 SNPs and admissibility demands `l_min >= 10`. The genuine gain is at
+`eps = 0.20`, where the 4 regions that drop out are demonstrably the ones living in
+null-prone cells (mean `p_null_any` 0.488 vs 0.361, with 0 % of their detecting cells
+admissible). That validation is real and was computed after the rule was fixed.
+
+**4. Which signals are robust across reasonable tolerances?**
+Three, and only three: **`Chr5:2.48–2.50 Mb`** (top-supported at 4 of 5 reference
+points), the **Chr1 inversion**, and **`Chr20:0.18–0.26 Mb`**. These are the only
+regions retaining support at `U10`, the only stable-core families in the anchor-free
+analysis, and the only ones whose rank is unaffected by the tolerance. `Eda` survives
+`P20` (rank 10 → 5) but not `P10`. Everything else is tolerance-dependent.
+
+**5. Does BH significance add anything beyond detection?**
+**No.** Zero detected-but-not-significant cells across all 19 grid × threshold
+configurations, extending iteration 1's result to every admissible grid. Do not
+present significance support as independent evidence.
+
+**6. Is the anchored Manhattan an adequate presentation device?**
+Yes, with one caveat now fixed: region support and marker support live on different
+scales (max 0.12 vs 0.65), because a region must be recovered ≥ 50 % intact while a
+marker need only fall in any region. A shared colour scale flattens the anchored
+panel, so both a shared-scale version (for side-by-side reading) and an own-scale
+version are provided. The figure is now genuinely per-region, unlike the legacy
+`region_c2_manhattan.png`, which is per-chromosome.
+
+**7. Does the anchor-free analysis reveal signals the reference point omits?**
+**No.** On every admissible grid, every locus family overlaps a reference-point
+region (`n_novel = 0` at all support gates), region- and marker-level support agree
+at Spearman 0.992, and the maximum `S_m` outside the reference set falls to 0.069.
+The 41 "novel" families on the full grid have a median of **1** marker — singleton
+noise. The reference point is not hiding anything.
+
+**8. Hard rule, sensitivity across tolerances, or no filtering?**
+**Show sensitivity across tolerances; do not adopt a hard rule.** Admissibility
+depends entirely on an arbitrary tolerance (no break in the null continuum), the
+tolerance most people would reach for (`eps = 0.05`) is unresolvable at B = 200 and
+annihilates the region set, and the axis actually being filtered is `l_min` — which
+is already an explicit, reportable parameter of the method. Recommended framing: keep
+the single prespecified operating point with its location-matched `q_R` as the
+reported inference, and present the null landscape (`fig7`) plus support at
+`eps ∈ {0.20, 0.10}` as a supplementary sensitivity analysis, stating plainly that
+only three regions are tolerance-robust.
+
+## What changed from iteration 1
+
+* Iteration 1 concluded the matching rule dominated the ranking. That was driven by
+  permissive **any-overlap** matching; among genuine retention thresholds
+  (`rec25/50/75`) agreement is 0.78–1.00, so the threshold is **not** a sensitive
+  knob. The distinction that matters is retention-based vs overlap-based matching.
+* Iteration 1's headline (significance ≡ detection) is confirmed and extended.
+* The `|U|` conditional denominator is again shown to be a pure rescaling
+  (Spearman 1.000 with the full-grid score).

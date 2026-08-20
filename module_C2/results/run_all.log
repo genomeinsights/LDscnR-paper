@@ -57,7 +57,7 @@
 [2] rule 'any': 1 s ; detected cells = 700 ; significant cells = 700
 [2] rule 'ovl50': 1 s ; detected cells = 700 ; significant cells = 700
 [2] rule 'rec50': 1 s ; detected cells = 259 ; significant cells = 259
-[2] rule 'span': 1 s ; detected cells = 700 ; significant cells = 700
+[2] rule 'span': 0 s ; detected cells = 700 ; significant cells = 700
 
 [3] anchor scores by matching rule (D = detection, Q = significance):
                          label      D_any    D_ovl50    D_rec50     D_span
@@ -410,6 +410,486 @@ SE            0.052          0.052     0.166   0.025   0.088     0.175
 
 [2] wrote results/sim_validation_prauc.csv + sim_anchor_scores.csv
 [3] wrote figures/fig6_sim_truth.png
+
+########## 08_null_landscape ##########
+[0] grid = 25 tau x 7 l_min = 175 cells ; B = 200 ; universe = 11269 markers
+[0] cached-but-OFF-GRID tau values (reference only, excluded from all grid
+    denominators): 0.05
+
+[1] p_null_any over the grid: min 0.025, median 0.105, max 0.755
+    cells with p_null_any == 0 : 0 of 175 (0%)
+    cells with p_null_any == 1 : 0
+
+[1] p_null_any by l_min (across tau_C):
+    lmin   min median   max n_zero
+   <int> <num>  <num> <num>  <int>
+1:     1 0.395  0.510 0.755      0
+2:     2 0.210  0.295 0.480      0
+3:     3 0.125  0.195 0.315      0
+4:     5 0.080  0.105 0.180      0
+5:    10 0.055  0.055 0.090      0
+6:    15 0.035  0.040 0.085      0
+7:    20 0.025  0.030 0.055      0
+
+[1] p_null_any at the most lenient l_min = 1, across tau_C:
+      tau p_null_any mean_null_regions mean_null_coverage
+    <num>      <num>             <num>              <num>
+ 1:  0.02      0.755             15.23             0.0047
+ 2:  0.04      0.710             12.41             0.0036
+ 3:  0.06      0.675             11.04             0.0032
+ 4:  0.08      0.650             10.11             0.0028
+ 5:  0.10      0.625              9.38             0.0025
+ 6:  0.12      0.600              8.74             0.0023
+ 7:  0.14      0.575              8.20             0.0021
+ 8:  0.16      0.560              7.82             0.0020
+ 9:  0.18      0.545              7.42             0.0019
+10:  0.20      0.535              7.03             0.0017
+11:  0.22      0.525              6.72             0.0016
+12:  0.24      0.520              6.40             0.0015
+13:  0.26      0.510              6.02             0.0014
+14:  0.28      0.505              5.78             0.0014
+15:  0.30      0.495              5.50             0.0013
+16:  0.32      0.490              5.28             0.0012
+17:  0.34      0.480              5.05             0.0012
+18:  0.36      0.475              4.75             0.0011
+19:  0.38      0.470              4.54             0.0010
+20:  0.40      0.470              4.39             0.0010
+21:  0.42      0.460              4.11             0.0009
+22:  0.44      0.425              3.88             0.0009
+23:  0.46      0.420              3.67             0.0009
+24:  0.48      0.400              3.45             0.0008
+25:  0.50      0.395              3.29             0.0008
+      tau p_null_any mean_null_regions mean_null_coverage
+    <num>      <num>             <num>              <num>
+
+[2] transition: largest tau_C at which p_null_any still exceeds each tolerance
+    (i.e. the lenient region is tau_C <= this value); NA = never exceeds it
+Key: <lmin>
+    lmin last_tau_above_0.05 last_tau_above_0.1 last_tau_above_0.2
+   <int>               <num>              <num>              <num>
+1:     1                0.50               0.50               0.50
+2:     2                0.50               0.50               0.50
+3:     3                0.50               0.50               0.18
+4:     5                0.50               0.28                 NA
+5:    10                0.50                 NA                 NA
+6:    15                0.10                 NA                 NA
+7:    20                0.06                 NA                 NA
+   n_cells_above_0.05 n_cells_above_0.1 n_cells_above_0.2
+                <int>             <int>             <int>
+1:                 25                25                25
+2:                 25                25                25
+3:                 25                25                 9
+4:                 25                14                 0
+5:                 25                 0                 0
+6:                  5                 0                 0
+7:                  3                 0                 0
+
+[3] contiguity of {p_null_any > eps} in tau_C, per l_min:
+    eps = 0.05 : excluded set is a contiguous low-tau prefix at every l_min: TRUE
+    eps = 0.10 : excluded set is a contiguous low-tau prefix at every l_min: TRUE
+    eps = 0.20 : excluded set is a contiguous low-tau prefix at every l_min: TRUE
+
+[4] Spearman(p_null_any, n_obs_regions) = 0.925  [DIAGNOSTIC ONLY]
+    Spearman(mean_null_coverage, obs_coverage) = 0.962
+    -> null and empirical burden co-vary, but admissibility below uses the
+       null columns ONLY; the empirical columns are never consulted.
+
+[5] wrote results/null_grid_diagnostics.csv, null_reference_point.csv
+[5] wrote figures fig7-fig11
+
+########## 09_admissible_grids ##########
+[1] candidate null-only admissibility rules (175-cell grid):
+      rule                        expr n_adm frac_adm n_components
+    <char>                      <char> <int>    <num>        <int>
+ 1:    P05          p_null_any <= 0.05    42    0.240            1
+ 2:    P10           p_null_any <= 0.1    86    0.491            1
+ 3:    P20           p_null_any <= 0.2   116    0.663            1
+ 4:    U05           p_null_hi <= 0.05     0    0.000            0
+ 5:    U10            p_null_hi <= 0.1    61    0.349            1
+ 6:    U20            p_null_hi <= 0.2   101    0.577            1
+ 7:   C001 mean_null_coverage <= 0.001   107    0.611            1
+ 8:  C0005 mean_null_coverage <= 5e-04    48    0.274            1
+ 9:     M1      mean_null_regions <= 1   104    0.594            1
+10:    M05    mean_null_regions <= 0.5    81    0.463            1
+      lmins_retained contiguous_high_tau rectangular max_p_null_retained
+              <char>              <lgcl>      <lgcl>               <num>
+ 1:            15,20                TRUE       FALSE               0.045
+ 2:       5,10,15,20                TRUE       FALSE               0.100
+ 3:     3,5,10,15,20                TRUE       FALSE               0.200
+ 4:           (none)                  NA          NA                  NA
+ 5:         10,15,20                TRUE       FALSE               0.055
+ 6:     3,5,10,15,20                TRUE       FALSE               0.140
+ 7: 1,2,3,5,10,15,20                TRUE       FALSE               0.470
+ 8:       5,10,15,20                TRUE       FALSE               0.085
+ 9:     3,5,10,15,20                TRUE       FALSE               0.170
+10:       5,10,15,20                TRUE       FALSE               0.085
+
+[2] which l_min values survive each tolerance (tau_C plays almost no role):
+    P05  : l_min=15 (20 tau, 0.12-0.50) ; l_min=20 (22 tau, 0.08-0.50)
+    P10  : l_min=5 (11 tau, 0.30-0.50) ; l_min=10 (25 tau, 0.02-0.50) ; l_min=15 (25 tau, 0.02-0.50) ; l_min=20 (25 tau, 0.02-0.50)
+    P20  : l_min=3 (16 tau, 0.20-0.50) ; l_min=5 (25 tau, 0.02-0.50) ; l_min=10 (25 tau, 0.02-0.50) ; l_min=15 (25 tau, 0.02-0.50) ; l_min=20 (25 tau, 0.02-0.50)
+
+[2] Spearman(p_null_any, l_min) = -0.970  vs  Spearman(p_null_any, tau_C) = -0.216
+    -> null-region production is governed by l_min, not by tau_C. There is no
+       'lenient tau_C corner': p_null_any at l_min=1 falls only from 0.76 to 0.40
+       across the entire tau_C range, and never reaches any candidate tolerance.
+
+[3] natural-break check on the sorted p_null_any values:
+    range 0.025-0.755 ; largest gap = 0.045 between 0.710 and 0.755
+    second largest gap = 0.035 ; median gap = 0.0000
+    -> NO distinct break: p_null_any is a smooth continuum, so ANY tolerance is arbitrary
+
+[4] finite-B uncertainty (B = 200; Clopper-Pearson):
+    eps = 0.05 : point rule keeps  42 cells, upper-bound rule keeps   0;
+                42 cells (100% of those kept) are statistically indistinguishable
+               from failing the rule at B = 200.
+    eps = 0.10 : point rule keeps  86 cells, upper-bound rule keeps  61;
+                25 cells (29% of those kept) are statistically indistinguishable
+               from failing the rule at B = 200.
+    eps = 0.20 : point rule keeps 116 cells, upper-bound rule keeps 101;
+                15 cells (13% of those kept) are statistically indistinguishable
+               from failing the rule at B = 200.
+    typical CI width at the boundary: 0.086
+    -> at B = 200 a cell with k = 20/200 has CI [0.062, 0.150]; distinguishing
+       eps = 0.05 from eps = 0.10 is at the edge of this resolution.
+
+[5] wrote results/admissible_grid_rules.csv + figures/fig12_admissible_grids.png
+
+########## 10_support ##########
+[0] reference point (0.05, 3) supplies 17 displayed regions; sizes 3 3 3 3 3 4 4 4 4 5 5 5 9 10 22 33 245
+    NB the reference point is NOT a grid cell and does not define admissibility.
+[1] full x rec25 done (175 cells)
+[1] full x rec50 done (175 cells)
+[1] full x rec75 done (175 cells)
+[1] P20 x rec25 done (116 cells)
+[1] P20 x rec50 done (116 cells)
+[1] P20 x rec75 done (116 cells)
+[1] P10 x rec25 done (86 cells)
+[1] P10 x rec50 done (86 cells)
+[1] P10 x rec75 done (86 cells)
+[1] P05 x rec25 done (42 cells)
+[1] P05 x rec50 done (42 cells)
+[1] P05 x rec75 done (42 cells)
+[1] U10 x rec25 done (61 cells)
+[1] U10 x rec50 done (61 cells)
+[1] U10 x rec75 done (61 cells)
+[1] C001 x rec25 done (107 cells)
+[1] C001 x rec50 done (107 cells)
+[1] C001 x rec75 done (107 cells)
+
+[2] detection vs BH-significance, every grid x threshold:
+             config cells_detected cells_significant detected_not_sig
+             <char>          <int>             <int>            <int>
+ 1:      full.rec25            435               435                0
+ 2:      full.rec50            259               259                0
+ 3:      full.rec75            244               244                0
+ 4:       P20.rec25             82                82                0
+ 5:       P20.rec50             70                70                0
+ 6:       P20.rec75             67                67                0
+ 7:       P10.rec25             42                42                0
+ 8:       P10.rec50             39                39                0
+ 9:       P10.rec75             38                38                0
+10:       P05.rec25              0                 0                0
+11:       P05.rec50              0                 0                0
+12:       P05.rec75              0                 0                0
+13:       U10.rec25             11                11                0
+14:       U10.rec50             11                11                0
+15:       U10.rec75             11                11                0
+16:      C001.rec25             24                24                0
+17:      C001.rec50              0                 0                0
+18:      C001.rec75              0                 0                0
+19: full.rec50recip            227               227                0
+    -> detected-but-not-significant cells, total across ALL configurations: 0
+       Significance support is REDUNDANT with detection support; it is reported
+       below for completeness but is not independent evidence.
+
+[3] detection support D_r at rec50, by admissible grid (denominator = ALL cells in that grid):
+                         label  full   P20   P10   P05   U10  C001
+                        <char> <num> <num> <num> <num> <num> <num>
+ 1:     A06_Chr4:27.55-27.55Mb 0.171 0.026 0.000     0 0.000     0
+ 2:       A08_Chr5:2.48-2.50Mb 0.149 0.121 0.116     0 0.049     0
+ 3:     A04_Chr4:22.51-22.51Mb 0.143 0.009 0.000     0 0.000     0
+ 4: A02_Chr1:21.50-21.93Mb*inv 0.120 0.103 0.105     0 0.049     0
+ 5:      A15_Chr20:0.18-0.26Mb 0.120 0.103 0.105     0 0.049     0
+ 6:      A14_Chr18:5.61-5.61Mb 0.109 0.017 0.000     0 0.000     0
+ 7:     A09_Chr7:11.55-11.66Mb 0.091 0.060 0.047     0 0.016     0
+ 8:    A11_Chr12:16.52-16.55Mb 0.074 0.034 0.012     0 0.000     0
+ 9:      A13_Chr17:9.94-9.94Mb 0.074 0.034 0.012     0 0.000     0
+10: A07_Chr4:12.81-12.81Mb*Eda 0.069 0.034 0.035     0 0.016     0
+11:      A12_Chr17:6.55-6.77Mb 0.069 0.026 0.000     0 0.000     0
+12:     A01_Chr1:27.28-27.28Mb 0.063 0.000 0.000     0 0.000     0
+13:    A10_Chr12:15.55-15.55Mb 0.057 0.009 0.000     0 0.000     0
+14:      A16_Chr20:3.67-3.67Mb 0.051 0.000 0.000     0 0.000     0
+15:      A17_Chr20:8.89-8.90Mb 0.051 0.026 0.023     0 0.000     0
+16:     A03_Chr3:13.03-13.03Mb 0.034 0.000 0.000     0 0.000     0
+17:     A05_Chr4:25.67-25.99Mb 0.034 0.000 0.000     0 0.000     0
+
+    grid sizes: full=175 P20=116 P10=86 P05=42 U10=61 C001=107
+
+[3] regions with ZERO support, by grid (rec50):
+    full  :  0 of 17  
+    P20   :  4 of 17  A01_Chr1:27.28-27.28Mb | A16_Chr20:3.67-3.67Mb | A03_Chr3:13.03-13.03Mb | A05_Chr4:25.67-25.99Mb
+    P10   :  9 of 17  A06_Chr4:27.55-27.55Mb | A04_Chr4:22.51-22.51Mb | A14_Chr18:5.61-5.61Mb | A12_Chr17:6.55-6.77Mb | A01_Chr1:27.28-27.28Mb | A10_Chr12:15.55-15.55M | A16_Chr20:3.67-3.67Mb | A03_Chr3:13.03-13.03Mb | A05_Chr4:25.67-25.99Mb
+    P05   : 17 of 17  A06_Chr4:27.55-27.55Mb | A08_Chr5:2.48-2.50Mb | A04_Chr4:22.51-22.51Mb | A02_Chr1:21.50-21.93Mb | A15_Chr20:0.18-0.26Mb | A14_Chr18:5.61-5.61Mb | A09_Chr7:11.55-11.66Mb | A11_Chr12:16.52-16.55M | A13_Chr17:9.94-9.94Mb | A07_Chr4:12.81-12.81Mb | A12_Chr17:6.55-6.77Mb | A01_Chr1:27.28-27.28Mb | A10_Chr12:15.55-15.55M | A16_Chr20:3.67-3.67Mb | A17_Chr20:8.89-8.90Mb | A03_Chr3:13.03-13.03Mb | A05_Chr4:25.67-25.99Mb
+    U10   : 12 of 17  A06_Chr4:27.55-27.55Mb | A04_Chr4:22.51-22.51Mb | A14_Chr18:5.61-5.61Mb | A11_Chr12:16.52-16.55M | A13_Chr17:9.94-9.94Mb | A12_Chr17:6.55-6.77Mb | A01_Chr1:27.28-27.28Mb | A10_Chr12:15.55-15.55M | A16_Chr20:3.67-3.67Mb | A17_Chr20:8.89-8.90Mb | A03_Chr3:13.03-13.03Mb | A05_Chr4:25.67-25.99Mb
+    C001  : 17 of 17  A06_Chr4:27.55-27.55Mb | A08_Chr5:2.48-2.50Mb | A04_Chr4:22.51-22.51Mb | A02_Chr1:21.50-21.93Mb | A15_Chr20:0.18-0.26Mb | A14_Chr18:5.61-5.61Mb | A09_Chr7:11.55-11.66Mb | A11_Chr12:16.52-16.55M | A13_Chr17:9.94-9.94Mb | A07_Chr4:12.81-12.81Mb | A12_Chr17:6.55-6.77Mb | A01_Chr1:27.28-27.28Mb | A10_Chr12:15.55-15.55M | A16_Chr20:3.67-3.67Mb | A17_Chr20:8.89-8.90Mb | A03_Chr3:13.03-13.03Mb | A05_Chr4:25.67-25.99Mb
+
+[4] old conditional denominator |U| = 134 vs full grid |G| = 175:
+    Spearman = 1.000 (a pure rescaling by |G|/|U| = 1.31; ranking identical)
+
+[5] rank agreement with full-grid rec50:
+      grid        thr n_cells spearman_vs_full_rec50 top5_overlap n_zero mean_D
+    <char>     <char>   <int>                  <num>        <num>  <int>  <num>
+ 1:   full      rec25     175                  0.776          0.6      0 0.1462
+ 2:   full      rec50     175                  1.000          1.0      0 0.0871
+ 3:   full      rec75     175                  0.972          1.0      0 0.0820
+ 4:    P20      rec25     116                  0.647          0.6      4 0.0416
+ 5:    P20      rec50     116                  0.654          0.6      4 0.0355
+ 6:    P20      rec75     116                  0.649          0.6      4 0.0340
+ 7:    P10      rec25      86                  0.397          0.6      9 0.0287
+ 8:    P10      rec50      86                  0.404          0.6      9 0.0267
+ 9:    P10      rec75      86                  0.398          0.6      9 0.0260
+10:    P05      rec25      42                     NA          0.4     17 0.0000
+11:    P05      rec50      42                     NA          0.4     17 0.0000
+12:    P05      rec75      42                     NA          0.4     17 0.0000
+13:    U10      rec25      61                  0.477          0.6     12 0.0106
+14:    U10      rec50      61                  0.477          0.6     12 0.0106
+15:    U10      rec75      61                  0.477          0.6     12 0.0106
+16:   C001      rec25     107                  0.254          0.4     14 0.0132
+17:   C001      rec50     107                     NA          0.4     17 0.0000
+18:   C001      rec75     107                     NA          0.4     17 0.0000
+19:   full rec50recip     175                  0.880          0.6      0 0.0763
+
+[6] reference-point sensitivity (regions redefined at neighbouring points,
+    then scored on the SAME P20 admissible grid, rec50):
+         ref n_regions mean_D n_zero max_D           top_region
+      <char>     <int>  <num>  <int> <num>               <char>
+1: (0.05, 3)        17 0.0355      4 0.121 A08_Chr5:2.48-2.50Mb
+2: (0.04, 3)        19 0.0355      4 0.121 A08_Chr5:2.48-2.50Mb
+3: (0.06, 3)        13 0.0355      4 0.121 A08_Chr5:2.48-2.50Mb
+4: (0.05, 2)        23 0.0355      4 0.121 A08_Chr5:2.48-2.50Mb
+5: (0.05, 5)         8 0.0355      4 0.121 A08_Chr5:2.48-2.50Mb
+
+[7] validation -- where are the detecting cells? (rec50, full grid)
+                         label cells_detected mean_p_null_of_detecting_cells
+                        <char>          <int>                          <num>
+ 1:     A03_Chr3:13.03-13.03Mb              6                          0.494
+ 2:     A05_Chr4:25.67-25.99Mb              6                          0.494
+ 3:     A01_Chr1:27.28-27.28Mb             11                          0.486
+ 4:      A16_Chr20:3.67-3.67Mb              9                          0.478
+ 5:    A10_Chr12:15.55-15.55Mb             10                          0.448
+ 6:     A04_Chr4:22.51-22.51Mb             19                          0.427
+ 7:      A14_Chr18:5.61-5.61Mb             17                          0.422
+ 8:      A12_Chr17:6.55-6.77Mb             12                          0.400
+ 9:     A06_Chr4:27.55-27.55Mb             24                          0.396
+10:    A11_Chr12:16.52-16.55Mb             13                          0.376
+11:      A13_Chr17:9.94-9.94Mb             13                          0.376
+12: A07_Chr4:12.81-12.81Mb*Eda             12                          0.371
+13:      A17_Chr20:8.89-8.90Mb              9                          0.369
+14:     A09_Chr7:11.55-11.66Mb             16                          0.320
+15:       A08_Chr5:2.48-2.50Mb             26                          0.268
+16: A02_Chr1:21.50-21.93Mb*inv             21                          0.260
+17:      A15_Chr20:0.18-0.26Mb             21                          0.260
+    frac_in_P20
+          <num>
+ 1:       0.000
+ 2:       0.000
+ 3:       0.000
+ 4:       0.000
+ 5:       0.100
+ 6:       0.053
+ 7:       0.118
+ 8:       0.250
+ 9:       0.125
+10:       0.308
+11:       0.308
+12:       0.333
+13:       0.333
+14:       0.438
+15:       0.538
+16:       0.571
+17:       0.571
+
+    anchors with zero P20 support are detected in cells of mean p_null = 0.488;
+    anchors retaining P20 support: mean p_null = 0.361
+
+[8] wrote support_by_grid_threshold.csv, support_comparisons.csv,
+    reference_point_sensitivity.csv, lenient_cell_validation.csv
+
+########## 11_marker_support ##########
+[1] markers with S_m > 0, per grid (of 11269 in the universe):
+    full  (175 cells):  1152 markers ; max S_m = 0.766 ; mean over positive = 0.077
+    P20   (116 cells):   956 markers ; max S_m = 0.647 ; mean over positive = 0.069
+    P10   ( 86 cells):   906 markers ; max S_m = 0.523 ; mean over positive = 0.069
+    U10   ( 61 cells):   869 markers ; max S_m = 0.344 ; mean over positive = 0.038
+
+[2] S_m vs the marker C-score (the honest caveat):
+    full  : Spearman(S_m, C_m) over supported markers = 0.712
+    P20   : Spearman(S_m, C_m) over supported markers = 0.690
+    P10   : Spearman(S_m, C_m) over supported markers = 0.769
+    U10   : Spearman(S_m, C_m) over supported markers = 0.847
+    -> S_m is substantially a re-expression of C_m, as expected: a marker can only
+       enter a region at tau_C <= C_m. Report it as support, never as new evidence.
+
+[3] locus families (r^2-connected components of the support-gated markers,
+    500 kb gap-split -- grouped by chromosome AND component, never by chromosome alone):
+      grid support_gate n_families n_in_reference n_novel median_markers
+    <char>        <num>      <int>          <int>   <int>          <num>
+ 1:    P10         0.02          6              6       0           29.5
+ 2:    P10         0.05          3              3       0           40.0
+ 3:    P10         0.10          3              3       0           31.0
+ 4:    P20         0.02         10             10       0           18.0
+ 5:    P20         0.05          4              4       0           31.5
+ 6:    P20         0.10          3              3       0           31.0
+ 7:    U10         0.02          3              3       0           40.0
+ 8:    U10         0.05          1              1       0           61.0
+ 9:    U10         0.10          1              1       0           41.0
+10:   full         0.02         58             17      41            1.0
+11:   full         0.05         28             16      12            3.0
+12:   full         0.10         20             12       8            2.0
+
+[4] P20 families classified (gate S_m >= 0.02):
+                           kind     n markers
+                         <char> <int>   <int>
+1:                  stable core     3     827
+2:         low-support isolated     6      62
+3: parameter-dependent shoulder     1      20
+
+    top families by max S_m:
+      Chr start_Mb end_Mb n_marker max_S max_C
+    <int>    <num>  <num>    <int> <num> <num>
+ 1:     1    21.49  21.94      684 0.647  0.76
+ 2:    20     0.18   0.26      106 0.353  0.58
+ 3:     5     2.48   2.50       37 0.164  0.32
+ 4:     7    11.53  11.67       20 0.095  0.74
+ 5:     4    12.80  12.81       22 0.034  0.30
+ 6:    17     9.94   9.94        9 0.034  0.79
+ 7:    12    16.52  16.55        5 0.034  0.40
+ 8:    20     8.89   8.90       16 0.026  0.07
+ 9:     4    27.55  27.55        5 0.026  0.44
+10:    17     6.55   6.77        5 0.026  0.69
+
+[5] reference-point coverage of the supported markers:
+    full  :  1152 supported markers,   365 (31.7%) inside a reference-point region;
+            support MASS outside the reference set = 33.3% ; max S_m outside = 0.269
+    P20   :   956 supported markers,   352 (36.8%) inside a reference-point region;
+            support MASS outside the reference set = 31.6% ; max S_m outside = 0.069
+    P10   :   906 supported markers,   331 (36.5%) inside a reference-point region;
+            support MASS outside the reference set = 33.1% ; max S_m outside = 0.070
+    U10   :   869 supported markers,   314 (36.1%) inside a reference-point region;
+            support MASS outside the reference set = 29.2% ; max S_m outside = 0.033
+
+[6] wrote results/marker_support.csv (3883 rows) + marker_support_families.csv
+
+########## 12_manhattan ##########
+[P20] wrote 4 figures (anchored + anchor-free, labelled + plain); 116 cells, max region support 0.121, max S_m 0.647
+[P10] wrote 4 figures (anchored + anchor-free, labelled + plain); 86 cells, max region support 0.116, max S_m 0.523
+[done] figures in module_C2/figures
+
+########## 13_comparisons ##########
+[6] reference-point region support D_r vs anchor-free marker support S_m
+    full  : Spearman(D_r, mean S_m) = +0.880 ; Spearman(D_r, max S_m) = +0.806 ; top-5 overlap = 0.80
+    P20   : Spearman(D_r, mean S_m) = +0.992 ; Spearman(D_r, max S_m) = +0.992 ; top-5 overlap = 1.00
+    P10   : Spearman(D_r, mean S_m) = +0.991 ; Spearman(D_r, max S_m) = +0.991 ; top-5 overlap = 1.00
+    U10   : Spearman(D_r, mean S_m) = +0.996 ; Spearman(D_r, max S_m) = +0.997 ; top-5 overlap = 1.00
+
+    P20 detail (region support vs the support of its own markers):
+                         label   D_r mean_S max_S frac_mk
+                        <char> <num>  <num> <num>   <num>
+ 1:       A08_Chr5:2.48-2.50Mb 0.121  0.121 0.164       1
+ 2: A02_Chr1:21.50-21.93Mb*inv 0.103  0.147 0.647       1
+ 3:      A15_Chr20:0.18-0.26Mb 0.103  0.146 0.353       1
+ 4:     A09_Chr7:11.55-11.66Mb 0.060  0.067 0.095       1
+ 5: A07_Chr4:12.81-12.81Mb*Eda 0.034  0.034 0.034       1
+ 6:    A11_Chr12:16.52-16.55Mb 0.034  0.034 0.034       1
+ 7:      A13_Chr17:9.94-9.94Mb 0.034  0.034 0.034       1
+ 8:     A06_Chr4:27.55-27.55Mb 0.026  0.026 0.026       1
+ 9:      A12_Chr17:6.55-6.77Mb 0.026  0.026 0.026       1
+10:      A17_Chr20:8.89-8.90Mb 0.026  0.026 0.026       1
+11:      A14_Chr18:5.61-5.61Mb 0.017  0.017 0.017       1
+12:     A04_Chr4:22.51-22.51Mb 0.009  0.009 0.009       1
+13:    A10_Chr12:15.55-15.55Mb 0.009  0.009 0.009       1
+14:     A01_Chr1:27.28-27.28Mb 0.000  0.000 0.000       0
+15:     A03_Chr3:13.03-13.03Mb 0.000  0.000 0.000       0
+16:     A05_Chr4:25.67-25.99Mb 0.000  0.000 0.000       0
+17:      A16_Chr20:3.67-3.67Mb 0.000  0.000 0.000       0
+
+    -> region-level and marker-level views AGREE almost exactly on the admissible
+       grids (Spearman 0.99). In principle a region could score D_r = 0 while its
+       markers kept positive S_m (never recovered >=50% intact, yet partly inside
+       some region); in fact 0 of the 4 zero-support P20 regions are of that kind --
+       their markers have NO support at all (frac_markers_supported = 0), so nothing
+       is hidden by working at the region level rather than the marker level.
+
+[all] consolidated comparison table:
+                          comparison spearman_vs_full_rec50 top5_overlap
+                              <char>                  <num>        <num>
+ 1:          1 full grid (175 cells)                  1.000          1.0
+ 2:     2 admissible P20 (116 cells)                  0.654          0.6
+ 3:      2 admissible P10 (86 cells)                  0.404          0.6
+ 4:      2 admissible P05 (42 cells)                     NA          0.4
+ 5:      2 admissible U10 (61 cells)                  0.477          0.6
+ 6:    2 admissible C001 (107 cells)                     NA          0.4
+ 7:      3 old conditional |U| = 134                  1.000          1.0
+ 8: 4 BH-significance support (full)                  1.000          1.0
+ 9:          5 matching rec25 (full)                  0.776          0.6
+10:          5 matching rec75 (full)                  0.972          1.0
+11:        5 reciprocal rec50 (full)                  0.880          0.6
+12:    6 anchor-free mean S_m (full)                  0.880          0.8
+    n_zero_support mean_support
+             <int>        <num>
+ 1:              0       0.0871
+ 2:              4       0.0355
+ 3:              9       0.0267
+ 4:             17       0.0000
+ 5:             12       0.0106
+ 6:             17       0.0000
+ 7:              0       0.1137
+ 8:              0       0.0871
+ 9:              0       0.1462
+10:              0       0.0820
+11:              0       0.0763
+12:              0       0.1140
+                                                            note
+                                                          <char>
+ 1:                                       reference for all rows
+ 2:                null-only rule; 4/17 regions lose all support
+ 3:                null-only rule; 9/17 regions lose all support
+ 4:               null-only rule; 17/17 regions lose all support
+ 5:               null-only rule; 12/17 regions lose all support
+ 6:               null-only rule; 17/17 regions lose all support
+ 7:                   pure rescaling of row 1; identical ranking
+ 8: IDENTICAL to detection: 0 detected-but-not-significant cells
+ 9:                            anchor-marker retention threshold
+10:                            anchor-marker retention threshold
+11:                                also demands |AnR|/|R| >= 0.5
+12:                     marker-level support of the same regions
+
+[7] regions changing interpretation between the full and P20 grids:
+                         label  full   P20 rank_full rank_P20 delta_rank
+                        <char> <num> <num>     <int>    <int>      <int>
+ 1:     A04_Chr4:22.51-22.51Mb 0.143 0.009         3       12          9
+ 2:     A06_Chr4:27.55-27.55Mb 0.171 0.026         1        8          7
+ 3:      A14_Chr18:5.61-5.61Mb 0.109 0.017         6       11          5
+ 4:     A01_Chr1:27.28-27.28Mb 0.063 0.000        12       14          2
+ 5:      A16_Chr20:3.67-3.67Mb 0.051 0.000        14       14          0
+ 6:       A08_Chr5:2.48-2.50Mb 0.149 0.121         2        1         -1
+ 7:    A10_Chr12:15.55-15.55Mb 0.057 0.009        13       12         -1
+ 8: A02_Chr1:21.50-21.93Mb*inv 0.120 0.103         4        2         -2
+ 9:     A03_Chr3:13.03-13.03Mb 0.034 0.000        16       14         -2
+10:     A05_Chr4:25.67-25.99Mb 0.034 0.000        16       14         -2
+11:      A12_Chr17:6.55-6.77Mb 0.069 0.026        10        8         -2
+12:      A15_Chr20:0.18-0.26Mb 0.120 0.103         4        2         -2
+13:     A09_Chr7:11.55-11.66Mb 0.091 0.060         7        4         -3
+14:    A11_Chr12:16.52-16.55Mb 0.074 0.034         8        5         -3
+15:      A13_Chr17:9.94-9.94Mb 0.074 0.034         8        5         -3
+16: A07_Chr4:12.81-12.81Mb*Eda 0.069 0.034        10        5         -5
+17:      A17_Chr20:8.89-8.90Mb 0.051 0.026        14        8         -6
+
+    largest demotions are the small anchors that only ever appear in null-prone cells;
+    the Chr1 inversion moves rank 4 -> 2 and Eda rank 10 -> 5.
+
+[8] wrote region_vs_marker_support.csv + consolidated_comparisons.csv
 Warning messages:
 1: In stats::cor(cellwise$n_tested, cellwise$n_sig/pmax(cellwise$n_rawsig,  :
   the standard deviation is zero
