@@ -32,7 +32,17 @@
 ## defaults: V=2 c=1 env=1 chr=1 tag=bgs  ("all" allowed for env and chr)
 ##
 ## Env vars:
-##   SIM_RAW     raw tarball folder        (default /Volumes/Nemo/Nemo_sim/bgs2)
+##   SIM_ROOT    data root; every path below defaults relative to it
+##                                         (default /Volumes/Nemo/Nemo_sim)
+##   LDSCNR_PATH LDscnR source checkout to devtools::load_all(); unset/absent =
+##               use the installed LDscnR package
+##   SIM_SUBSAMPLE  fraction of analysis individuals kept WITHIN each population
+##               (default 1). The base set is 2 per patch x 80 patches = 160, so
+##               0.5 is exactly 1 per patch and 0.75 is 120 individuals (half the
+##               patches keep 2, half keep 1 -- see subsample_within_pop()).
+##               Use a DIFFERENT SIM_OUT per fraction; the value is recorded in
+##               each bundle as `subsample`.
+##   SIM_RAW     raw tarball folder        (default $SIM_ROOT/bgs2)
 ##   SIM_OUT     bundle output folder      (default /Volumes/Nemo/Nemo_sim/regen_sim_data_bgs2)
 ##   SIM_MAPS    recombination maps        (default .../maps_500kb_with_allelic_values/chromosome_maps_500kb_rds)
 ##   SIM_ENV     env_<n>.txt folder        (default /Volumes/Nemo/Nemo_sim/env)
@@ -41,7 +51,11 @@
 ##   SIM_CORES   cores for compute_LD_decay (default 1)
 ##   SIM_PARSED  optional folder; if set, the Stage-A parsed bundle is ALSO saved
 ##               there (old parsed_sim_data2 format, pre-EMMAX/LFMM)
-##   SIM_POPGEN  popgen/local-adaptation output (default /Volumes/Nemo/Nemo_sim/popgen_sim_data);
+##   SIM_POPGEN  popgen/local-adaptation output (default $SIM_ROOT/popgen_sim_data);
+##               set to "" to skip that stage -- its summaries describe the
+##               simulation (computed from all 320 sampled individuals, before any
+##               analysis subsetting) and so are identical across subsample
+##               fractions: compute them once at SIM_SUBSAMPLE=1, skip thereafter;
 ##               per file: <stem>.rds (summary + per-class diversity + per-patch
 ##               table + BGS window table + ini settings) and <stem>_summary.csv
 ##               (one row, for rbind)
@@ -51,20 +65,36 @@
 ## =====================================================================
 
 suppressMessages({ library(data.table); library(parallel); library(SNPRelate); library(LEA)
-                   library(igraph)
-                   devtools::load_all("/Users/petrikem/gitlab/LDscnR", quiet = TRUE) })
+                   library(igraph) })
+## LDscnR from a source checkout when LDSCNR_PATH points at one, else the installed
+## package -- so this runs unchanged on a machine that has it installed instead.
+LDSCNR_PATH <- Sys.getenv("LDSCNR_PATH", "")
+suppressMessages(
+  if (nzchar(LDSCNR_PATH) && dir.exists(LDSCNR_PATH)) devtools::load_all(LDSCNR_PATH, quiet = TRUE)
+  else library(LDscnR)
+)
 
-RAW_DIR    <- Sys.getenv("SIM_RAW",  "/Volumes/Nemo/Nemo_sim/bgs2")
-OUT_DIR    <- Sys.getenv("SIM_OUT",  "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs2")
-MAP_DIR    <- Sys.getenv("SIM_MAPS", "/Volumes/Nemo/Nemo_sim/maps_500kb_with_allelic_values/chromosome_maps_500kb_rds")
-ENV_DIR    <- Sys.getenv("SIM_ENV",  "/Volumes/Nemo/Nemo_sim/env")
+## SIM_ROOT is the only path that has to change when the data moves to another
+## machine -- everything else defaults relative to it.
+SIM_ROOT   <- Sys.getenv("SIM_ROOT", "/Volumes/Nemo/Nemo_sim")
+RAW_DIR    <- Sys.getenv("SIM_RAW",  file.path(SIM_ROOT, "bgs2"))
+OUT_DIR    <- Sys.getenv("SIM_OUT",  file.path(SIM_ROOT, "regen_sim_data_bgs2"))
+MAP_DIR    <- Sys.getenv("SIM_MAPS", file.path(SIM_ROOT, "maps_500kb_with_allelic_values/chromosome_maps_500kb_rds"))
+ENV_DIR    <- Sys.getenv("SIM_ENV",  file.path(SIM_ROOT, "env"))
 TMP_ROOT   <- Sys.getenv("SIM_TMP",  tempdir())
 PARSED_DIR <- Sys.getenv("SIM_PARSED", "")
-POPGEN_DIR <- Sys.getenv("SIM_POPGEN", "/Volumes/Nemo/Nemo_sim/popgen_sim_data")
+## SIM_POPGEN = "" skips the popgen/BGS stage entirely. Those summaries describe the
+## SIMULATION (they are computed from all 320 sampled individuals, before any
+## analysis subsetting), so they are identical across subsample fractions -- compute
+## them once with SUBSAMPLE = 1 and skip them on the subsample runs.
+POPGEN_DIR <- Sys.getenv("SIM_POPGEN", file.path(SIM_ROOT, "popgen_sim_data"))
 WIN_BP     <- as.numeric(Sys.getenv("SIM_WIN", "5e5"))   # BGS window grid (map resolution)
+## Fraction of the analysis individuals to keep WITHIN each population (1 = all).
+SUBSAMPLE  <- as.numeric(Sys.getenv("SIM_SUBSAMPLE", "1"))
+stopifnot(SUBSAMPLE > 0, SUBSAMPLE <= 1)
 if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
 if (nzchar(PARSED_DIR) && !dir.exists(PARSED_DIR)) dir.create(PARSED_DIR, recursive = TRUE)
-if (!dir.exists(POPGEN_DIR)) dir.create(POPGEN_DIR, recursive = TRUE)
+if (nzchar(POPGEN_DIR) && !dir.exists(POPGEN_DIR)) dir.create(POPGEN_DIR, recursive = TRUE)
 
 ## ---- Stage-A settings (from Parse_sim_data.R) ------------------------
 ## Nemo samples 80 patches x 4 individuals = 320 (files_sample_patch in the .ini),
@@ -87,6 +117,15 @@ DECAY_ARGS <- list(min_maf_decay = 0.1, q = 0.95, n_sub_bg = 5000, n_win_decay =
                    slide = 1000, rho_targets = c(0.99),
                    cores = as.integer(Sys.getenv("SIM_CORES", "1")), ld_w_rho = RHO_GRID)
 GRM_METHOD <- Sys.getenv("SIM_GRM", "complexity_chain")    # or "ld_w_threshold"
+## The complexity chain needs ld_complexity_reduction(gds = ) to rebuild edge lists
+## on the fly (LDscnR >= 5da812a). Fail here with instructions rather than part-way
+## through the first file with an "el is NULL" error from an older installed package.
+if (GRM_METHOD == "complexity_chain" && !"gds" %in% names(formals(ld_complexity_reduction)))
+  stop("This LDscnR is too old: ld_complexity_reduction() has no `gds` argument, so the\n",
+       "  GRM complexity chain cannot rebuild edge lists (needs LDscnR >= commit 5da812a).\n",
+       "  Set LDSCNR_PATH to an up-to-date source checkout, or reinstall the package.\n",
+       "  Loaded from: ", if (nzchar(LDSCNR_PATH) && dir.exists(LDSCNR_PATH)) LDSCNR_PATH
+                          else paste0("installed package ", utils::packageVersion("LDscnR")))
 CR_RHO     <- 0.5                                           # ld_complexity_reduction rho
 PRUNE_ARGS <- list(ld_w_col = "ld_w_095", ld_w_threshold = 0.025, score_threshold = 0.80,
                    min_r2 = 0.2, distance_threshold = 5e5, compute_unflagged_eMLG = FALSE)
@@ -132,6 +171,40 @@ get_va <- function(map, GTs, qtn_rows) {
     p  <- mean(gt) / 2
     2 * p * (1 - p) * a^2
   })
+}
+
+## Keep a fraction of individuals WITHIN each population.
+##
+## The analysis set is 2 individuals per patch, so frac = 0.5 is exactly 1 per
+## patch, but frac = 0.75 is 1.5 -- not a whole number. Rather than rounding every
+## patch to 1 (which would silently make "75%" mean 50%), the fractional part is
+## spread across patches: floor() everywhere, then a random subset of patches gets
+## one extra, so the OVERALL count is exactly round(frac * n) and no patch is
+## systematically favoured. Seeded from the file name, so a given file always
+## yields the same subsample -- rerunning is reproducible, and different files draw
+## independently.
+subsample_within_pop <- function(pops, frac, seed) {
+  if (frac >= 1) return(seq_along(pops))
+  set.seed(seed)
+  idx_by_pop <- split(seq_along(pops), pops)
+  n_by_pop   <- lengths(idx_by_pop)
+
+  target <- round(frac * length(pops))
+  base_n <- floor(frac * n_by_pop)
+  short  <- target - sum(base_n)
+  bump   <- rep(0L, length(idx_by_pop))
+  if (short > 0) bump[sample.int(length(idx_by_pop), min(short, length(idx_by_pop)))] <- 1L
+
+  keep <- unlist(lapply(seq_along(idx_by_pop), function(i) {
+    k <- min(base_n[i] + bump[i], n_by_pop[i])
+    if (k <= 0) integer(0) else sample(idx_by_pop[[i]], k)
+  }), use.names = FALSE)
+  sort(keep)
+}
+
+## stable per-file seed, so the subsample does not move between reruns
+seed_from <- function(stem, frac) {
+  (sum(utf8ToInt(stem)) * 7919 + round(frac * 1000)) %% .Machine$integer.max
 }
 
 extract_params <- function(base_name) {
@@ -363,10 +436,18 @@ tajimas_D <- function(pbar, n_alleles) {
 ## which the .ini does not pin down unambiguously. It is a relative predictor,
 ## fine for correlations and for ranking windows, not an absolute B.
 ##
+## On a nobgs run these same columns are a CONTROL, not an estimate: the map
+## still carries the deleterious positions, but nothing was selected at them.
+## Measured that way on adapt_nobgs_chr10_V0.5_c1_env1, bgs_cor_pi_delet came out
+## at +0.33 (+0.46 on the neutral chromosome) -- i.e. the within-run correlation
+## is dominated by map-driven confounding between deleterious-site placement,
+## recombination and SNP density, and is not, on its own, a BGS measurement.
+##
 ## The window grid is fixed (WIN_BP, aligned to the 500 kb map resolution) and
 ## identical across runs, so the MATCHED contrast -- B_obs = pi_bgs / pi_nobgs
 ## per window, for the same chr/V/c/env -- can be computed later by collating
-## these tables. That paired estimate is the gold standard here, since the
+## these tables. That paired form differences the confounding away, which is why
+## it is the estimator to trust. That paired estimate is the gold standard here, since the
 ## nobgs grid mirrors bgs2 exactly; everything in this function is the
 ## within-run estimate that does not need the paired file.
 bgs_windows <- function(ls, map_full, n_ind, win_bp = 5e5, cM_scale = 1) {
@@ -500,9 +581,24 @@ sim_popgen <- function(files, base_name, params, GTs_all, map_all, pop_vec, env_
   ini_file   <- files[grepl("\\.ini$", files) & grepl(base_name, files, fixed = TRUE)][1]
   stats_file <- files[grepl("stats/", files, fixed = TRUE) & grepl("\\.txt$", files)][1]
 
-  ini <- if (!is.na(ini_file)) read_ini(ini_file) else list(selection_variance = NA_real_)
-  V   <- ini$selection_variance
-  ns  <- if (!is.na(stats_file)) read_nemo_stats(stats_file) else NULL
+  ## The older Nemo_out_* tarballs ship no .ini (only .log, GENO/, stats/), so every
+  ## field has to have an NA stand-in -- a NULL here would break the summary table.
+  ini <- if (!is.na(ini_file)) read_ini(ini_file) else
+    list(selection_variance = NA_real_, selection_model = NA_character_,
+         patch_capacity = NA_real_, patch_number = NA_real_, quanti_loci = NA_real_,
+         ntrl_loci = NA_real_, generations = NA_real_, random_seed = NA_character_)
+
+  ## V (selection_variance) also appears in the file name, and the two agree wherever
+  ## an .ini exists to check against -- so fall back to it rather than losing every
+  ## fitness-scale local-adaptation metric on the older runs.
+  V <- ini$selection_variance
+  V_source <- "ini"
+  if (!isTRUE(is.finite(V))) {
+    V <- suppressWarnings(as.numeric(sub("^V", "", params$V)))
+    V_source <- "filename"
+  }
+
+  ns <- if (!is.na(stats_file)) read_nemo_stats(stats_file) else NULL
 
   ## ---- per-patch table: local optimum, trait mean, within-patch Va ----
   ## theta_p IS the env value (selection_local_optima points at the same file)
@@ -541,7 +637,7 @@ sim_popgen <- function(files, base_name, params, GTs_all, map_all, pop_vec, env_
   ## ---- one-row summary ------------------------------------------------
   summ <- data.table(
     file = base_name, bgs = params$bgs, chr_set = params$Chr,
-    V_sel = V, c_par = params$c, env_id = params$env,
+    V_sel = V, V_source = V_source, c_par = params$c, env_id = params$env,
     selection_model = ini$selection_model,
     n_ind_sample = nrow(GTs_all), n_patch_sample = uniqueN(pop_vec),
     n_snp_sample = ncol(GTs_all),
@@ -650,7 +746,19 @@ parse_raw <- function(file_gz, tmp_dir) {
   ## population-genetic summaries. GTs: the 1-per-patch analysis subset, as before.
   GTs_all <- GTs[, map$marker]                         ## name-based -> realigns after setorder
   map_all <- data.table::copy(map)
-  GTs     <- GTs_all[KEEP_INDS, , drop = FALSE]
+
+  ## The analysis individuals: the 2-per-patch base set, optionally thinned within
+  ## populations. One index vector so genotypes and env rows can never drift apart.
+  sel_inds <- KEEP_INDS
+  if (SUBSAMPLE < 1) {
+    pops_keep <- sample_info$pop[KEEP_INDS]
+    sel_inds  <- KEEP_INDS[subsample_within_pop(pops_keep, SUBSAMPLE, seed_from(base_name, SUBSAMPLE))]
+    message(sprintf("  subsample %.0f%%: %d of %d individuals, %d patches (%.2f per patch)",
+                    100 * SUBSAMPLE, length(sel_inds), length(KEEP_INDS),
+                    length(unique(sample_info$pop[sel_inds])),
+                    length(sel_inds) / length(unique(sample_info$pop[sel_inds]))))
+  }
+  GTs <- GTs_all[sel_inds, , drop = FALSE]
 
   ## ---- environmental values on the 48 x 48 lattice ----
   x        <- gsub("env", "", params$env)
@@ -664,7 +772,7 @@ parse_raw <- function(file_gz, tmp_dir) {
   ## NB: compute the match OUTSIDE the [ ] -- inside env[...], `env$pop` would
   ## resolve to the atomic COLUMN `env`, not the table.
   new_order <- match(sample_info$pop, env$pop)
-  env_ind   <- env[new_order][KEEP_INDS]
+  env_ind   <- env[new_order][sel_inds]
   env_ind[, indx := .I]
 
   ## ---- MAF filter (on the analysis subset, as before) ----
@@ -702,8 +810,9 @@ parse_raw <- function(file_gz, tmp_dir) {
   map[chr_type == "ntrl", max_LD_with_QTN := 0]
 
   ## ---- population-genetic + local-adaptation summaries (own output files) ----
-  pg <- tryCatch(sim_popgen(files, base_name, params, GTs_all, map_all, sample_info$pop, env, map_full),
-                 error = function(e) { message("  !! popgen summary failed: ", conditionMessage(e)); NULL })
+  pg <- if (!nzchar(POPGEN_DIR)) NULL else
+    tryCatch(sim_popgen(files, base_name, params, GTs_all, map_all, sample_info$pop, env, map_full),
+             error = function(e) { message("  !! popgen summary failed: ", conditionMessage(e)); NULL })
 
   list(GTs = GTs, map = map, env = env_ind, params = params, popgen = pg)
 }
@@ -774,7 +883,7 @@ regen_from_parsed <- function(d, out_path) {
   saveRDS(list(GTs = GTs, map = map, env = env_ind, LD_decay = LD_decay, ld_ws = ld_ws,
                GRM = GRM, grm_markers = grm_markers, grm_method = GRM_METHOD,
                complexity_reduction = if (is.null(stage1)) NULL else list(stage1 = stage1),
-               emx_gif = gif),
+               emx_gif = gif, subsample = SUBSAMPLE, n_ind = n),
           out_path)
   message("  wrote ", basename(out_path))
   invisible(list(out_path = out_path, GRM = GRM))
