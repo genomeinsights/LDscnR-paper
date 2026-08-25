@@ -9,36 +9,23 @@
 ## p vector per surrogate. It computes no C-scores, applies no threshold and builds
 ## no regions.
 ##
-## OUTPUT CONTRACT -- deliberately dataset-agnostic, so that ONE downstream analysis
-## consumes the simulations and the empirical data identically. Two kinds of file:
+## OUTPUT CONTRACT -- exactly what module_sim_LDscnR/analyse_one_dataset.R consumes,
+## so these files are handed over and run as-is:
 ##
-##   cell_<id>.rds     context, written once per cell:
-##                       markers    character, the pooled marker order
-##                       map        marker, Chr, Pos, type, true_QTN (truth is
-##                                  simulation-only; absent/NA for empirical data)
-##                       ld_ws      markers x rho matrix, the local-LD statistic
-##                       decay_sum  per-chromosome decay fit (b, c, a_pred ...)
-##                       dataset/cell identifiers
+##   panel_<cell>.rds                     the LD description, method-independent
+##     GTs        individuals x markers, colnames = markers
+##     map        marker, Chr, Pos (+ true_QTN, simulation-only)
+##     ld_ws      markers x rho, rownames = markers
+##     decay_sum  per-chromosome decay fit
 ##
-##   pnull_<engine>_<null>_<id>.rds   the scans:
-##                       p_obs      numeric, one per marker, SAME ORDER as markers
-##                       P_surr     markers x B matrix of surrogate p-values
-##                       engine, null_type, B, cell, seed provenance
+##   pvals_<cell>_<engine>_<basis>_B<B>.rds    ONE association method's scans
+##     p_obs      named numeric, names == map$marker, same order
+##     p_perm     markers x B matrix of surrogate p-values
+##     basis, engine, B, cell, seed provenance
 ##
-## The empirical side (~/3sp_lfmm_perm/run_paired_nulls_3sp.R) currently emits
-## ld_null bundles with C-scores already computed; to share the downstream it needs
-## the same split -- context once, p-values per basis. Everything downstream of the scan -- the (rho, q*, alpha) grid, tau_C,
-## clustering, l_min, the region test -- is the analysis's business, and keeping it
-## there means those choices can change without re-running a single scan. It also
-## removes a real hazard: this runner previously computed its own C-score with
-## alpha = 0.05 while run_sim_LDscnR.R sweeps alpha over four values, so observed and
-## surrogate C-scores were not the same statistic.
-##
-## Unit of work is one (V, c, env) CELL: the 10 chromosome files are pooled (as in
-## run_sim_LDscnR.R), each keeps its own saved GRM, and one surrogate phenotype is
-## pushed through all ten -> one pooled surrogate C. The ten files share their 80
-## patches and their env values exactly, so a lattice-level surrogate maps across
-## all of them unchanged.
+## The panel is written once per cell and reused by every engine x basis, so GTs
+## and ld_ws are stored once rather than repeated. Run:
+##   Rscript module_sim_LDscnR/analyse_one_dataset.R panel_<cell>.rds pvals_<...>.rds
 ##
 ## THE NULLS. Two kinds, and they are NOT crossed: a home-field null is drawn from
 ## one engine's own model of structure, so it is only meaningful for that engine --
@@ -137,6 +124,10 @@ pool_cell <- function(env) {
                       pattern = sprintf("^adapt_%s_chr[0-9]+_V%s_c%s_env%s\\.rds$", TAG, V, CC, env))
   if (!length(files)) return(NULL)
   files <- files[order(as.integer(sub(".*_chr([0-9]+)_.*", "\\1", basename(files))))]
+  ## an incomplete cell would pool a smaller genome and silently change both the
+  ## ld_w quantile and the BH denominator -- refuse rather than half-pool
+  if (length(files) != 10L)
+    stop(sprintf("expected 10 chromosome files for V%s_c%s_env%s, found %d", V, CC, e, length(files)))
   maps <- gts <- ldws <- decs <- prep <- mk_i <- vector("list", length(files))
   Kacc <- NULL; Yobs <- coords <- pops <- NULL
   for (i in seq_along(files)) {
@@ -152,7 +143,8 @@ pool_cell <- function(env) {
     Kacc <- if (is.null(Kacc)) d$GRM else Kacc + d$GRM
     if (is.null(Yobs)) { Yobs <- d$env$env; coords <- cbind(d$env$x, d$env$y); pops <- d$env$pop }
   }
-  map <- rbindlist(maps, fill = TRUE)
+  ## flag_true_qtns() so the truth column matches what the consumer scores against
+  map <- flag_true_qtns(rbindlist(maps, fill = TRUE))
   list(map = map, GTs = do.call(cbind, gts)[, map$marker],
        LDW = do.call(rbind, ldws)[map$marker, ], prep = prep, mk_i = mk_i,
        decay_sum = rbindlist(decs, fill = TRUE),
@@ -249,21 +241,18 @@ for (e in ENVS) {
   p_obs_eng <- lapply(c(emmax = "emx_p", lfmm = "lfmm_p"),
                       function(col) stats::setNames(P$map[[col]], P$map$marker))
 
-  ## context, written once per cell: everything the downstream needs that is NOT a
-  ## scan. Kept out of the per-basis files so ld_ws (markers x rho, ~50 MB) is stored
-  ## once rather than repeated for every engine x null combination.
+  ## panel, written once per cell and reused by every engine x basis
   cell_id  <- sprintf("V%s_c%s_env%s", V, CC, e)
-  ctx_file <- file.path(OUTDIR, paste0("cell_", cell_id, ".rds"))
-  if (!file.exists(ctx_file)) {
-    saveRDS(list(markers = P$map$marker,
-                 map = P$map[, .(marker, Chr, Pos, type, true_QTN)],
-                 ld_ws = P$LDW, decay_sum = P$decay_sum,
-                 dataset = "sim", cell_id = cell_id,
-                 cell = list(V = V, c = CC, env = e, tag = TAG, n_files = P$n_files),
-                 n_ind = length(P$Yobs), env_obs = P$Yobs, coords = P$coords),
-            ctx_file)
-    message("   wrote context ", basename(ctx_file))
-  }
+  panel_f  <- file.path(OUTDIR, sprintf("panel_%s.rds", cell_id))
+  if (!file.exists(panel_f)) {
+    saveRDS(list(GTs = P$GTs, map = P$map, ld_ws = P$LDW, decay_sum = P$decay_sum,
+                 cell = cell_id, n_ind = length(P$Yobs),
+                 env_obs = P$Yobs, coords = P$coords),
+            panel_f)
+    message(sprintf("   panel: %d markers x %d individuals, %d chromosomes -> %s (%.0f MB)",
+                    nrow(P$map), length(P$Yobs), uniqueN(P$map$Chr),
+                    basename(panel_f), file.size(panel_f) / 1e6))
+  } else message("   panel: reusing ", basename(panel_f))
 
   for (ty in TYPES) {
     ## skip the type entirely if no active engine takes it (e.g. `latent` with
@@ -278,7 +267,7 @@ for (e in ENVS) {
     for (eng in intersect(c("emmax", "lfmm"), ENGINES)) {
       ## a home-field null is only meaningful for its own engine -- skip the cross
       if (ty %in% names(HOME) && HOME[[ty]] != eng) next
-      outf <- file.path(OUTDIR, sprintf("pnull_%s_%s_%s.rds", eng, ty, cell_id))
+      outf <- file.path(OUTDIR, sprintf("pvals_%s_%s_%s_B%d.rds", cell_id, eng, ty, B))
       if (file.exists(outf)) { message("   ", basename(outf), " exists -> skip"); next }
       t0 <- Sys.time()
 
@@ -292,11 +281,14 @@ for (e in ENVS) {
       ## repeated on every surrogate vector
       P_surr <- matrix(unlist(pl, use.names = FALSE), nrow = nrow(P$map), ncol = length(pl))
 
-      saveRDS(list(p_obs = unname(p_obs_eng[[eng]]), P_surr = P_surr,
-                   engine = eng, null_type = ty, B = ncol(P_surr),
-                   dataset = "sim", cell_id = cell_id,
-                   cell = list(V = V, c = CC, env = e, tag = TAG, n_files = P$n_files),
-                   context = paste0("cell_", cell_id, ".rds"),
+      ## names carried on p_obs so analyse_one_dataset.R can VERIFY the ordering
+      ## rather than trust it -- a right-length vector in the wrong order is
+      ## silently wrong, and this is where that would originate
+      p_obs <- p_obs_eng[[eng]]
+      stopifnot(identical(names(p_obs), P$map$marker), nrow(P_surr) == nrow(P$map))
+      saveRDS(list(p_obs = p_obs, p_perm = P_surr,
+                   basis = ty, engine = eng, B = ncol(P_surr), cell = cell_id,
+                   panel = basename(panel_f),
                    seed0 = SEED0, canon_index = match(ty, CANON)),
               outf)
 
@@ -305,8 +297,10 @@ for (e in ENVS) {
       ## in this script decides anything.
       med <- stats::median(colSums(P_surr < 1e-4))
       message(sprintf("   [%-5s | %-11s] B=%d ; median surrogate p<1e-4 = %.0f (obs %d) ; %.1f min -> %s",
-                      eng, ty, ncol(P_surr), med, sum(p_obs_eng[[eng]] < 1e-4),
+                      eng, ty, ncol(P_surr), med, sum(p_obs < 1e-4),
                       as.numeric(Sys.time() - t0, units = "mins"), basename(outf)))
+      message(sprintf("       Rscript module_sim_LDscnR/analyse_one_dataset.R %s %s",
+                      basename(panel_f), basename(outf)))
     }
   }
   rm(P); gc()

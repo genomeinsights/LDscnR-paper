@@ -161,6 +161,44 @@ SIM_NULL_ENGINES=lfmm ./run_nulls.sh 1 12                             # LFMM sid
 Cells run one at a time with draws forked inside — a loaded cell is 2–4 GB and forked
 workers share it copy-on-write, so memory stays at one cell regardless of `nproc`.
 
+## Handover: analysis inputs
+
+`analysis_inputs/` holds the files `module_sim_LDscnR/analyse_one_dataset.R` consumes
+directly — nothing needs converting:
+
+```bash
+Rscript module_sim_LDscnR/analyse_one_dataset.R \
+  /Volumes/Nemo/Nemo_sim/analysis_inputs/panel_V2_c1_env2.rds \
+  /Volumes/Nemo/Nemo_sim/analysis_inputs/pvals_V2_c1_env2_emmax_env_orth_B100.rds
+```
+
+Status (V2_c1, all ten environments, B = 100):
+
+| | files |
+|---|---|
+| `panel_V2_c1_env<e>.rds` | 10 — GTs, map (18–24 true QTN each), ld_ws, decay_sum |
+| `pvals_..._emmax_genetic_B100.rds` | 10 — EMMAX home field |
+| `pvals_..._emmax_env_orth_B100.rds` | 10 — the arbiter |
+| `pvals_..._lfmm_{latent,env_orth}_B100.rds` | pending — see below |
+
+Verified end to end: `analyse_one_dataset.R` ran on these unmodified (universe 5,924
+markers, 55 observed regions against a surrogate median of 0.5, gate passed).
+
+### LFMM, overnight on the second machine
+
+Run it straight from the drive — `SIM_ROOT` is derived from the script's own
+location, so it works wherever the volume mounts:
+
+```bash
+LDSCNR_PATH=~/gitlab/LDscnR /Volumes/Nemo/Nemo_sim/pipeline/run_lfmm_overnight.sh 12
+```
+
+LDscnR must be at **`67bc930` or later** (on `main`, pushed). LFMM is ~2.1 min per
+pooled surrogate, so B=100 is ~3.5 h per cell × basis — ten environments × two bases
+is ~70 core-hours, roughly 6 h on 12 cores. **Resumable**: an existing output file is
+skipped, so an interrupted run just needs the same command again. Panels are reused
+untouched; only the two `lfmm` p-value files per cell are produced.
+
 ## Outputs
 
 | folder | contents |
