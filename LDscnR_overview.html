@@ -166,6 +166,20 @@
   .point b { display: block; margin-bottom: 0.15rem; }
   .point span { font-size: 0.9rem; color: var(--ink-2); }
 
+  /* --- comparisons --- */
+  .diffs { display: grid; gap: 1.15rem 2rem; margin-top: 0.3rem; }
+  @media (min-width: 760px) { .diffs { grid-template-columns: 1fr 1fr; } }
+  .diff { border-top: 1px solid var(--rule-strong); padding-top: 0.6rem; }
+  .diff b { display: block; margin-bottom: 0.2rem; font-weight: 600; }
+  .diff .ref {
+    font-family: var(--f-mono);
+    font-weight: 400;
+    font-size: 0.76em;
+    color: var(--accent);
+    letter-spacing: 0.03em;
+  }
+  .diff span.body { font-size: 0.9rem; color: var(--ink-2); display: block; }
+
   /* --- figure --- */
   figure {
     margin: 0.3rem 0 0;
@@ -206,7 +220,7 @@
     h1 { font-size: 19pt; }
     .sub { font-size: 10.5pt; }
     .byline { margin-top: 0.6rem; gap: 0.2rem 1.1rem; }
-    section { padding-top: 0.95rem; break-inside: avoid; }
+    section { padding-top: 0.8rem; break-inside: avoid; }
     h2 { margin-bottom: 0.45rem; }
     p { margin-bottom: 0.5rem; }
     .lead { font-size: 10.2pt; }
@@ -217,10 +231,13 @@
     .step .d { font-size: 8.6pt; }
     .points { grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
     .point span { font-size: 8.6pt; }
+    .diffs { grid-template-columns: 1fr 1fr; gap: 0.6rem 1.4rem; }
+    .diff { padding-top: 0.4rem; }
+    .diff span.body { font-size: 8.6pt; }
     figure { padding: 0.6rem 0.6rem 0.4rem; break-inside: avoid; }
-    figure svg { max-width: 168mm; margin: 0 auto; }
+    figure svg { max-width: 137mm; margin: 0 auto; }
     figcaption { font-size: 8.6pt; margin-top: 0.5rem; }
-    footer { margin-top: 1rem; padding-top: 0.6rem; font-size: 8.6pt; }
+    footer { margin-top: 0.6rem; padding-top: 0.45rem; font-size: 8.4pt; }
     .steps, .points { break-inside: avoid; }
     a { text-decoration: none; }
     @page { size: A4; margin: 13mm 14mm; }
@@ -369,6 +386,28 @@
       </svg>
       <figcaption>The same operation at two scales. Rather than choosing a value for each analysis parameter, LDscnR sweeps it and scores how <em>consistently</em> a marker — and then a region — survives. Nothing in the pipeline depends on a single hand-picked setting.</figcaption>
     </figure>
+  </section>
+
+  <section>
+    <h2>How it differs from existing approaches</h2>
+    <div class="diffs">
+      <div class="diff">
+        <b>Haplotype and LD-pattern sweep scans <span class="ref">H12 · OmegaPlus</span></b>
+        <span class="body">These read elevated LD as direct evidence of selection. LDscnR does not — elevated LD also arises from inversions, recombination-rate variation, demography and structure. Local LD is used only as an <em>independent</em> measure of genomic coherence for prioritising association signals; it is never interpreted as a test of selection and never folded into the evidence.</span>
+      </div>
+      <div class="diff">
+        <b>Window-based regional aggregation <span class="ref">WZA</span></b>
+        <span class="body">Fixed physical windows assume adjacent variants carry one evolutionary signal; recombination means they often do not, so aggregation dilutes highly localised signal. LDscnR takes regions from the topology of the local LD network — overlapping but distinct signals in the same interval stay distinct — and preserves the original SNP-level statistics instead of summarising them.</span>
+      </div>
+      <div class="diff">
+        <b>Cluster-level dimension reduction</b>
+        <span class="body">We tested the obvious alternative: partition the genome into LD-defined clusters and test each cluster's first principal component. It cuts the number of tests sharply, but the component's association was consistently weaker than the strongest SNP in the same region, and the saving did not compensate for the loss. Filtering the search space, rather than summarising it, is what keeps the signal.</span>
+      </div>
+      <div class="diff">
+        <b>How significance is established</b>
+        <span class="body">Testing against surrogate data that preserve the confounding structure while breaking the link to the variable of interest is the most rigorous option when the confounder is itself autocorrelated — standard practice in spatial ecology and neuroimaging. It is rare in genome scans because of cost: per-SNP significance requires resolving the null <em>tail</em> to genome-wide precision, and at ~100 minutes per whole-genome scan that runs to tens of thousands of core-hours. LDscnR carries the per-SNP burden earlier, so the null need only resolve a handful of regions per surrogate — <strong>50–200 surrogates instead of tens of thousands</strong>.</span>
+      </div>
+    </div>
   </section>
 
   <section>
