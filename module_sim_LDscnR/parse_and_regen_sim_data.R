@@ -745,7 +745,16 @@ parse_raw <- function(file_gz, tmp_dir) {
   map_full <- data.table::copy(map)[, Chr := paste0("Chr", Chr)]
 
   ## map Nemo's per-type running indices back onto the original map rows
-  nemo_map[, idx := as.numeric(idx) + 1]   ## Nemo counts from 0
+  ## Nemo numbers loci from ONE, not zero -- the original script's `+ 1` shifted every
+  ## locus onto the NEXT row of its type block. Proof: `quant.101` occurs in the output
+  ## and there are only 101 quanti loci, so no 0-based scheme can produce it; ntrl
+  ## indices likewise run 1..999,697 with index 0 never appearing in 238,726 sampled
+  ## loci. For ntrl the shift was ~34 bp (immaterial), but for QTNs it moved each one a
+  ## whole QTN apart -- e.g. quant.41 was given bp 6,872,148 for a locus Nemo places at
+  ## 6,755,048. Verified against Nemo's own chromosome/position columns: indexing by
+  ## `idx` as-is agrees 21/21 on chromosome with Spearman 0.9997 on position, where
+  ## `idx + 1` agreed 19/21 and left quant.101 unmapped.
+  nemo_map[, idx := as.numeric(idx)]
   ntrl_idx   <- nemo_map[type == "ntrl",  idx]
   quanti_idx <- nemo_map[type == "quant", idx]
   delet_idx  <- nemo_map[type == "delet", idx]
@@ -757,6 +766,17 @@ parse_raw <- function(file_gz, tmp_dir) {
   map[indx_ntrl,   nemo_marker := nemo_map[type == "ntrl",  marker]]
   map[indx_quanti, nemo_marker := nemo_map[type == "quant", marker]]
   map[indx_delet,  nemo_marker := nemo_map[type == "delet", marker]]
+
+  ## Nemo requires every chromosome to carry every mutation type, so the map includes a
+  ## placeholder QTN on the neutral chromosome with allelic_value == 0. It has no
+  ## phenotypic effect and must not count as a true QTN -- reclassify it as neutral
+  ## here, AFTER the index mapping above (which needs the QTN block intact to stay
+  ## aligned) and before anything keys on `type`.
+  n_dummy <- map[type == "QTN" & (is.na(allelic_values) | allelic_values == 0), .N]
+  if (n_dummy) {
+    map[type == "QTN" & (is.na(allelic_values) | allelic_values == 0), type := "ntrl"]
+    message("  reclassified ", n_dummy, " zero-effect placeholder QTN(s) as neutral")
+  }
 
   map <- map[nemo_marker %in% colnames(GTs)]
   GTs <- GTs[, map$nemo_marker]
