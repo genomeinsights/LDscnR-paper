@@ -139,44 +139,53 @@ say so.
 
 ---
 
-## Task 4b — Fang et al. 2021 as a geographically matched positive control
+## Task 4b — Fang et al. 2021 is a method comparison, NOT a positive control
 
-Kingman is a **mismatched** truth set for this panel, and Fang et al. (2020) is
-the citation that says so: parallelism in three-spined stickleback is
-geographically heterogeneous, most signatures are unique to the Eastern Pacific,
-and trans-oceanic marine--freshwater differentiation is "restricted to a limited
-number of shared genomic regions, including three chromosomal inversions".
-The Kingman EcoPeaks come from a global panel and a North-Eastern Pacific panel;
-the LDscnR panel is 47--75 deg N Atlantic/Baltic. Low overlap is therefore the
-*prediction*, not a failure -- and it explains the observed asymmetry
-(19.5x against the global-specific set, only 2.4x against the Pacific-specific
-set).
+**The example data IS the Fang et al. (2021) panel.** Same individuals, same
+four geographic strata (Baltic Sea, North Sea, Norwegian Sea, White and Barents
+Seas -- exactly the strata in `regionperm_null.log`), and that paper ran **EMMAX
+with relatedness as a random effect and FDR** on it, reporting 2,996 SNPs in
+**26 outlier regions** for *G. aculeatus*.
 
-**This materially weakens the case against LFMM's 78 unique regions.** Absence
-from a Pacific/global-weighted truth set is weak evidence when the expected
-overlap is low a priori.
+So Fang 2021 cannot corroborate anything -- it is the same data and the same
+association engine. What it *is*, is the tightest possible **method comparison**:
+identical data, identical engine, different downstream treatment (LDna
+clustering with parameter selection vs. C-score, integration, and a
+structure-aware null). Run it that way:
 
-The matched control is **Fang et al. (2021), Mol Biol Evol 38(10):4205--4221**:
-Atlantic-only sampling (Baltic, North Sea, White and Barents Seas, British
-Isles -- the same range as our panel), reporting 2,996 SNPs in **26 outlier
-regions** for *G. aculeatus*. Repeat the Task 4 enrichment against that region
-set as well as Kingman. If the LFMM-unique regions recover Fang regions that
-Kingman misses, the sensitivity reading is supported by a geographically
-appropriate control rather than argued around a mismatched one.
+- How many of Fang's 26 regions does LDscnR recover, at the reported operating
+  point and across the grid?
+- What does LDscnR find that the LDna-plus-selection approach missed, and is
+  *that* set corroborated by Kingman?
+- Fang et al. chose the parameter cell that "detected the most significant
+  regions" (|E|min = 10, Corth = 0.5, SNPmin = [10, 20]). Their own reported
+  numbers therefore sit at a selected optimum; C2 is the direct answer to that,
+  and the comparison should say so rather than treating 26 as a fixed target.
 
-Coordinates and the region list are in that paper's supplementary tables; check
-the assembly before lifting.
+**Consequence for the truth sets.** Kingman is now the *only* independent
+control, and it is geographically mismatched: Fang et al. (2020) show
+parallelism is heterogeneous, mostly Eastern-Pacific-specific, with trans-oceanic
+sharing "restricted to a limited number of shared genomic regions, including
+three chromosomal inversions", while Kingman's panels are global and
+North-Eastern Pacific and our data is 47--75 deg N Atlantic. The two available
+comparison sets therefore have complementary weaknesses -- Kingman is
+independent but mismatched, Fang 2021 is matched but not independent -- and
+neither alone is a clean positive control. Say that plainly in the text; it is
+the honest position and it pre-empts the obvious reviewer objection to each.
+
+It also weakens the case against LFMM's 78 unique regions: absence from a
+Pacific-weighted set is weak evidence when low overlap is what Fang 2020
+predicts.
 
 ## Task 8 — Name the simulator, and check the argument that leaned on "coalescent"
 
 The `.tex` described the simulations as *coalescent* in four places (lines 48,
-771, 802, 830) and never named the simulator. They are **NEMO** — forward-in-time,
-individual-based. Note that Fang et al. (2020), also with PK, used **quantiNemo**
-(Neuenschwander, Hospital, Guillaume & Goudet 2008, Bioinformatics 24:1552--1553)
-for its individual-based forward simulations, and Frederic Guillaume is an author
-of both quantiNemo and this manuscript — confirm which of Nemo / quantiNemo /
-Nemo2 was actually used here before citing (the repo has `Nemo3/`, `Nemo_sim/`
-and `NEMO/`). `neuenschwander2008quantinemo` is already in `references.bib`.
+771, 802, 830) and never named the simulator. They are the **current NEMO** — forward-in-time, individual-based, Frederic
+Guillaume's simulator; he is a co-author, so he can supply the exact version and
+citation. Do **not** cite quantiNemo: that is a different program, Fred is no
+longer part of its development, and it was the simulator used by Fang et al.
+(2020), not here. `neuenschwander2008quantinemo` stays in `references.bib` only
+for that Fang citation and is annotated as such.
 The four occurrences are now "forward-in-time individual-based", but two things
 remain:
 
