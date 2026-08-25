@@ -254,6 +254,35 @@ This is also a reason to be careful with the `l_min`/detectability text, which
 contrasts a "gene-flow regime" against a "low-dispersal, structure-dominated
 regime" — those are NEMO parameters and should be stated as such.
 
+## Task 9 — Leave-one-out surrogate calibration (settles the selective-inference question)
+
+The pipeline selects regions using the data and then tests only those regions,
+BH-correcting across the survivors. That is structurally the shape of a
+post-selection-inference error, and a reviewer will ask. The defence is that the
+selection is applied to the null as well -- surrogates pass through the identical
+filter / C-score / tau_C / clustering / l_min chain -- so the reference
+distribution is of the *selected* statistic. That argument is correct but it is
+currently only asserted. Make it empirical, at zero extra scan cost:
+
+For each surrogate b in 1..B, treat `C_surr[[b]]` as if it were the observed
+data: cluster it at (tau_C, l_min), compute the location-matched p_R for each of
+its regions against the remaining B-1 surrogates, and BH-adjust. Then report:
+
+- the fraction of surrogate "experiments" yielding at least one region with
+  q_R < 0.05 -- this is a direct type-I error estimate for the WHOLE
+  selection-plus-testing chain, not just for the null's region count;
+- the distribution of the resulting p_R values, which should be approximately
+  uniform under a well-specified basis.
+
+If that fraction is at or below the nominal 0.05, the double-dipping objection is
+answered with a number rather than an argument, and it belongs in the Methods.
+If it is materially above, the location-matched test is anticonservative and
+l_min (or tau_C) has to absorb the difference -- which is worth knowing before
+submission rather than after review.
+
+Costs nothing new: it reuses the cached `C_surr` vectors and the prebuilt edge
+graph. Run it for each engine x basis that survives the gate.
+
 ## Environment
 
 - Run everything from the repo root.
