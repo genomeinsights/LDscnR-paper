@@ -16,16 +16,23 @@
 #   SIM_NULL_TYPES    default all five: genetic,latent,global_perm,env_orth,spatial
 #   SIM_NULL_B        draws per type (default 100)
 #
-# Home-field nulls are engine-specific and NOT crossed (genetic -> EMMAX only,
-# latent -> LFMM only); global_perm / env_orth / spatial run on both. The runner
-# skips the cross pairs itself, so the same command covers each engine's set.
+# Emits RAW P-VALUES only -- an observed vector and one vector per surrogate. No
+# C-scores, no thresholds, no regions: those are the analysis's job, so the
+# (rho, q*, alpha) grid and tau_C can change without re-running a scan.
 #
-# Recommended split (measured: EMMAX 15.6 min/cell/type, LFMM 3.5 h at B=100):
-#   ./run_nulls.sh 1    12                          # EMMAX, 4 nulls, ~2.6 h
-#   ./run_nulls.sh 0.75 12 ; ./run_nulls.sh 0.5 12  # ~2.6 h each
-#   SIM_NULL_ENGINES=lfmm ./run_nulls.sh 1 12       # LFMM, 2 nulls, ~17.5 h
-# Both engines use the same per-(type,b) seeds, so the shared method-agnostic
-# surrogates are identical between them -- the comparison is exactly paired.
+# Home-field nulls are engine-specific and NOT crossed (genetic -> EMMAX only,
+# latent -> LFMM only); env_orth runs on both and is the arbiter. Defaults follow
+# the framework: genetic, latent, env_orth. global_perm is dominated by env_orth
+# and spatial is supplementary -- request either explicitly via SIM_NULL_TYPES.
+#
+# Cost (measured: emmax_fast 0.10 s/scan x 10 chromosomes; LFMM 12.5 s/file):
+#   EMMAX  ~1 s per draw   -> B=100 ~2 min per cell x null
+#   LFMM   ~2.1 min per draw -> B=100 ~3.5 h per cell x null
+# Over 30 cells: EMMAX (2 nulls) ~20 min on 12 cores; LFMM (2 nulls) ~17.5 h.
+# Output ~800 MB per cell (context 41 MB + ~190 MB per engine x null at B=100).
+#
+#   ./run_nulls.sh 1    12                          # EMMAX side
+#   SIM_NULL_ENGINES=lfmm ./run_nulls.sh 1 12       # LFMM side
 # ---------------------------------------------------------------------------
 set -u
 STAGE=${1:?usage: run_nulls.sh <stage: 1|0.75|0.5> [nproc]}

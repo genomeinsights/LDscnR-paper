@@ -117,40 +117,45 @@ phenotype goes through all ten, giving one pooled surrogate C.
 |---|---|---|---|
 | `genetic` | MVN(0, cell's mean GRM) | **EMMAX only** | does EMMAX invent signal from the kinship it corrects? |
 | `latent` | MVN in the top-5 pooled genotype-PC subspace | **LFMM only** | same question for LFMM's latent factors |
-| `global_perm` | env shuffled among the 80 patches | both | model-agnostic |
 | `env_orth` | 48×48 env field shifted toroidally + rotated/reflected | both | **the arbiter** |
-| `spatial` | MVN(0, Gaussian kernel over patch coords) | both | continuity with earlier runs |
+| `global_perm` | env shuffled among the 80 patches | both | dominated by `env_orth` — off by default |
+| `spatial` | MVN(0, Gaussian kernel over patch coords) | both | supplementary — off by default |
 
-The two home-field nulls are **not crossed** between engines. A null drawn from one
-engine's own model of structure only answers that engine's specificity question;
-scoring EMMAX against LFMM's latent basis (or the reverse) tests neither. The runner
-skips those pairs, so each engine gets its own home-field null plus the
-method-agnostic ones — which are what the cross-engine comparison rests on.
+Home-field nulls are **not crossed**: a null drawn from one engine's own model of
+structure answers only that engine's specificity question. The runner skips those
+pairs. Defaults (`genetic, latent, env_orth`) follow the framework's two bases —
+home field per engine, plus the method-agnostic arbiter.
 
-`env_orth` is the sim-specific one, standing in for 3sp's `region_perm` (the lattice has
-no localities). A torus shift is a *relabelling of positions*, so the empirical
-autocorrelation function is preserved exactly while the field moves off the true one;
-draws are screened to |cor| < 0.3 against the observed env and then residualised, so the
-surrogate is exactly orthogonal to it — same spatial structure, none of the signal.
-Every null is residualised against the observed env, so none can carry the real signal.
+### Output: raw p-values, nothing else
 
-**Measured costs** (`emmax_fast` 0.10 s/scan, `ld_cscore` 0.83 s — the C-score dominates;
-LFMM 12.5 s per file):
+The runner computes **no C-scores, no thresholds and no regions**. It emits the
+observed per-marker p vector and one vector per surrogate, so the whole downstream
+— the (ρ, q\*, α) grid, τ_C, clustering, l_min, the region test — can change without
+re-running a scan. Two file kinds, deliberately dataset-agnostic so one analysis can
+consume simulations and empirical data identically:
 
-| work | per cell × type | 30 cells | on 12 cores |
+| file | contents |
+|---|---|
+| `cell_<id>.rds` | `markers`, `map` (marker, Chr, Pos, type, `true_QTN` — simulation-only), `ld_ws` (markers × ρ), `decay_sum`, `env_obs`, `coords` |
+| `pnull_<engine>_<null>_<id>.rds` | `p_obs`, `P_surr` (markers × B), `engine`, `null_type`, `B`, `cell`, seed provenance |
+
+`ld_ws` lives in the context file so it is stored once per cell rather than repeated
+for every engine × null. The empirical side
+(`~/3sp_lfmm_perm/run_paired_nulls_3sp.R`) currently emits `ld_null` bundles with
+C-scores already computed; it needs the same split to share the downstream.
+
+**Measured costs** (`emmax_fast` 0.10 s/scan × 10 chromosomes; LFMM 12.5 s/file):
+
+| work | per cell × null | 30 cells | on 12 cores |
 |---|---|---|---|
-| EMMAX B=100, 4 types, one stage | 15.6 min | 31 core-h | 2.6 h |
-| EMMAX, all three stages | | 94 core-h | 8 h |
-| LFMM B=100, 2 types, full sample only | 3.5 h | 210 core-h | 17.5 h |
+| EMMAX B=100, 2 nulls | ~2 min | 2 core-h | ~20 min |
+| LFMM B=100, 2 nulls | ~3.5 h | 210 core-h | ~17.5 h |
 
-Dropping the cross pairs takes LFMM from 44 h to 17.5 h, so **B=100 is affordable for
-both engines** — no need to run LFMM at a reduced B. Both engines then use the same
-per-`(type, b)` seeds, so `global_perm`, `env_orth` and `spatial` surrogates are
-identical between them and the comparison is exactly paired.
+Storage ~800 MB per cell (41 MB context + ~190 MB per engine × null at B=100).
 
 ```bash
 ./run_nulls.sh 1 12 ; ./run_nulls.sh 0.75 12 ; ./run_nulls.sh 0.5 12   # EMMAX side
-SIM_NULL_ENGINES=lfmm ./run_nulls.sh 1 12                             # LFMM, full sample
+SIM_NULL_ENGINES=lfmm ./run_nulls.sh 1 12                             # LFMM side
 ```
 
 Cells run one at a time with draws forked inside — a loaded cell is 2–4 GB and forked
