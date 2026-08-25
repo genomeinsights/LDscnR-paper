@@ -93,11 +93,18 @@ WIN_BP     <- as.numeric(Sys.getenv("SIM_WIN", "5e5"))   # BGS window grid (map 
 ## SIM_OUT when the file is complete -- the bundles are ~13 MB each and the external
 ## volume is the slow leg. Empty = write straight to SIM_OUT.
 STAGE_DIR  <- Sys.getenv("SIM_STAGE", "")
+## Bundles and popgen files share a BASENAME (adapt_<tag>_chr<n>_V<V>_c<c>_env<e>.rds)
+## and are only kept apart by living in different directories. Staging them into one
+## flat folder therefore made the popgen write clobber the bundle, which then vanished
+## before it could be moved. Give each its own staging subfolder.
+STAGE_BUNDLE <- if (nzchar(STAGE_DIR)) file.path(STAGE_DIR, "bundle") else ""
+STAGE_POPGEN <- if (nzchar(STAGE_DIR)) file.path(STAGE_DIR, "popgen") else ""
 ## Fraction of the analysis individuals to keep WITHIN each population (1 = all).
 SUBSAMPLE  <- as.numeric(Sys.getenv("SIM_SUBSAMPLE", "1"))
 stopifnot(SUBSAMPLE > 0, SUBSAMPLE <= 1)
 if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
-if (nzchar(STAGE_DIR) && !dir.exists(STAGE_DIR)) dir.create(STAGE_DIR, recursive = TRUE)
+if (nzchar(STAGE_DIR)) for (.d in c(STAGE_BUNDLE, STAGE_POPGEN))
+  if (!dir.exists(.d)) dir.create(.d, recursive = TRUE)
 if (nzchar(PARSED_DIR) && !dir.exists(PARSED_DIR)) dir.create(PARSED_DIR, recursive = TRUE)
 if (nzchar(POPGEN_DIR) && !dir.exists(POPGEN_DIR)) dir.create(POPGEN_DIR, recursive = TRUE)
 
@@ -932,7 +939,7 @@ process_file <- function(file_gz, out_path) {
   ## final home only once the file is complete -- so a killed run never leaves a
   ## half-written bundle in SIM_OUT for skip-if-exists to treat as done.
   stem      <- basename(sub("\\.tgz$|\\.tar\\.gz$", "", file_gz))
-  work_out  <- if (nzchar(STAGE_DIR)) file.path(STAGE_DIR, basename(out_path)) else out_path
+  work_out  <- if (nzchar(STAGE_DIR)) file.path(STAGE_BUNDLE, basename(out_path)) else out_path
 
   res <- regen_from_parsed(d, work_out)
 
@@ -942,7 +949,7 @@ process_file <- function(file_gz, out_path) {
     pg <- d$popgen
     ibd <- ibd_from_grm(res$GRM, d$env)
     pg$summary <- cbind(pg$summary, as.data.table(ibd))
-    pg_dir <- if (nzchar(STAGE_DIR)) STAGE_DIR else POPGEN_DIR
+    pg_dir <- if (nzchar(STAGE_DIR)) STAGE_POPGEN else POPGEN_DIR
     saveRDS(pg, file.path(pg_dir, paste0(stem, ".rds")))
     fwrite(pg$summary, file.path(pg_dir, paste0(stem, "_summary.csv")))
     if (nzchar(STAGE_DIR)) {
