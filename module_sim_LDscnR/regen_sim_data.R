@@ -29,7 +29,7 @@ suppressMessages({ library(data.table); library(SNPRelate); library(LEA)
                    devtools::load_all("/Users/petrikem/gitlab/LDscnR", quiet = TRUE) })
 
 IN_DIR  <- Sys.getenv("SIM_IN",  "/Volumes/Nemo/Nemo_sim/parsed_sim_data2")
-OUT_DIR <- Sys.getenv("SIM_OUT", "/Volumes/Nemo/Nemo_sim/regen_sim_data")
+OUT_DIR <- Sys.getenv("SIM_OUT", "/Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs")
 if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
 
 ## ---- canonical settings ----------------------------------------------

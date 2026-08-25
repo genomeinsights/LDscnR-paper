@@ -35,9 +35,27 @@ suppressMessages({ library(data.table); library(ggplot2); library(LDscnR) })
 a  <- commandArgs(trailingOnly = TRUE)
 V  <- if (length(a) >= 1) a[1] else "2"
 CC <- if (length(a) >= 2) a[2] else "1"
-ENVS <- 1:5                                             # replicate-average (mandatory)
-SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data")
+SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs")
 TAG    <- "nobgs"
+
+## ENVS is derived from what is on disk, not hardcoded, so adding replicates does
+## not mean editing this file. Only COMPLETE cells are used: pooling needs all
+## CHR_N chromosomes of an env, and a partial cell would silently pool a smaller
+## genome. Override with SIM_ENVS=1,2,3.
+CHR_N <- 10L
+discover_envs <- function(dir, tag, V, CC, chr_n = CHR_N) {
+  fs <- list.files(dir, pattern = sprintf("^adapt_%s_chr[0-9]+_V%s_c%s_env[0-9]+[.]rds$", tag, V, CC))
+  if (!length(fs)) stop("no bundles matching V", V, "_c", CC, " (", tag, ") in ", dir)
+  e <- as.integer(sub(".*_env([0-9]+)[.]rds$", "\\1", fs)); tab <- table(e)
+  full <- as.integer(names(tab)[tab == chr_n]); short <- setdiff(as.integer(names(tab)), full)
+  if (length(short)) message(sprintf("  [envs] incomplete cells skipped: %s",
+    paste(sprintf("env%d (%d/%d chr)", short, as.integer(tab[as.character(short)]), chr_n), collapse = ", ")))
+  sort(full)
+}
+ENVS <- { .e <- Sys.getenv("SIM_ENVS", "")
+          if (nzchar(.e)) as.integer(strsplit(.e, ",")[[1]]) else discover_envs(SIM_DATA, TAG, V, CC) }
+if (!length(ENVS)) stop("no complete env cells in ", SIM_DATA)
+message(sprintf("  [envs] using %d env cell(s): %s", length(ENVS), paste(ENVS, collapse = ",")))
 OUTFIG <- "module_sim_LDscnR/figures"; OUTRES <- "module_sim_LDscnR/results"
 CORES  <- as.integer(Sys.getenv("SIM_CORES", "1"))          # env-level parallelism over ENVS
 QTAB_C <- if (CORES > 1L) 1L else 4L
@@ -53,9 +71,18 @@ emx_p <- function(G, mk, y) { K <- gcta_grm(G[, mk, drop = FALSE]); pv <- emmax_
   gif <- stats::median(Fv) / stats::qf(0.5, 1, n - 2, lower.tail = FALSE)
   if (gif > 1.1) { Fv <- Fv / gif; pv <- stats::pf(Fv, 1, n - 2, lower.tail = FALSE) }
   list(p = pv, gif = gif, n = length(mk)) }
+## The regen bundles renamed this field: older ones populate `pruned_markers`
+## and leave `grm_markers` empty, current ones do the reverse. Accept either, and
+## fail loudly rather than returning an empty set -- an empty marker set would
+## build a GRM from nothing and report it as a result.
+grm_set <- function(d) {
+  mk <- if (length(d$grm_markers)) d$grm_markers else d$pruned_markers
+  if (!length(mk)) stop("bundle carries neither grm_markers nor pruned_markers")
+  mk
+}
 ## the GRM marker sets under comparison (extend here to add variants)
 grm_markers <- list(
-  chain  = function(d, G, lw, b) d$pruned_markers,               # complexity-reduction pruned set
+  chain  = function(d, G, lw, b) grm_set(d),                     # complexity-reduction pruned set
   ldw_b  = function(d, G, lw, b) colnames(G)[which(lw < b)])      # ld_w_095 < background LD
 
 ## ---- 1. per-env: pool, per-GRM EMMAX, C-score, PR-AUC ----------------

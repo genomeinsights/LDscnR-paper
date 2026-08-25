@@ -33,9 +33,28 @@ suppressMessages({
 a  <- commandArgs(trailingOnly = TRUE)
 V  <- if (length(a) >= 1) a[1] else "2"
 CC <- if (length(a) >= 2) a[2] else "1"
-ENVS <- as.character(1:5)                               # replicate-average (mandatory)
-SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data")
+SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs")
 TAG    <- "nobgs"
+
+## ENVS is derived from what is on disk, not hardcoded, so adding replicates does
+## not mean editing this file. Only COMPLETE cells are used: pooling needs all
+## CHR_N chromosomes of an env, and a partial cell would silently pool a smaller
+## genome. Override with SIM_ENVS=1,2,3.
+CHR_N <- 10L
+discover_envs <- function(dir, tag, V, CC, chr_n = CHR_N) {
+  fs <- list.files(dir, pattern = sprintf("^adapt_%s_chr[0-9]+_V%s_c%s_env[0-9]+[.]rds$", tag, V, CC))
+  if (!length(fs)) stop("no bundles matching V", V, "_c", CC, " (", tag, ") in ", dir)
+  e <- as.integer(sub(".*_env([0-9]+)[.]rds$", "\\1", fs)); tab <- table(e)
+  full <- as.integer(names(tab)[tab == chr_n]); short <- setdiff(as.integer(names(tab)), full)
+  if (length(short)) message(sprintf("  [envs] incomplete cells skipped: %s",
+    paste(sprintf("env%d (%d/%d chr)", short, as.integer(tab[as.character(short)]), chr_n), collapse = ", ")))
+  sort(full)
+}
+ENVS <- { .e <- Sys.getenv("SIM_ENVS", "")
+          if (nzchar(.e)) as.integer(strsplit(.e, ",")[[1]]) else discover_envs(SIM_DATA, TAG, V, CC) }
+if (!length(ENVS)) stop("no complete env cells in ", SIM_DATA)
+message(sprintf("  [envs] using %d env cell(s): %s", length(ENVS), paste(ENVS, collapse = ",")))
+ENVS <- as.character(ENVS)   # used as %s in filename patterns
 OUTFIG <- "module_sim_LDscnR/figures"; OUTRES <- "module_sim_LDscnR/results"
 CORES  <- as.integer(Sys.getenv("SIM_CORES", "1"))
 QTAB_C <- if (CORES > 1L) 1L else 4L
