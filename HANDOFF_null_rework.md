@@ -139,11 +139,44 @@ say so.
 
 ---
 
+## Task 4b — Fang et al. 2021 as a geographically matched positive control
+
+Kingman is a **mismatched** truth set for this panel, and Fang et al. (2020) is
+the citation that says so: parallelism in three-spined stickleback is
+geographically heterogeneous, most signatures are unique to the Eastern Pacific,
+and trans-oceanic marine--freshwater differentiation is "restricted to a limited
+number of shared genomic regions, including three chromosomal inversions".
+The Kingman EcoPeaks come from a global panel and a North-Eastern Pacific panel;
+the LDscnR panel is 47--75 deg N Atlantic/Baltic. Low overlap is therefore the
+*prediction*, not a failure -- and it explains the observed asymmetry
+(19.5x against the global-specific set, only 2.4x against the Pacific-specific
+set).
+
+**This materially weakens the case against LFMM's 78 unique regions.** Absence
+from a Pacific/global-weighted truth set is weak evidence when the expected
+overlap is low a priori.
+
+The matched control is **Fang et al. (2021), Mol Biol Evol 38(10):4205--4221**:
+Atlantic-only sampling (Baltic, North Sea, White and Barents Seas, British
+Isles -- the same range as our panel), reporting 2,996 SNPs in **26 outlier
+regions** for *G. aculeatus*. Repeat the Task 4 enrichment against that region
+set as well as Kingman. If the LFMM-unique regions recover Fang regions that
+Kingman misses, the sensitivity reading is supported by a geographically
+appropriate control rather than argued around a mismatched one.
+
+Coordinates and the region list are in that paper's supplementary tables; check
+the assembly before lifting.
+
 ## Task 8 — Name the simulator, and check the argument that leaned on "coalescent"
 
 The `.tex` described the simulations as *coalescent* in four places (lines 48,
 771, 802, 830) and never named the simulator. They are **NEMO** — forward-in-time,
-individual-based (Guillaume & Rougemont 2006; Frederic Guillaume is a co-author).
+individual-based. Note that Fang et al. (2020), also with PK, used **quantiNemo**
+(Neuenschwander, Hospital, Guillaume & Goudet 2008, Bioinformatics 24:1552--1553)
+for its individual-based forward simulations, and Frederic Guillaume is an author
+of both quantiNemo and this manuscript — confirm which of Nemo / quantiNemo /
+Nemo2 was actually used here before citing (the repo has `Nemo3/`, `Nemo_sim/`
+and `NEMO/`). `neuenschwander2008quantinemo` is already in `references.bib`.
 The four occurrences are now "forward-in-time individual-based", but two things
 remain:
 
