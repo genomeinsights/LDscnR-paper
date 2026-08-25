@@ -233,10 +233,10 @@
     .point span { font-size: 8.6pt; }
     .diffs { grid-template-columns: 1fr 1fr; gap: 0.5rem 1.3rem; }
     .diff { padding-top: 0.4rem; }
-    .diff span.body { font-size: 8.6pt; }
+    .diff span.body { font-size: 8.3pt; }
     figure { padding: 0.6rem 0.6rem 0.4rem; break-inside: avoid; }
-    figure svg { max-width: 126mm; margin: 0 auto; }
-    figcaption { font-size: 8.6pt; margin-top: 0.5rem; }
+    figure svg { max-width: 112mm; margin: 0 auto; }
+    figcaption { font-size: 8.4pt; margin-top: 0.4rem; }
     footer { margin-top: 0.6rem; padding-top: 0.45rem; font-size: 8.4pt; }
     .steps, .points { break-inside: avoid; }
     a { text-decoration: none; }
@@ -400,12 +400,12 @@
         <span class="body">Fixed physical windows assume adjacent variants carry one evolutionary signal; recombination means they often do not, so aggregation dilutes highly localised signal. LDscnR takes regions from the topology of the local LD network — overlapping but distinct signals in the same interval stay distinct — and preserves the original SNP-level statistics instead of summarising them.</span>
       </div>
       <div class="diff">
-        <b>Cluster-level dimension reduction</b>
-        <span class="body">We tested the obvious alternative: partition the genome into LD-defined clusters and test each cluster's first principal component. It cuts the number of tests sharply, but the component's association was consistently weaker than the strongest SNP in the same region, and the saving did not compensate for the loss. Filtering the search space, rather than summarising it, is what keeps the signal.</span>
+        <b>LD-cluster dimension reduction <span class="ref">LDn-clustering</span></b>
+        <span class="body">The published precedent is our own: Li <em>et al.</em> (2018) partition the genome by LD-network clustering and test each cluster's leading principal components, cutting one stickleback analysis from 75,484 tests to 214. Re-tested in the outlier-scan setting, the cluster component's association was consistently weaker than the strongest SNP in the same region, and the reduction in multiple testing did not compensate for the loss. LDscnR therefore <em>filters</em> the search space rather than summarising it, leaving the SNP-level statistics intact.</span>
       </div>
       <div class="diff">
         <b>How significance is established</b>
-        <span class="body">Permutation is the acknowledged gold standard for multiple-testing correction in genome scans, because it accounts for the correlation structure of the genome directly — but it is computationally impractical at per-SNP resolution, and under population structure plain permutation is not even valid: shuffling destroys the relatedness the test must preserve. Structure-aware surrogates fix that, and have been prohibitively expensive for the same reason — per-SNP significance needs the null <em>tail</em> resolved to genome-wide precision. LDscnR carries the per-SNP burden earlier, so the null need only resolve a handful of regions per surrogate: <strong>50–200 surrogates instead of tens of thousands</strong>.</span>
+        <span class="body">Permutation is the acknowledged gold standard for multiple-testing correction, because it accounts for the correlation structure of the genome directly. Under population structure the standard version is invalid — reshuffling phenotypes destroys the among-individual correlation the model assumes — and the correct substitute is already specified in the literature: draw surrogate phenotypes from MVN(0, &sigma;<sup>2</sup><sub>g</sub>A + &sigma;<sup>2</sup><sub>e</sub>I) and rerun the scan on each. What has limited it is cost, and cost scales with the number of tests. Li <em>et al.</em> bought affordability by dimension reduction, at the price of signal. <strong>LDscnR buys it by carrying the per-SNP burden earlier</strong>, so the null need only resolve a handful of regions per surrogate — 50–200 surrogates rather than tens of thousands — with the SNP-level statistics kept.</span>
       </div>
     </div>
   </section>
