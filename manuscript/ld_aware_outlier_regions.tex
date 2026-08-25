@@ -45,7 +45,7 @@ false-discovery level; markers are then clustered into regions by LD, and
 regions are retained by a size filter. We calibrate the detection threshold with
 a \emph{structure-aware null} that requires no per-locus permutation, and we
 provide a \emph{detectability} diagnostic that flags datasets in which structure,
-rather than signal, dominates. We validate the method on coalescent simulations,
+rather than signal, dominates. We validate the method on forward-in-time individual-based simulations,
 where its region-detection precision--recall matches a latent-factor scan (LFMM),
 and on a real stickleback genome scored against an independent set of recurrent
 marine--freshwater adaptation peaks. On the real genome the ranking inverts: the
@@ -768,7 +768,7 @@ guards only against global deflation, so the $w_j$ axis, not $\lambda$, is what
 forecloses regional signal absorption.}
 
 This structure-model dependence has a sharp empirical consequence that reconciles the
-simulated and the real analyses. On the coalescent simulations, where population
+simulated and the real analyses. On the forward-in-time individual-based simulations, where population
 structure is simple and well captured by a handful of latent factors, LFMM is at least
 as powerful as EMMAX---a marginally higher region-detection PR-AUC---and its heavier
 score tail is genuine power. On the real stickleback genome the ranking reverses:
@@ -799,7 +799,7 @@ between-region structure fixed and so isolates parallel marine--freshwater signa
 cleared by \emph{all} $90$ LFMM regions (location-matched region-level $q_R < 0.05$;
 permuted surrogates reconstruct the observed loci with median frequency $0$), the Chr1
 inversion ($p = 0.03$) and the \emph{Eda} region ($p = 0.01$) included. Second, on the
-coalescent simulations---where truth is known---LFMM's region-detection PR-AUC is
+forward-in-time individual-based simulations---where truth is known---LFMM's region-detection PR-AUC is
 marginally \emph{higher} than EMMAX's, so a genuine sensitivity advantage is expected to
 carry over. Third, the genomic inflation of the LFMM scan is elevated but \emph{not} in
 the manner of unmodelled structure: on the raw statistics $\lambda \approx 1.7$, yet it is
@@ -827,7 +827,7 @@ most directly separates adaptation from structure, is already decisive.
 \section{Supplementary: calibrating the kinship on the simulations}
 \label{sec:supp-grm}
 
-We validate the $\lambda \ge 1$ rule of Section~\ref{sec:grm} on the coalescent
+We validate the $\lambda \ge 1$ rule of Section~\ref{sec:grm} on the forward-in-time individual-based
 simulations, where the causal variants are known and---because the simulated
 genomes carry weak linkage---the QTN themselves have \emph{low} local LD, the
 regime in which a permissive $w_j$ cutoff is most at risk of over-parameterising

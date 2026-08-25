@@ -139,6 +139,30 @@ say so.
 
 ---
 
+## Task 8 — Name the simulator, and check the argument that leaned on "coalescent"
+
+The `.tex` described the simulations as *coalescent* in four places (lines 48,
+771, 802, 830) and never named the simulator. They are **NEMO** — forward-in-time,
+individual-based (Guillaume & Rougemont 2006; Frederic Guillaume is a co-author).
+The four occurrences are now "forward-in-time individual-based", but two things
+remain:
+
+1. **Methods must name NEMO**, with version and citation, and add it to
+   `references.bib`. There is currently no mention of it anywhere in the
+   manuscript.
+2. **Re-check the argument at line 771.** It reads "On the [...] simulations,
+   where population structure is simple and well captured by a handful of latent
+   factors, LFMM is at least as powerful as EMMAX". That premise was implicitly
+   doing work as *coalescent = simple structure*. With a forward-in-time
+   individual-based model the structure is whatever was simulated, so the claim
+   needs to rest on the actual simulated demography (dispersal regime, number of
+   demes, migration) rather than on the class of simulator. Verify it against
+   the NEMO configuration before it goes to review.
+
+This is also a reason to be careful with the `l_min`/detectability text, which
+contrasts a "gene-flow regime" against a "low-dispersal, structure-dominated
+regime" — those are NEMO parameters and should be stated as such.
+
 ## Environment
 
 - Run everything from the repo root.
