@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LDscnR in Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground:      #F2F5F6;
+    --surface:     #FFFFFF;
+    --surface-2:   #E9EFF1;
+    --ink:         #14212A;
+    --ink-2:       #4C6673;
+    --ink-3:       #7C949F;
+    --rule:        #D2DEE3;
+    --rule-strong: #A9BFC8;
+    --accent:      #1F7085;
+    --accent-wash: #DDEBEF;
+
+    --f-display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --f-body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E171C;
+      --surface:     #151F26;
+      --surface-2:   #1B2830;
+      --ink:         #E3ECEF;
+      --ink-2:       #9DB2BC;
+      --ink-3:       #6E8794;
+      --rule:        #27363F;
+      --rule-strong: #3C525E;
+      --accent:      #63B7CD;
+      --accent-wash: #16303A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E171C; --surface: #151F26; --surface-2: #1B2830;
+    --ink: #E3ECEF; --ink-2: #9DB2BC; --ink-3: #6E8794;
+    --rule: #27363F; --rule-strong: #3C525E;
+    --accent: #63B7CD; --accent-wash: #16303A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 15.5px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: clamp(1.75rem, 5vw, 3.25rem) clamp(1.25rem, 5vw, 3rem) 3rem;
+  }
+
+  /* --- header --- */
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 1.15rem; }
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.7rem;
+  }
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: clamp(1.9rem, 4.5vw, 2.4rem);
+    line-height: 1.1;
+    letter-spacing: -0.017em;
+    margin: 0 0 0.45rem;
+  }
+  .sub {
+    font-size: 1.05rem;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 60ch;
+  }
+  .byline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.5rem;
+    margin-top: 1.1rem;
+    font-family: var(--f-mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+  }
+  .byline a { color: var(--ink-3); }
+
+  /* --- sections --- */
+  section { padding-top: 1.9rem; }
+  h2 {
+    font-family: var(--f-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.75rem;
+  }
+  p { margin: 0 0 0.8rem; max-width: 72ch; }
+  p:last-child { margin-bottom: 0; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+
+  .lead {
+    font-size: 1.05rem;
+    max-width: 68ch;
+  }
+  .lead b { color: var(--accent); font-weight: 600; }
+
+  /* --- step grid --- */
+  .steps {
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.4rem;
+  }
+  @media (min-width: 760px) { .steps { grid-template-columns: 1fr 1fr; } }
+  .step {
+    background: var(--surface);
+    padding: 0.85rem 1rem;
+    display: grid;
+    grid-template-columns: 1.9rem 1fr;
+    gap: 0 0.65rem;
+    align-items: baseline;
+  }
+  .step .n {
+    font-family: var(--f-mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .step .t { font-weight: 600; display: block; margin-bottom: 0.1rem; }
+  .step .d { font-size: 0.875rem; color: var(--ink-2); display: block; }
+  .step .d code {
+    font-family: var(--f-mono);
+    font-size: 0.9em;
+    background: var(--surface-2);
+    padding: 0.05em 0.28em;
+    border-radius: 3px;
+  }
+
+  /* --- distinctive points --- */
+  .points { display: grid; gap: 0.9rem; margin-top: 0.3rem; }
+  @media (min-width: 760px) { .points { grid-template-columns: repeat(3, 1fr); } }
+  .point {
+    border-left: 2px solid var(--accent);
+    padding-left: 0.85rem;
+  }
+  .point b { display: block; margin-bottom: 0.15rem; }
+  .point span { font-size: 0.9rem; color: var(--ink-2); }
+
+  /* --- figure --- */
+  figure {
+    margin: 0.3rem 0 0;
+    padding: 1.1rem 1.1rem 0.85rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; height: auto; color: var(--ink-2); }
+  figcaption {
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    margin-top: 0.8rem;
+    max-width: 70ch;
+  }
+  .sl { font-family: "IBM Plex Mono", monospace; font-size: 11px; fill: var(--ink-2); }
+  .ss { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 500; fill: var(--ink); }
+  .sa { fill: var(--accent); }
+  .sbox { fill: var(--surface-2); stroke: var(--rule-strong); stroke-width: 1; }
+  .sline { stroke: var(--ink-3); stroke-width: 1.4; fill: none; }
+  .cell { fill: none; stroke: var(--rule-strong); stroke-width: 1; }
+  .cellon { fill: var(--accent); stroke: var(--accent); stroke-width: 1; }
+
+  footer {
+    margin-top: 2.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.85rem;
+    color: var(--ink-2);
+  }
+  footer a { color: var(--accent); }
+
+  @media print {
+    body { background: #fff; color: #14212A; font-size: 9.4pt; line-height: 1.4; }
+    .sheet { max-width: none; padding: 0; }
+    header { padding-bottom: 0.6rem; }
+    h1 { font-size: 19pt; }
+    .sub { font-size: 10.5pt; }
+    .byline { margin-top: 0.6rem; gap: 0.2rem 1.1rem; }
+    section { padding-top: 0.95rem; break-inside: avoid; }
+    h2 { margin-bottom: 0.45rem; }
+    p { margin-bottom: 0.5rem; }
+    .lead { font-size: 10.2pt; }
+    /* the min-width media queries above collapse to one column on the print
+       canvas; restore the multi-column layouts explicitly */
+    .steps { grid-template-columns: 1fr 1fr; }
+    .step { padding: 0.5rem 0.7rem; }
+    .step .d { font-size: 8.6pt; }
+    .points { grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+    .point span { font-size: 8.6pt; }
+    figure { padding: 0.6rem 0.6rem 0.4rem; break-inside: avoid; }
+    figure svg { max-width: 168mm; margin: 0 auto; }
+    figcaption { font-size: 8.6pt; margin-top: 0.5rem; }
+    footer { margin-top: 1rem; padding-top: 0.6rem; font-size: 8.6pt; }
+    .steps, .points { break-inside: avoid; }
+    a { text-decoration: none; }
+    @page { size: A4; margin: 13mm 14mm; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <p class="kicker">Method overview</p>
+    <h1>LDscnR — LD-aware outlier regions</h1>
+    <p class="sub">Finding the loci underlying adaptation by using linkage disequilibrium as evidence rather than as a nuisance.</p>
+    <div class="byline">
+      <span>Petri Kemppainen &amp; Frédéric Guillaume</span>
+      <span>University of Helsinki</span>
+      <span>petri@genomeinsights.fi</span>
+      <span>github.com/genomeinsights/LDscnR</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>The premise</h2>
+    <p class="lead">Genome scans confuse signal with structure. Small samples, complex demography and relatedness all produce peaks that look like selection. <b>LD tells them apart.</b> Selection locally inflates linkage disequilibrium — a causal variant drags a block of correlated markers with it — so a true signal appears as a <em>cluster</em> of mutually correlated markers, while a false positive arising from relatedness sits isolated, with low LD to its neighbours.</p>
+    <p>“LD-supported” and “clustered” are therefore not two separate criteria but the same footprint, seen once per marker and once per region. Everything below follows from that.</p>
+  </section>
+
+  <section>
+    <h2>The pipeline</h2>
+    <div class="steps">
+      <div class="step"><span class="n">00</span><span><span class="t">Detectability</span><span class="d">Can this genome be scanned at all? A truth-free check that signal is separable from background, so structure-dominated datasets are flagged rather than over-interpreted.</span></span></div>
+      <div class="step"><span class="n">01</span><span><span class="t">Kinship</span><span class="d">Build the relatedness matrix from LD-<em>independent</em> markers, so it cannot absorb the very regions under selection. Stringency set by the genomic inflation factor.</span></span></div>
+      <div class="step"><span class="n">02</span><span><span class="t">Association scan</span><span class="d">EMMAX, LFMM, or any test giving one <em>p</em>-value per marker. The method consumes the vector and is agnostic to its source.</span></span></div>
+      <div class="step"><span class="n">03</span><span><span class="t">Marker C-score</span><span class="d">Sweep the LD window and the filtering stringency. <code>C</code> = the fraction of settings in which a marker is <em>both</em> LD-supported <em>and</em> significant.</span></span></div>
+      <div class="step"><span class="n">04</span><span><span class="t">Outlier regions</span><span class="d">Cluster surviving markers by <em>linkage</em>, not by physical distance — so an inversion stays one unit while an adjacent looser cluster separates.</span></span></div>
+      <div class="step"><span class="n">05</span><span><span class="t">Structure-aware null</span><span class="d">Surrogate phenotypes that keep the population structure but break the link to the environment. Each region gets a location-matched, FDR-controlled <em>p</em>-value.</span></span></div>
+      <div class="step"><span class="n">06</span><span><span class="t">Second-tier C-score</span><span class="d">Sweep the region threshold and the size floor. <code>C⁽²⁾</code> = the fraction of settings in which a locus stays significant — a robustness ranking.</span></span></div>
+      <div class="step"><span class="n">07</span><span><span class="t">Report</span><span class="d">Ranked loci with two numbers: is it real (region-level FDR), and how robust is it to the analyst's parameter choices.</span></span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What is different about it</h2>
+    <div class="points">
+      <div class="point">
+        <b>Filtering that costs nothing</b>
+        <span>Keeping only LD-supported markers before correcting for multiple testing is <em>independent filtering</em>: it raises power by shrinking the tested set without breaking error control, because local LD is independent of the association statistic under the null.</span>
+      </div>
+      <div class="point">
+        <b>Regions, not SNPs</b>
+        <span>Markers are grouped by linkage rather than by physical distance, and the joining threshold self-calibrates to each chromosome's LD decay. Multiple testing is then reported over tens of regions, not hundreds of thousands of SNPs.</span>
+      </div>
+      <div class="point">
+        <b>No cherry-picking</b>
+        <span>Every analyst-chosen parameter is integrated over instead of fixed, and the reported score says how much of that parameter space supports the locus. A result that holds in only one corner of the grid is visible as such.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The idea in one picture</h2>
+    <figure>
+      <svg viewBox="0 0 700 400" role="img" aria-label="The same integrate-over-the-grid operation applied at the marker scale and again at the region scale.">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <text class="sl sa" x="40" y="30">SCALE 1 · MARKER</text>
+        <rect class="sbox" x="40" y="64" width="130" height="52" rx="3"></rect>
+        <text class="ss" x="105" y="86" text-anchor="middle">per-marker p</text>
+        <text class="sl" x="105" y="103" text-anchor="middle">EMMAX / LFMM</text>
+        <line class="sline" x1="172" y1="90" x2="232" y2="90" marker-end="url(#a1)"></line>
+
+        <text class="sl" x="288" y="44" text-anchor="middle">sweep: LD window × stringency</text>
+        <rect class="cell" x="240" y="52" width="19" height="19"></rect>
+        <rect class="cellon" x="259" y="52" width="19" height="19"></rect>
+        <rect class="cellon" x="278" y="52" width="19" height="19"></rect>
+        <rect class="cell" x="297" y="52" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="52" width="19" height="19"></rect>
+        <rect class="cell" x="240" y="71" width="19" height="19"></rect>
+        <rect class="cellon" x="259" y="71" width="19" height="19"></rect>
+        <rect class="cellon" x="278" y="71" width="19" height="19"></rect>
+        <rect class="cellon" x="297" y="71" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="71" width="19" height="19"></rect>
+        <rect class="cell" x="240" y="90" width="19" height="19"></rect>
+        <rect class="cell" x="259" y="90" width="19" height="19"></rect>
+        <rect class="cellon" x="278" y="90" width="19" height="19"></rect>
+        <rect class="cellon" x="297" y="90" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="90" width="19" height="19"></rect>
+        <rect class="cell" x="240" y="109" width="19" height="19"></rect>
+        <rect class="cell" x="259" y="109" width="19" height="19"></rect>
+        <rect class="cell" x="278" y="109" width="19" height="19"></rect>
+        <rect class="cellon" x="297" y="109" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="109" width="19" height="19"></rect>
+        <text class="sl" x="288" y="146" text-anchor="middle">cell counts if LD-supported AND significant</text>
+
+        <line class="sline" x1="337" y1="90" x2="398" y2="90" marker-end="url(#a1)"></line>
+        <rect class="sbox" x="404" y="64" width="140" height="52" rx="3"></rect>
+        <text class="ss" x="474" y="86" text-anchor="middle">C-score</text>
+        <text class="sl" x="474" y="103" text-anchor="middle">fraction of cells</text>
+        <text class="sl" x="562" y="90">how consistently</text>
+        <text class="sl" x="562" y="106">is this marker</text>
+        <text class="sl" x="562" y="122">supported?</text>
+
+        <path class="sline" d="M 474 118 L 474 200 L 105 200 L 105 258" marker-end="url(#a1)"></path>
+        <text class="sl" x="288" y="220" text-anchor="middle">threshold, then cluster by LD</text>
+
+        <text class="sl sa" x="40" y="178">SCALE 2 · REGION</text>
+        <rect class="sbox" x="40" y="262" width="130" height="52" rx="3"></rect>
+        <text class="ss" x="105" y="284" text-anchor="middle">regions</text>
+        <text class="sl" x="105" y="301" text-anchor="middle">LD-linked blocks</text>
+        <line class="sline" x1="172" y1="288" x2="232" y2="288" marker-end="url(#a1)"></line>
+
+        <text class="sl" x="288" y="242" text-anchor="middle">sweep: threshold × size floor</text>
+        <rect class="cellon" x="240" y="250" width="19" height="19"></rect>
+        <rect class="cellon" x="259" y="250" width="19" height="19"></rect>
+        <rect class="cell" x="278" y="250" width="19" height="19"></rect>
+        <rect class="cell" x="297" y="250" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="250" width="19" height="19"></rect>
+        <rect class="cellon" x="240" y="269" width="19" height="19"></rect>
+        <rect class="cellon" x="259" y="269" width="19" height="19"></rect>
+        <rect class="cellon" x="278" y="269" width="19" height="19"></rect>
+        <rect class="cell" x="297" y="269" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="269" width="19" height="19"></rect>
+        <rect class="cellon" x="240" y="288" width="19" height="19"></rect>
+        <rect class="cellon" x="259" y="288" width="19" height="19"></rect>
+        <rect class="cellon" x="278" y="288" width="19" height="19"></rect>
+        <rect class="cellon" x="297" y="288" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="288" width="19" height="19"></rect>
+        <rect class="cell" x="240" y="307" width="19" height="19"></rect>
+        <rect class="cellon" x="259" y="307" width="19" height="19"></rect>
+        <rect class="cellon" x="278" y="307" width="19" height="19"></rect>
+        <rect class="cell" x="297" y="307" width="19" height="19"></rect>
+        <rect class="cell" x="316" y="307" width="19" height="19"></rect>
+        <text class="sl" x="288" y="344" text-anchor="middle">cell counts if the region clears the null</text>
+
+        <line class="sline" x1="337" y1="288" x2="398" y2="288" marker-end="url(#a1)"></line>
+        <rect class="sbox" x="404" y="262" width="140" height="52" rx="3"></rect>
+        <text class="ss" x="474" y="284" text-anchor="middle">C⁽²⁾</text>
+        <text class="sl" x="474" y="301" text-anchor="middle">fraction of cells</text>
+        <text class="sl" x="562" y="288">how robust is</text>
+        <text class="sl" x="562" y="304">this region to</text>
+        <text class="sl" x="562" y="320">the settings?</text>
+      </svg>
+      <figcaption>The same operation at two scales. Rather than choosing a value for each analysis parameter, LDscnR sweeps it and scores how <em>consistently</em> a marker — and then a region — survives. Nothing in the pipeline depends on a single hand-picked setting.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Status</h2>
+    <p>Validated on coalescent simulations with known causal variants, and applied to a three-spined stickleback marine–freshwater dataset (117 individuals, 35 populations, 47–75°N) where single-SNP scans resolve nothing. There it recovers the known architecture — the chromosome-1 inversion, the <em>Eda</em> region, and peaks on chromosomes 5, 7, 17 and 20 — with the regions independently corroborated against a published set of recurrent marine–freshwater adaptation peaks from separate cohorts and a different assembly.</p>
+  </section>
+
+  <footer>
+    Implemented as an R package: <a href="https://github.com/genomeinsights/LDscnR">github.com/genomeinsights/LDscnR</a>. Manuscript in preparation — comments welcome at petri@genomeinsights.fi.
+  </footer>
+
+</div>
+</body>
+</html>
