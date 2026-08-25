@@ -70,3 +70,29 @@ manuscript/*.out
 # kingman2021: large analysis bundles (regenerable from the joint VCF via R/run_all.sh)
 kingman2021/data/*.rds
 kingman2021/data/*.snp_p.tsv.gz
+
+# Large regenerable data / simulation outputs at repo root (NOT for git; ~19 GB)
+3sp_data/
+LFMM_3sp/
+NEMO/
+Nemo3/
+Nemo_sim/
+OR_performance/
+OR_performance2/
+R_080726/
+parsed_sim_data/
+parsed_sim_data_genomes/
+gds_3sp.gds
+emmax_perm_reginal.rds
+map_100kb_100qtn_100delet.zip
+
+# Session scratch + stray files (not source)
+claude_snapshot_summaries/
+key.txt
+/*.png
+the_premise.pdf
+
+# LaTeX build products
+manuscript/*.pdf
+manuscript/*.fls
+manuscript/*.fdb_latexmk
