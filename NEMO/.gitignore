@@ -1,0 +1,14 @@
+# Everything here is regenerable, and large.
+#
+#   params_V4/  226 MB of maps and dispersal matrices; rebuilt by R/extend_delet_map.R
+#   run/        inis + manifests from R/make_run.R, and the simulation output
+#   grid/       inis + maps from R/make_grid.R, and the simulation output
+#
+# The scripts themselves ARE tracked: R/, ini/, cluster/, run_local.sh, run_pool.sh,
+# README.md, PATCHES.md.
+
+params_V4/
+run/
+grid/
+
+.DS_Store
