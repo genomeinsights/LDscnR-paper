@@ -1,0 +1,228 @@
+seq_id	pop_name	coord_approx	gps_n	gps_e	ecotype	notes	water_type	c150_pacNW	c151_nEur	c153_calif	c154_globalsuperglacial	c155_global	joint_genotyping	river_comparisons	pilot
+AKMA|X|2001#102	Alaska Marine		60.124	-149.395	M		Marine	1		1	1	1	Yes		
+AKST|X|2001#03	Alaska Stream		60.141	-149.395	F		River	0					Yes		
+ANSR_X_2009#01	Anser Lake, Haida Gwaii		54.114	-131.686	F		Freshwater	0					Yes		
+BARW|X|2012#04	Barrow, Alaska		71.335	-156.606	M		Marine	1		1	1	1	Yes		
+BHAR|X|2011#02	North Uist, Scotland, Andrew Maccoll 21 May 2011		57.567	-7.283	F		Lake						Yes		
+BIGR_1_32_2007#03	Big River, CA		39.289	-123.747	M		Marine			1		1	Yes	Yes	
+BIGR_52_54_2008#02	Big River, CA		39.317	-123.686	F		River			0		0	Yes	Yes	
+BIGR|1_32|2007#01	Big River, CA		39.289	-123.747	M		Marine						Yes	Yes	
+BIGR|1_32|2007#02	Big River, CA		39.289	-123.747	M		Marine						Yes	Yes	
+BIGR|3_63|2007#08	Big River, CA		39.289	-123.747	M		Marine						Yes	Yes	
+BIGR|3_63|2007#14	Big River, CA		39.289	-123.747	M		Marine						Yes	Yes	
+BIGR|52_54|2007#04	Big River, CA		39.317	-123.686	F		River						Yes	Yes	
+BIGR|52_54|2007#05	Big River, CA		39.317	-123.686	F		River						Yes	Yes	
+BIGR|52_54|2007#12	Big River, CA		39.317	-123.686	F		River						Yes	Yes	
+BIGR|52_54|2007#17	Big River, CA		39.317	-123.686	F		River						Yes	Yes	
+BITJ|X|X#17	Bitrufjordur		65.457	-21.44	M		Marine		1		1	1	Yes		
+BK70_X_2010#02	Banks West, lake, Haida Gwaii		53.397	-130.202	F		Freshwater	0					Yes		
+BKW2_X_2010#01	Banks 70, lake, Haida Gwaii		53.359	-130.157	F		Freshwater	0					Yes		
+BLAU|X|2002#08	Blautaver Lake, Iceland		64.044	-18.991	F		Lake		0		0	0	Yes		
+BNMA|X|2006#01	Bonsall marine		48.885	-123.667	M		Marine	1		1	1	1	Yes	Yes	
+BNMA|X|2006#02	Bonsall marine		48.885	-123.667	M		Marine						Yes	Yes	
+BNMA|X|2006#03	Bonsall marine		48.885	-123.667	M		Marine						Yes	Yes	
+BNMA|X|2006#05	Bonsall marine		48.885	-123.667	M		Marine						Yes	Yes	
+BNMA|X|2006#07	Bonsall marine		48.885	-123.667	M		Marine						Yes	Yes	
+BNST|X2006#08	Bonsall stream		48.85	-123.723	F		River	0			0	0	Yes	Yes	
+BNST|X|2006#01	Bonsall stream		48.85	-123.723	F		River						Yes	Yes	
+BNST|X|2006#06	Bonsall stream		48.85	-123.723	F		River						Yes	Yes	
+BNST|X|2006#09	Bonsall stream		48.85	-123.723	F		River						Yes	Yes	
+BNST|X|2006#10	Bonsall stream		48.85	-123.723	F		River						Yes	Yes	
+BOOT|X|2011#05	Boot Lake, Alaska		61.718	-150.13	F		Lake	0					Yes		
+BOUL_X_2010#01	Boulton Lake, haida Gwaii		53.783	-132.098	F		Lake	0			0	0	Yes		
+BOUL_X_2010#02	Boulton Lake, haida Gwaii		53.783	-132.098	F		Lake						Yes		
+BRLY|X|2012#01	Barley Lake		61.363	-150.083	F		Lake	0					Yes		
+BRNT_X_2009#05	Branta Lake, Haida Gwaii		53.967	-132.016	F		Freshwater	0			0	0	Yes		
+BSEA|55|2011#01	Bering Sea	Y	58.089	-166.643	M		Marine	1		1	1	1	Yes		
+CERC|X|X#04	Cerrito Creek, Northern California		37.901	-122.281	F		Freshwater			0		0	Yes		
+CHRU|X|2011#04	North Uist, Scotland CHRU Andrew Maccoll 20 May 2011		57.6	-7.2	F		Fresh		0		0	0	Yes		
+CMCB|X|2011#02	Community Club		60.702	-151.383	F		Fresh	0					Yes		
+COAT|X|2009#90234	Coates Lake, Haida Gwaii		53.669	-132.88	F		Fresh	0					Yes		
+COND|X|2002#14	Connor Creek D, Washington		47.056	-124.163	F		River	0					Yes		
+CORC|X|2011#01	Corcoran Lake, Alaska		61.574	-149.688	F		Lake	0					Yes		
+DAIM|X|2011#03	North Uist, DAIM Andrew Maccoll 24 May 2011		57.583	-7.2	F		Fresh						Yes		
+DANS|X|X#05	Daniels Lake, Alaska		60.735	-151.186	F		Lake	0					Yes		
+DARW_X_2009#03	Darwin Lake, Haida Gwaii		52.568	-131.663	F		Lake	0					Yes		
+DAWS_X_2009#02	Dawson Marine Pond, Haida Gwai		53.225	-132.476	M		Marine	1		1	1	1	Yes		
+DNSE|X|2011#07	Denise Lake, Alaska		60.522	-150.987	F		Lake	0					Yes		
+DRIZ_I_2010#01	Drizzle Lake, inlet, Haida Gwaii		53.925	-132.077	F		Lake						Yes		
+DRIZ_L_2009#02	Drizzle Lake, Haida Gwaii		53.935	-132.073	F		Lake	0			0	0	Yes		
+DRIZ_L_2009#15	Drizzle Lake, Haida Gwaii		53.935	-132.073	F		Lake						Yes		
+DRIZ_O_2009#03	Drizzle Lake, outlet, Haida Gwaii		53.934	-132.053	F		Lake						Yes		
+ECHO|X|2011#03	Echo Lake, Alaska		60.438	-151.161	F		Lake	0					Yes		
+EDEN_X_2010#01	Eden Lake, Haida Gwaii		53.845	-132.746	F		Lake	0					Yes		
+ERBC|X|X#8770	El Rosario Boca, Mexico	Y	30.036	-115.774	F					0		0	Yes		
+ESCP|X|1993#75_8	Escarpment Lake, Haida Gwaii		52.589	-131.842	F		Lake	0			0	0	Yes		
+FADA_FJ_2001#17	North Uist, Loch Fada		57.613	-7.211	F		Lake						Yes		
+FRIC_X_2003#C10	Friant River		36.98	-119.731	F	Completely plated	River						Yes		
+FRIL|X|X#05	Friant River		36.98	-119.731	F	Low plated	River			0		0	Yes		
+GARC|X|X#711	Garrity Creek, Northern California		38.001	-122.322	F		Creek			0		0	Yes		
+GIFU|X|2000#03	Japanese Marine	Y	35.405	136.701	M		Marine				1	1	Yes		
+GOLD_X_2009#02	Gold Creek, Haida Gwaii		53.632	-132.053	F		Fresh	0					Yes		
+GOLD|X|X#12	Gold Creek, Haida Gwaii		53.632	-132.053	F		Fresh						Yes		
+HRUN|X|X#02	Hraun, Iceland		64.917	-22.167	F				0		0	0	Yes		
+HSTA|X|2011#03	North Uist, Scotland HOSTA Andrew Maccoll 18 May 2011		57.617	-7.483	F		fresh						Yes		
+JADE|X|2011#05	Jade Lake, Alaska		61.524	-149.869	F		Lake	0					Yes		
+KALD|X|2010#03	Kaldback, Faroe Islands		62.064	-6.913	M		Marine		1		1	1	Yes		
+KFSY|X|2011#05	Kalifonsky Lake		60.331	-151.264	F		Lake	0			0	0	Yes		
+KODK|X|2004#04	Pacific Ocean offshore Kodiak Island	Y	56.965	-151.35	M		Marine	1		1	1	1	Yes		
+LAMH|X|2001#09	Loch a'Mhuilin		56.894	-5.869	F		Lake		0		0	0	Yes		
+LANO|X|2001#05	Loch an Nostarie		56.993	-5.804	F		Lake		0		0	0	Yes		
+LAUR|X|1993#9_5	Laurel Pond, Haida Gwaii		53.929	-132.02	F		Lake	0					Yes		
+LITC_0_05_2008#841	Little Campbell downstream		49.013	-122.779	M		Marine	1		1	1	1	Yes	Yes	
+LITC_0_05_2008#842	Little Campbell downstream		49.013	-122.779	M		Marine						Yes	Yes	
+LITC_0_05_2008#FL	Little Campbell downstream		49.013	-122.779	M		Marine						Yes	Yes	
+LITC_0_05_2008#FO	Little Campbell downstream		49.013	-122.779	M		Marine						Yes	Yes	
+LITC_0_45_2008#789	Little Campbell downstream		49.013	-122.779	M		Marine						Yes	Yes	
+LITC_23_32_2008#306	Little Campbell upstream		49.012	-122.625	F		River	0			0	0	Yes	Yes	
+LITC_23_32_2008#324	Little Campbell upstream		49.012	-122.625	F		River						Yes	Yes	
+LITC_23_32_2008#347	Little Campbell upstream		49.012	-122.625	F		River						Yes	Yes	
+LITC_23_32_2008#356	Little Campbell upstream		49.012	-122.625	F		River						Yes	Yes	
+LITC_23_32_2008#744	Little Campbell upstream		49.012	-122.625	F		River						Yes	Yes	
+LLYD|X|2003#03	Lloyd State Park, MA		41.53	-70.981	M		Marine				1	1	Yes		
+LMCK|X|X#03	Little Meadow Creek, Alaska		61.569	-149.761	F		River	0					Yes		
+LMIA|X|X#02	Limia, Spain		41.91	-8.093	F		River					0	Yes		
+LMOR|X|2001#12	Loch Morar		57.567	-7.267	F		Lake						Yes		
+LNEA|M|2001#03	Loch nan Eala		56.906	-5.833	F		Lake		0		0	0	Yes		
+LNGH|X|2011#01	Lough Neagh, Ballyronan Bay, Ireland		54.708	-6.528	F		Very Large Lake		0		0	0	Yes		
+LOBG|X|1999#09	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#11	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#12	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#13	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#32	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#36	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#38	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#39	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#43	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|1999#46	Loberg Lake, early		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#02	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#03	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#04	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#05	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#06	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#08	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#11	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#17	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#26	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LOBG|X|2012#28	Loberg Lake, later		61.56	-149.258	F		Lake						Yes		Yes
+LONG|X|2011#01	Long Lake, Alaska		61.578	-149.764	F		Lake	0					Yes		
+LSHP|X|2011#01	L-shaped lake		61.706	-149.972	F		Lake	0			0	0	Yes		
+LSOL|X|2012#04	Lake Solano, CA		38.495	-122.033	F		Lake			0		0	Yes		
+LSWL|X|2011#05	Lough Swilly, Co Donegal		55.016	-7.573	M		Marine		1		1	1	Yes		
+LTLT|X|2011#06	Lough Talt, Co Sligo		54.082	-8.92	F		Lake		0		0	0	Yes		
+LUTE|X|2003#76_4	Lutea Lake, Haida Gwaii		52.337	-131.37	F		Lake	0					Yes		
+MANC|X|X#05	Manchester Clam Bay, Puget Sound		47.567	-122.547	M		Marine	1		1	1	1	Yes		
+MAYR_X_2009#05	Mayer Lake		53.692	-132.044	F		Lake	0			0	0	Yes		
+MAYR_X_2009#11	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#03	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#04	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#09	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#13	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#14	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#17	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#21	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#24	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#26	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MAYR|X|2004#30	Mayer Lake		53.692	-132.044	F		Lake						Yes		
+MDPC_X_1993#01	Mid-pacific, off Haida Gwaii	Y	53	-133	M		Marine	1		1	1	1	Yes		
+MIDF|BDVW|2011#01	Midfjardara River Downstream		65.346	-20.911	M		Marine						Yes	Yes	
+MIDF|BDVW|2011#02	Midfjardara River Downstream		65.346	-20.911	M		Marine						Yes	Yes	
+MIDF|BLUP|2011#01	Midfjardara River Downstream		65.346	-20.911	M		Marine		1		1	1	Yes	Yes	
+MIDF|REND|2011#01	Midfjardara River Upstream		65.037	-20.714	F		River		0		0	0	Yes	Yes	
+MIDF|REND|2011#04	Midfjardara River Upstream		65.037	-20.714	F		River						Yes	Yes	
+MIDF|REND|2011#05	Midfjardara River Upstream		65.037	-20.714	F		River						Yes	Yes	
+MIDF|REND|2011#06	Midfjardara River Upstream		65.037	-20.714	F		River						Yes	Yes	
+MIDF|REND|2011#10	Midfjardara River Upstream		65.037	-20.714	F		River						Yes	Yes	
+MIDF|S101|2011#05	Midfjardara River Downstream		65.346	-20.911	M		Marine						Yes	Yes	
+MIDF|S101|2011#06	Midfjardara River Downstream		65.346	-20.911	M		Marine						Yes	Yes	
+MNKA|X|X#02	Matanuska Lake, Alaska		61.556	-149.229	F		Lake	0			0	0	Yes		
+MNYN|X|X#29997	Menyanthes Lake, Haida Gwai		53.596	-132.971	F		Lake	0					Yes		
+NHBR|X|2003#05	New Harbor River, US East Coast		44.473	-64.082	M		Marine				1	1	Yes		
+NTRW|X|X#02	Norway Trawler	Y	68.5	2	M		Marine		1	1	1	1	Yes		
+OBSE|X|2011#05	Scotland, OBSE+OBSM Andrew Maccoll	Y	57.614	-7.179	F								Yes		
+OLNY_X_2007#03	Olney Creek, California		40.528	-122.384	F		River			0		0	Yes		
+ORPH|X|2011#05	Orphea Lake, Alaska		60.388	-151.199	F		Lake	0			0	0	Yes		
+PINC|X|X#03	Pinole Creek, Northern California		37.963	-122.202	F		Creek			0		0	Yes		
+POQU|X|2009#29995	Poque Lake, Haida Gwaii		52.602	-131.704	F		Lake	0			0	0	Yes		
+QUIN_X_2003#02	Quinalt, Washington		47.471	-123.871	F		Fresh	0			0	0	Yes		
+RCAL|X|2001#24	River Callop, Scotland		56.867	-5.425	F		River		0		0	0	Yes		
+RDSP_X_2010#02	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70307	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70311	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70314	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70332	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70337	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70346	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70353	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70364	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70368	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+RDSP|X|2012#70385	Roadside Pond		53.624	-132.036	F		Lake						Yes		
+REIV|X|2011#04	North Uist, Scotland, Andrew Maccoll		57.617	-7.517	F		Lake		0		0	0	Yes		
+RGLN|X|2011#04	River Glenavy, Co Antrim, Ireland		54.588	-6.239	F		River		0		0	0	Yes		
+ROUG|X|2000#f03	Rouge Lake, Haida Gwaii		54.034	-131.876	F		Lake	0					Yes		
+SACK|X|2010#0898	San Antonio Creek, VAFB, CA		34.783	-120.536	F		River			0		0	Yes		
+SALS|X|X#01	Salinas River, CA		36.647	-121.702	F		River			0		0	Yes		
+SAPC|X|X#01	San Pablo Creek, Northern California		37.966	-122.32	F		Creek			0		0	Yes		
+SCRM|X|2010#873	Santa Clara River mouth, LA, CA		34.236	-119.257	M		Marine			1		1	Yes		
+SCRS|X|2009#8253	Santa Clara River, LA, CA	Y	34.436	-118.612	F		Fresh			0		0	Yes		
+SDPY_X_2006#24	Serendipity Pond, Haida Gwaii		54.028	-131.761	F		Fresh	0					Yes		
+SHEL_L_2008#01	Loch Shiel		56.787	-5.604	F		Lake		0		0	0	Yes		
+SJCR|X|2009#8212	San Jacinto River, San Bernadino, CA	Y	33.765	-117.208	F		River			0		0	Yes		
+SKID_X_2009#01	Skidgate Lake, Haida Gwaii		53.097	-131.916	F		Lake	0					Yes		
+SKON|X|X#12	Skonun Lake, Haida Gwaii		53.914	-132.025	F		Lake	0					Yes		
+SLMW|X|2001#0918	Sugarloaf Meadow, San Bernadino, CA	Y	34.179	-116.83	F		Fresh			0		0	Yes		
+SLTC|X|X#90458	Solstice Lake, Haida Gwaii		53.945	-131.932	F		Lake	0					Yes		
+SLVR|X|2009#29996	Silver Lake, Haida Gwaii		54.103	-131.688	F		Lake	0					Yes		
+SPNC_L_2009#01	Spence Lake, Haida Gwaii		53.973	-131.78	F		Lake	0			0	0	Yes		
+SPNC_L_2009#02	Spence Lake, Haida Gwaii		53.973	-131.78	F		Lake						Yes		
+SPNC_O_2010#08	Spence Lake Outlet, Haida Gwaii		53.982	-131.79	F		Lake						Yes		
+SPNC_O_2010#14	Spence Lake Outlet, Haida Gwaii		53.982	-131.79	F		Lake						Yes		
+SRLY|X|2011#01	South Rolly Lake, Alaska		61.669	-150.126	F		Lake	0					Yes		
+SRST|S1|2000#05	Salmon River Stream, British Columbia		49.175	-122.594	F		River	0			0	0	Yes		
+SSMC|X|2010#01	San Simeon Creek, CA	Y	35.608	-121.091	F		River			0	0	0	Yes		
+STIU_X_2009#03	Stiu Lake, Queen Charlotte - fully armored fresh		53.244	-132.586	F		Lake	0			0	0	Yes		
+STMY|X|2011#03	Stormy Lake, Alaska		60.771	-151.047	F		Lake	0					Yes		
+SUNC|X|X#04	Suisun Creek, Northern California	Y	38.225	-122.107	F		Creek			0		0	Yes		
+TERN|X|2011#02	Tern Lake, Alaska		60.533	-149.55	F		Lake	0					Yes		
+TORM|X|2011#03	Torm Lake, Scotland		57.55	-7.317	F		Lake						Yes		
+TYNE_1_2001#07	Tyne River marine		55.999	-2.52	M		Marine						Yes	Yes	
+TYNE_1_2001#08	Tyne River marine		55.999	-2.52	M		Marine						Yes	Yes	
+TYNE_1_2001#09	Tyne River marine		55.999	-2.52	M		Marine						Yes	Yes	
+TYNE_1_2001#10	Tyne River marine		55.999	-2.52	M		Marine						Yes	Yes	
+TYNE_1_2001#14	Tyne River marine		55.999	-2.52	M		Marine		1		1	1	Yes	Yes	
+TYNE_8_2003#902	Tyne River upstream		55.943	-2.785	F		River		0		0	0	Yes	Yes	
+TYNE_8_2003#906	Tyne River upstream		55.943	-2.785	F		River						Yes	Yes	
+TYNE_8_2003#908	Tyne River upstream		55.943	-2.785	F		River						Yes	Yes	
+TYNE_8_2003#919	Tyne River upstream		55.943	-2.785	F		River						Yes	Yes	
+TYNE_8_2003#920	Tyne River upstream		55.943	-2.785	F		River						Yes	Yes	
+URRI|X|X#07	Urridakotsvatn		64.157	-21.343	F		Fresh		0		0	0	Yes		
+VIFC|X|X#07	Vifisstaðavatn		64.08	-21.873	F	Pelvis Complete	Fresh						Yes		
+VIFR|X|X#08	Vifisstaðavatn		64.08	-21.873	F	Pelvis Reduced	Fresh		0		0	0	Yes		
+WALC|X|2005#05	Wallace Lake		61.573	-149.576	F	Pelvis Complete	Lake						Yes		
+WALR|X|2005#32	Wallace Lake		61.573	-149.576	F	Pelvis Reduced	Lake	0					Yes		
+WATT_X_2009#05	Watt Lake, Haida Gwaii		53.764	-132.071	F		Lake	0					Yes		
+WDPL_X_2009#05	Woodpile Creek, Haida gwai		53.644	-132.082	F		Lake	0					Yes		
+WMSO_X_2002#bigf	Williamsoni, CA; no plates		34.435	-118.198	F		Fresh			0		0	Yes		
+WOLF|X|2011#04	Wolf Lake, Alaska		61.645	-149.278	F		Lake	0					Yes		
+ZERO|X|2011#05	Zero Lake, Alaska		61.648	-149.808	F		Lake	0					Yes		
+ANTL	Antigonish Landing, Nova Scotia, Marine		45.698	-61.878	M	Jones et al. 2012	Marine				1	1	Yes		
+BDGB	Bodega Bay		38.325	-123.041	M	Jones et al. 2012	Marine			1		1	Yes		
+BEPA	Bear Paw		61.615	-149.757	F	Jones et al. 2012	Fresh	0			0	0	Yes		
+BIGL	Big Lake (F)		39.3	-123.728	F	Jones et al. 2012	Fresh						Yes		
+BIGR	Big River (M)		39.289	-123.747	M	Jones et al. 2012	Marine						Yes		
+FTC	Fish Trap Creek, Washington		48.931	-122.487	F	Jones et al. 2012	Fresh	0			0	0	Yes		
+GJOG	Gjogur, Iceland, Marine		65.98	-21.44	M	Jones et al. 2012	Marine		1		1	1	Yes		
+GORT	Gorten Sands, Scotland, Marine		56.911	-5.888	M	Jones et al. 2012	Marine		1		1	1	Yes		
+HUTU	Humptulips, Washington, Freshwater		47.231	-123.957	F	Jones et al. 2012	Fresh	0					Yes		
+JAMA	Japanese Marine		42.973	144.329	M	Jones et al. 2012	Marine				1	1	Yes		
+MATA	Matadero		37.393	-122.162	F	Jones et al. 2012	Fresh			0		0	Yes		
+MUDL	Mud Lake		61.593	-149.34	F	Jones et al. 2012	Lake	0					Yes		
+NEU	Neustadt, Germany, Marine		54.058	10.877	M	Jones et al. 2012	Marine		1		1	1	Yes		
+NOST	Norway Stream, Freshwater		59.765	5.712	F	Jones et al. 2012	Fresh		0		0	0	Yes		
+PAXB	Paxton Benthic		49.703	-124.522	F	Jones et al. 2012	Fresh	0			0	0	Yes		
+RABS	Rabbit Slough		61.556	-149.249	M	Jones et al. 2012	Marine	1		1	1	1	Yes		
+SALR	Salmon River, marine		49.175	-122.594	M	Jones et al. 2012	Marine	1		1	1	1	Yes		
+SCX	Schwalle River, Germany, freshwater		54.08	10.083	F	Jones et al. 2012	Fresh		0		0	0	Yes		
+SHEL	River Shiel, Scotland, freshwater		56.748	-5.698	F	Jones et al. 2012	Fresh						Yes		
+TYNE_1	Tyne downstream		55.999	-2.52	M	Jones et al. 2012	Marine						Yes		
+TYNE_8	Tyne upstream		55.943	-2.785	F	Jones et al. 2012	Fresh						Yes		

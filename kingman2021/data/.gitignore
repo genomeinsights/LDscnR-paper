@@ -1,0 +1,3 @@
+# large derived bundles and per-SNP p-value tables are regenerable
+*.rds
+*.snp_p.tsv.gz

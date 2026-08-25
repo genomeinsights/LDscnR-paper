@@ -1,0 +1,958 @@
+<title>LDscnR Framework</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #F2F5F6;
+    --surface:     #FFFFFF;
+    --surface-2:   #E9EFF1;
+    --ink:         #14212A;
+    --ink-2:       #4C6673;
+    --ink-3:       #7C949F;
+    --rule:        #D2DEE3;
+    --rule-strong: #A9BFC8;
+    --accent:      #1F7085;
+    --accent-2:    #4E9DB2;
+    --accent-wash: #DDEBEF;
+    --amber:       #9A6D00;
+    --amber-wash:  #F5EBD2;
+    --red:         #B32C14;
+    --red-wash:    #F6E1DC;
+
+    --f-display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --f-body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    --s--1: 0.8125rem;
+    --s-0:  1.0625rem;
+    --s-1:  1.1875rem;
+    --s-2:  1.4375rem;
+    --s-3:  1.875rem;
+    --s-4:  2.625rem;
+
+    --gutter: clamp(1.25rem, 4vw, 3rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E171C;
+      --surface:     #151F26;
+      --surface-2:   #1B2830;
+      --ink:         #E3ECEF;
+      --ink-2:       #9DB2BC;
+      --ink-3:       #6E8794;
+      --rule:        #27363F;
+      --rule-strong: #3C525E;
+      --accent:      #63B7CD;
+      --accent-2:    #3B9AB2;
+      --accent-wash: #16303A;
+      --amber:       #E1AF00;
+      --amber-wash:  #322910;
+      --red:         #F2745A;
+      --red-wash:    #351B15;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0E171C;
+    --surface:     #151F26;
+    --surface-2:   #1B2830;
+    --ink:         #E3ECEF;
+    --ink-2:       #9DB2BC;
+    --ink-3:       #6E8794;
+    --rule:        #27363F;
+    --rule-strong: #3C525E;
+    --accent:      #63B7CD;
+    --accent-2:    #3B9AB2;
+    --accent-wash: #16303A;
+    --amber:       #E1AF00;
+    --amber-wash:  #322910;
+    --red:         #F2745A;
+    --red-wash:    #351B15;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: var(--s-0);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 var(--gutter) 6rem;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .mast {
+    padding: clamp(3rem, 8vw, 5.5rem) 0 2.25rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: var(--s--1);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.1rem;
+  }
+  .mast h1 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: var(--s-4);
+    line-height: 1.08;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+    max-width: 20ch;
+  }
+  .standfirst {
+    font-size: var(--s-1);
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .mast-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.75rem;
+    margin-top: 1.75rem;
+    font-family: var(--f-mono);
+    font-size: var(--s--1);
+    color: var(--ink-3);
+  }
+  .mast-meta span { white-space: nowrap; }
+
+  /* ---------- part structure ---------- */
+
+  .part {
+    display: grid;
+    gap: 0 2.5rem;
+    padding: 3.25rem 0 0.5rem;
+    border-top: 1px solid var(--rule);
+  }
+  .part:first-of-type { border-top: none; }
+
+  @media (min-width: 940px) {
+    .part {
+      grid-template-columns: 9rem minmax(0, 1fr);
+    }
+  }
+
+  .rail {
+    padding-top: 0.4rem;
+  }
+  .rail-num {
+    font-family: var(--f-mono);
+    font-size: var(--s-2);
+    font-weight: 500;
+    color: var(--accent);
+    display: block;
+    line-height: 1;
+  }
+  .rail-tag {
+    font-family: var(--f-mono);
+    font-size: var(--s--1);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: block;
+    margin-top: 0.5rem;
+  }
+
+  .body-col { min-width: 0; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: var(--s-3);
+    line-height: 1.15;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+    margin: 0 0 0.9rem;
+  }
+  h3 {
+    font-family: var(--f-body);
+    font-weight: 600;
+    font-size: var(--s-1);
+    letter-spacing: -0.004em;
+    margin: 2.1rem 0 0.6rem;
+    color: var(--ink);
+  }
+  h4 {
+    font-family: var(--f-mono);
+    font-weight: 500;
+    font-size: var(--s--1);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 1.6rem 0 0.5rem;
+  }
+
+  p { margin: 0 0 1rem; max-width: 68ch; }
+  .body-col > ul, .body-col > ol { max-width: 68ch; }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  code, .m {
+    font-family: var(--f-mono);
+    font-size: 0.9em;
+    background: var(--surface-2);
+    padding: 0.1em 0.34em;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  .eq {
+    font-family: var(--f-mono);
+    font-size: var(--s-0);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 0.85rem 1.1rem;
+    margin: 1.1rem 0 1.25rem;
+    overflow-x: auto;
+    max-width: 68ch;
+    line-height: 1.75;
+  }
+  .eq .note {
+    display: block;
+    font-family: var(--f-body);
+    font-size: var(--s--1);
+    color: var(--ink-2);
+    margin-top: 0.5rem;
+  }
+
+  ul, ol { padding-left: 1.3rem; margin: 0 0 1.1rem; }
+  li { margin-bottom: 0.5rem; }
+  li > ul, li > ol { margin-top: 0.5rem; }
+
+  /* ---------- callouts ---------- */
+
+  .note-box {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 1.1rem 1.25rem;
+    margin: 1.5rem 0;
+    max-width: 68ch;
+  }
+  .note-box > :last-child { margin-bottom: 0; }
+  .note-box .label {
+    font-family: var(--f-mono);
+    font-size: var(--s--1);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  .note-box.claim { border-color: var(--accent-2); background: var(--accent-wash); }
+  .note-box.claim .label { color: var(--accent); }
+  .note-box.caution { border-color: var(--amber); background: var(--amber-wash); }
+  .note-box.caution .label { color: var(--amber); }
+  .note-box.cut { border-color: var(--red); background: var(--red-wash); }
+  .note-box.cut .label { color: var(--red); }
+
+  /* ---------- checklist ---------- */
+
+  .order {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 0;
+    border-top: 1px solid var(--rule);
+    max-width: 78ch;
+  }
+  .order li {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 0 1rem;
+    align-items: baseline;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+    margin: 0;
+  }
+  .order .step {
+    font-family: var(--f-mono);
+    font-size: var(--s--1);
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .order .what { font-weight: 500; }
+  .order .how {
+    display: block;
+    font-size: var(--s--1);
+    color: var(--ink-2);
+    font-weight: 400;
+  }
+
+  /* ---------- tables ---------- */
+
+  .table-scroll { overflow-x: auto; margin: 1.4rem 0 1.6rem; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 34rem;
+    font-size: var(--s--1);
+    font-variant-numeric: tabular-nums;
+  }
+  caption {
+    caption-side: bottom;
+    text-align: left;
+    font-size: var(--s--1);
+    color: var(--ink-2);
+    padding-top: 0.7rem;
+    max-width: 68ch;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.9rem 0.6rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: var(--f-mono);
+    font-weight: 500;
+    font-size: 0.78rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+  tbody th { font-weight: 500; white-space: nowrap; }
+  td .m, th .m { background: none; padding: 0; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.15em 0.5em;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .tag.keep { color: var(--accent); }
+  .tag.drop { color: var(--red); }
+  .tag.move { color: var(--amber); }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 1.9rem 0 2rem;
+    padding: 1.4rem 1.4rem 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; max-width: 100%; height: auto; color: var(--ink-2); }
+  figcaption {
+    font-size: var(--s--1);
+    color: var(--ink-2);
+    margin-top: 1rem;
+    max-width: 66ch;
+  }
+  .svg-label { font-family: "IBM Plex Mono", monospace; font-size: 11px; fill: var(--ink-2); }
+  .svg-strong { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 500; fill: var(--ink); }
+  .svg-accent { fill: var(--accent); }
+  .svg-box { fill: var(--surface-2); stroke: var(--rule-strong); stroke-width: 1; }
+  .svg-line { stroke: var(--ink-3); stroke-width: 1.4; fill: none; }
+  .svg-cell { fill: none; stroke: var(--rule-strong); stroke-width: 1; }
+  .svg-cell-on { fill: var(--accent); stroke: var(--accent); stroke-width: 1; }
+  .dot-m { fill: var(--accent); }
+  .dot-f { fill: none; stroke: var(--rule-strong); stroke-width: 1.4; }
+
+  /* ---------- open items ---------- */
+
+  .items { counter-reset: item; list-style: none; padding: 0; margin: 1.4rem 0 0; max-width: 74ch; }
+  .items li {
+    counter-increment: item;
+    position: relative;
+    padding: 0.9rem 0 0.9rem 2.6rem;
+    border-bottom: 1px solid var(--rule);
+    margin: 0;
+  }
+  .items li::before {
+    content: counter(item);
+    position: absolute;
+    left: 0;
+    top: 0.95rem;
+    font-family: var(--f-mono);
+    font-size: var(--s--1);
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .items .head { font-weight: 500; display: block; }
+  .items .sub { font-size: var(--s--1); color: var(--ink-2); display: block; margin-top: 0.15rem; }
+
+  hr.sep {
+    border: none;
+    border-top: 2px solid var(--ink);
+    margin: 4rem 0 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Methods specification · working draft</p>
+    <h1>The LDscnR Framework</h1>
+    <p class="standfirst">One premise — selection locally inflates linkage disequilibrium — carried through two nested integrations and a single region-level test. This is the pipeline as it now stands, including the reconstructed null section.</p>
+    <div class="mast-meta">
+      <span>LDscnR-paper</span>
+      <span>Kemppainen &amp; Guillaume</span>
+      <span>25 Aug 2026</span>
+    </div>
+  </header>
+
+  <!-- ============ ORDER ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§0</span><span class="rail-tag">Order</span></div>
+    <div class="body-col">
+      <h2>Running order</h2>
+      <p>The steps are genuinely sequential — each consumes the previous one's output — so the numbering is the order in which they run, not a list of topics. Step&nbsp;0 is a gate: if it fails, nothing downstream is interpretable.</p>
+
+      <ol class="order">
+        <li><span class="step">00</span><span class="what">Detectability gate<span class="how">Per-chromosome tail mass; max/median ratio and CV; does the null fall silent at moderate <span class="m">τ_C</span>. Decides whether the genome can be scanned at all.</span></span></li>
+        <li><span class="step">01</span><span class="what">Kinship<span class="how">GRM from low-<span class="m">w_j</span> markers; tighten the cutoff <span class="m">ω</span> until <span class="m">λ ≥ 1</span>.</span></span></li>
+        <li><span class="step">02</span><span class="what">Association scan<span class="how">EMMAX and/or LFMM → one <span class="m">p</span> per marker. Any test will do; the C-score only consumes the vector.</span></span></li>
+        <li><span class="step">03</span><span class="what">Marker C-score<span class="how">Integrate candidacy-and-significance over the <span class="m">(ρ, q*)</span> grid.</span></span></li>
+        <li><span class="step">04</span><span class="what">Regions<span class="how">Threshold at <span class="m">τ_C</span>, cluster on the LD graph, split at <span class="m">d_cap</span>, remove below <span class="m">l_min</span>.</span></span></li>
+        <li><span class="step">05</span><span class="what">Null: gate, then test<span class="how">Check surrogate background counts first; then location-matched region <span class="m">p</span> → BH → <span class="m">q_R</span>.</span></span></li>
+        <li><span class="step">06</span><span class="what">Second-tier C-score<span class="how">Integrate region significance over the <span class="m">(τ_C, l_min)</span> grid → <span class="m">C⁽²⁾</span>.</span></span></li>
+        <li><span class="step">07</span><span class="what">Report<span class="how">Ranked loci with <span class="m">q_R</span> (significance) and <span class="m">C⁽²⁾</span> (robustness), plus the declared grid range and null basis.</span></span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ PREMISE ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§1</span><span class="rail-tag">Premise</span></div>
+    <div class="body-col">
+      <h2>One premise, seen at two scales</h2>
+      <p>Selection locally inflates LD. A sweep, or a barrier to gene flow, raises LD in the neighbourhood of its target, so a true signal is not an isolated peak but a <em>block</em> of mutually correlated markers. A false positive arising from relatedness or residual structure is isolated, with low LD to its neighbours.</p>
+      <p>The consequence that organises everything below: <strong>“LD-supported” and “clustered” are not two criteria but one footprint</strong>, seen per-marker and per-region. The marker C-score measures it at the first scale; LD clustering measures it at the second. Nothing else in the pipeline needs its own justification.</p>
+
+      <figure>
+        <svg viewBox="0 0 700 400" role="img" aria-label="The same integrate-over-the-grid operation applied at the marker scale and again at the region scale.">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+
+          <!-- BAND A -->
+          <text class="svg-label svg-accent" x="40" y="30">SCALE 1 · MARKER</text>
+          <rect class="svg-box" x="40" y="64" width="130" height="52" rx="3"></rect>
+          <text class="svg-strong" x="105" y="86" text-anchor="middle">per-marker p</text>
+          <text class="svg-label" x="105" y="103" text-anchor="middle">EMMAX / LFMM</text>
+
+          <line class="svg-line" x1="172" y1="90" x2="232" y2="90" marker-end="url(#ar)"></line>
+
+          <text class="svg-label" x="288" y="44" text-anchor="middle">grid: ρ × q*</text>
+          <rect class="svg-cell" x="240" y="52" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="259" y="52" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="278" y="52" width="19" height="19"></rect>
+          <rect class="svg-cell" x="297" y="52" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="52" width="19" height="19"></rect>
+          <rect class="svg-cell" x="240" y="71" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="259" y="71" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="278" y="71" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="297" y="71" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="71" width="19" height="19"></rect>
+          <rect class="svg-cell" x="240" y="90" width="19" height="19"></rect>
+          <rect class="svg-cell" x="259" y="90" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="278" y="90" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="297" y="90" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="90" width="19" height="19"></rect>
+          <rect class="svg-cell" x="240" y="109" width="19" height="19"></rect>
+          <rect class="svg-cell" x="259" y="109" width="19" height="19"></rect>
+          <rect class="svg-cell" x="278" y="109" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="297" y="109" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="109" width="19" height="19"></rect>
+          <text class="svg-label" x="288" y="146" text-anchor="middle">cell hit = candidate AND BH-q &lt; α</text>
+
+          <line class="svg-line" x1="337" y1="90" x2="398" y2="90" marker-end="url(#ar)"></line>
+          <rect class="svg-box" x="404" y="64" width="140" height="52" rx="3"></rect>
+          <text class="svg-strong" x="474" y="86" text-anchor="middle">C_j</text>
+          <text class="svg-label" x="474" y="103" text-anchor="middle">fraction of cells hit</text>
+          <text class="svg-label" x="562" y="82">nuisance integrated:</text>
+          <text class="svg-label" x="562" y="98">LD scale, stringency</text>
+
+          <!-- CONNECTOR -->
+          <path class="svg-line" d="M 474 118 L 474 192 L 105 192 L 105 258" marker-end="url(#ar)"></path>
+          <text class="svg-label" x="484" y="160">keep C_j ≥ τ_C</text>
+          <text class="svg-label" x="288" y="185" text-anchor="middle">LD graph · r² ≥ b+(c−b)(1−ρ_ld) · split at d_cap · drop &lt; l_min</text>
+
+          <!-- BAND B -->
+          <text class="svg-label svg-accent" x="40" y="232">SCALE 2 · REGION</text>
+          <rect class="svg-box" x="40" y="262" width="130" height="52" rx="3"></rect>
+          <text class="svg-strong" x="105" y="284" text-anchor="middle">regions</text>
+          <text class="svg-label" x="105" y="301" text-anchor="middle">LD-linked blocks</text>
+
+          <line class="svg-line" x1="172" y1="288" x2="232" y2="288" marker-end="url(#ar)"></line>
+
+          <text class="svg-label" x="288" y="242" text-anchor="middle">grid: τ_C × l_min</text>
+          <rect class="svg-cell-on" x="240" y="250" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="259" y="250" width="19" height="19"></rect>
+          <rect class="svg-cell" x="278" y="250" width="19" height="19"></rect>
+          <rect class="svg-cell" x="297" y="250" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="250" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="240" y="269" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="259" y="269" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="278" y="269" width="19" height="19"></rect>
+          <rect class="svg-cell" x="297" y="269" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="269" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="240" y="288" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="259" y="288" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="278" y="288" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="297" y="288" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="288" width="19" height="19"></rect>
+          <rect class="svg-cell" x="240" y="307" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="259" y="307" width="19" height="19"></rect>
+          <rect class="svg-cell-on" x="278" y="307" width="19" height="19"></rect>
+          <rect class="svg-cell" x="297" y="307" width="19" height="19"></rect>
+          <rect class="svg-cell" x="316" y="307" width="19" height="19"></rect>
+          <text class="svg-label" x="288" y="344" text-anchor="middle">cell hit = region at ℓ with q_R &lt; α_R vs the null</text>
+
+          <line class="svg-line" x1="337" y1="288" x2="398" y2="288" marker-end="url(#ar)"></line>
+          <rect class="svg-box" x="404" y="262" width="140" height="52" rx="3"></rect>
+          <text class="svg-strong" x="474" y="284" text-anchor="middle">C⁽²⁾</text>
+          <text class="svg-label" x="474" y="301" text-anchor="middle">fraction of usable cells</text>
+          <text class="svg-label" x="562" y="280">nuisance integrated:</text>
+          <text class="svg-label" x="562" y="296">threshold, size floor</text>
+        </svg>
+        <figcaption>The same operation at two scales: sweep the nuisance grid, score each cell by a pass/fail rule, and take the fraction of cells passed. At the marker scale the rule is candidacy-plus-significance; at the region scale it is region-level FDR against the structure null. Nothing in the pipeline picks a single cell.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ MARKER ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§2</span><span class="rail-tag">Marker</span></div>
+    <div class="body-col">
+      <h2>Local LD and the C-score</h2>
+
+      <h3>The local-LD statistic</h3>
+      <p>Fit an LD-decay curve per chromosome to pairwise <span class="m">r²</span> against physical distance, with decay rate <span class="m">a</span>. A relative-LD level <span class="m">ρ ∈ (0,1)</span> defines a neighbourhood half-width, and the statistic is the median <span class="m">r²</span> inside it.</p>
+      <div class="eq">
+        d(ρ) = ρ / [ a (1 − ρ) ]<br>
+        w_j(ρ) = median{ r²_jk : |x_j − x_k| ≤ d(ρ) }
+        <span class="note">Large inside a dense LD block, small for an isolated marker. Small <span class="m">ρ</span> probes a tight window, large <span class="m">ρ</span> a broad one.</span>
+      </div>
+
+      <h3>Filter before FDR — and claim the justification</h3>
+      <p>For a cell <span class="m">(ρ, q*)</span> the candidate set is <span class="m">C(ρ,q*) = { j : w_j(ρ) ≥ Q_q*[w(ρ)] }</span>, and Benjamini–Hochberg is applied <em>among the candidates only</em>, so the multiple-testing burden is carried by the candidate set rather than the whole genome.</p>
+
+      <div class="note-box claim">
+        <span class="label">Claim this formally</span>
+        <p>This is <strong>independent filtering</strong> in the sense of Bourgon, Gentleman &amp; Huber (2010, <em>PNAS</em>): filtering before multiple-testing correction preserves type-I error control provided the filter statistic is independent of the test statistic under the null, and it increases power by shrinking the tested set. The neutral-SNP panel — association statistic flat across local-LD rank quantile — is exactly the required diagnostic.</p>
+        <p>The manuscript currently presents this as an empirical observation. Framing it as satisfying a known condition pre-empts the obvious reviewer objection that you are selecting on something correlated with significance. <strong>Add the citation.</strong></p>
+      </div>
+
+      <h3>What is swept, and what is fixed</h3>
+      <div class="eq">
+        C_j = (1 / |R||Q|) · Σ<sub>ρ∈R</sub> Σ<sub>q*∈Q</sub> 1[ j ∈ C(ρ,q*) AND BH-q_j(ρ,q*) &lt; α ] ∈ [0,1]
+      </div>
+      <p><span class="m">ρ</span> and <span class="m">q*</span> are natural <span class="m">[0,1]</span> quantities, so integrating over them is assumption-free — the score privileges no single LD scale or candidate stringency. <span class="m">α</span> has no natural range, so it is fixed at <span class="m">0.05</span> rather than swept. Fixing it is defensible because any resulting miscalibration raises the score of null and true markers alike, and is therefore priced in by the structure-aware null in §4.</p>
+      <p>A marker scores highly only if it is repeatedly <em>both</em> LD-prioritised <em>and</em> significant. A significant-but-isolated peak scores low; an LD-supported-but-null marker scores low.</p>
+    </div>
+  </section>
+
+  <!-- ============ REGION ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§3</span><span class="rail-tag">Region</span></div>
+    <div class="body-col">
+      <h2>Clustering by linkage</h2>
+      <p>Because a true signal is an LD-supported block rather than a single peak, markers surviving <span class="m">C_j ≥ τ_C</span> are grouped by <em>linkage</em>, not by physical proximity alone.</p>
+
+      <div class="eq">
+        join j,k (same chromosome) when  r²_jk ≥ b + (c − b)(1 − ρ_ld)
+        <span class="note"><span class="m">b</span> = fitted background (asymptotic) LD, <span class="m">c</span> = short-range <span class="m">r²</span>. The threshold is decay-relative and self-calibrates per chromosome: as <span class="m">ρ_ld → 1</span> it approaches <span class="m">b</span> and almost everything links; lowering it raises the bar toward <span class="m">c</span>.</span>
+      </div>
+
+      <p>A region is a connected component (single linkage) of the thresholded graph within a chromosome, split wherever consecutive members are more than <span class="m">d_cap</span> (default 500 kb) apart. The cap is a hard distance rather than a decay-derived one because a region's footprint is set by selection and local recombination, not by background LD — long-range <span class="m">r²</span> is the rule inside inversions, so a decay-derived distance would fragment a single inversion into pieces.</p>
+      <p>The linkage graph is built <strong>once</strong> over the candidate universe <span class="m">{ j : C_j &gt; 0 }</span>, so any thresholded subset clusters by graph lookup with no further genotype access. This is what makes the <span class="m">(τ_C, l_min)</span> sweep in §5 affordable.</p>
+
+      <h3>Two clustering roles — not interchangeable</h3>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Control</th><th>Role</th><th>Decides</th></tr>
+          </thead>
+          <tbody>
+            <tr><th><span class="m">ρ_ld</span>, <span class="m">d_cap</span></th><td>Boundary</td><td>Where one region ends — each region's shape and extent</td></tr>
+            <tr><th><span class="m">l_min</span></th><td>Removal</td><td>Which regions are reported at all</td></tr>
+          </tbody>
+        </table>
+        <caption>Tightening the boundary controls sheds loosely linked markers off a block — but a shed piece does not vanish, it becomes its own small region. Only <span class="m">l_min</span> removes it.</caption>
+      </div>
+
+      <div class="note-box caution">
+        <span class="label"><span class="m">l_min</span> is swept, not fixed</span>
+        <p>It is the principal false-positive control — structure noise makes small scattered clusters while a selected locus drags a linked block — but it is also consequential enough that it cannot be set by default. <strong><em>Eda</em> is a 4-SNP cluster:</strong> recovered by EMMAX at <span class="m">l_min = 3</span>, discarded at <span class="m">l_min = 10</span>, never found by LFMM at either. Any analysis demanding ≥10 linked SNPs throws away the textbook marine–freshwater locus.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NULL ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§4</span><span class="rail-tag">Null</span></div>
+    <div class="body-col">
+      <h2>The null, reconstructed</h2>
+      <p>The previous design gave the null two jobs — calibrate <span class="m">τ_C</span> by a pooled count-FDR, and assign per-region significance by a location-matched test — and ran four surrogate bases. The first job is the one that breaks, and taking it away collapses the rest.</p>
+
+      <div class="note-box cut">
+        <span class="label">What broke</span>
+        <p>The pooled count-FDR calibration of <span class="m">τ_C</span> works only when the null is already silent. On the real data it returned <span class="m">τ_C = NA, l_min = 1550</span> for the spatial basis (FDR = 1.00 at every <span class="m">τ_C</span>) and <span class="m">l_min = 157</span> for the regional permutation — while the location-matched test on that same regional null placed all 17 EMMAX regions at <span class="m">q_R ≤ 0.0149</span>. Two calibration routes disagreeing by two orders of magnitude is not a result to explain; it is a procedure to remove.</p>
+      </div>
+
+      <h3>One instrument</h3>
+      <p>Score a region <span class="m">R</span> by its summed C-mass and take as its <span class="m">p</span>-value the fraction of surrogates producing a region overlapping <span class="m">R</span>'s genomic span with mass at least as large. BH-adjust across the discovered region set.</p>
+      <div class="eq">
+        s_R = Σ<sub>j∈R</sub> C_j<br>
+        p_R = ( 1 + #{ b : s_(b,R)^null ≥ s_R } ) / ( 1 + B )   →   BH   →   q_R
+        <span class="note">Applied identically to every basis. <span class="m">q_R</span> — not a per-marker Bonferroni over ~10⁵ SNPs — is the multiple-testing correction the method <em>reports</em>; the per-SNP burden was already carried at the C-score and size-filter stages.</span>
+      </div>
+      <p>The test is deliberately <em>local</em>. A signal confined to part of the sampled range need not be reproduced by a structure-preserving surrogate at its own locus, so a genuinely range-restricted adaptation peak — one a pooled genome-wide count would charge to structure — can still separate. It is also robust to a globally inflated null: excess null peaks are scattered, so they rarely fall on any particular observed locus.</p>
+      <p>The pooled count-FDR survives, demoted, as the calibration diagnostic below.</p>
+
+      <h3>One gate, before any <em>p</em>-value is read</h3>
+      <p>For each engine × basis, report the <strong>median per-surrogate</strong> count of <span class="m">C &gt; 0</span> markers and of regions <span class="m">≥ l_min</span>, against the observed counts. A basis whose surrogates approach the observed counts is mis-specified, and its <span class="m">p</span>-values are not interpretable. State this as a gate, not a remark — it is what catches both the spatial basis and the unpruned latent basis automatically, and it is what lets a mis-specified null be <em>reported</em> rather than quietly dropped.</p>
+
+      <div class="note-box caution">
+        <span class="label">Fix before publishing</span>
+        <p>The two engines are currently reported on different statistics — EMMAX as median peaks per surrogate, LFMM as pooled <span class="m">n(C&gt;0)</span> across surrogates. Recompute both as median-per-surrogate before they appear side by side.</p>
+      </div>
+
+      <h3>Two bases</h3>
+
+      <h4>Specificity — home field</h4>
+      <p>MVN on <span class="m">K</span> for EMMAX; the latent-PC subspace for LFMM. Each engine is tested against surrogates drawn from the structure it already conditions on.</p>
+      <p>Frame this as a <strong>pipeline</strong> control, not an engine control, or a reviewer dismisses it in one line as tautological. The non-trivial content is downstream of the correction: LD blocks exist in every surrogate, so the C-score-plus-clustering machinery has every opportunity to manufacture clustered significance out of high local LD alone, regardless of phenotype. That it produces zero regions is a real test. Say plainly that this null cannot apportion signal between the ecotype contrast and population structure — that is the next basis's job.</p>
+
+      <h4>Attribution — within-locality permutation</h4>
+      <p>Shuffle the marine/freshwater label only <em>within</em> each of the four localities, holding each locality's ecotype composition fixed. This is the only basis carrying per-region <span class="m">q_R</span> in the main text.</p>
+
+      <figure>
+        <svg viewBox="0 0 760 250" role="img" aria-label="Within-locality permutation holds each locality's marine-freshwater composition fixed and shuffles only the assignment inside it.">
+          <defs>
+            <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+          <text class="svg-label" x="600" y="26">● marine</text>
+          <circle cx="592" cy="22" r="4.5" class="dot-m"></circle>
+          <text class="svg-label" x="676" y="26">freshwater</text>
+          <circle cx="668" cy="22" r="4.5" class="dot-f"></circle>
+
+          <text class="svg-label" x="151" y="44" text-anchor="middle">Baltic 6F/2M</text>
+          <text class="svg-label" x="316" y="44" text-anchor="middle">NorthSea 8F/6M</text>
+          <text class="svg-label" x="464" y="44" text-anchor="middle">Norwegian 4F/1M</text>
+          <text class="svg-label" x="576" y="44" text-anchor="middle">WB_Sea 4F/4M</text>
+
+          <!-- observed row -->
+          <text class="svg-label" x="86" y="79" text-anchor="end">observed</text>
+          <rect class="svg-box" x="96" y="56" width="110" height="36" rx="2"></rect>
+          <rect class="svg-box" x="226" y="56" width="180" height="36" rx="2"></rect>
+          <rect class="svg-box" x="426" y="56" width="75" height="36" rx="2"></rect>
+          <rect class="svg-box" x="521" y="56" width="110" height="36" rx="2"></rect>
+
+          <circle cx="103" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="117" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="130" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="144" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="158" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="172" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="185" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="199" cy="74" r="4.5" class="dot-f"></circle>
+
+          <circle cx="232" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="245" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="258" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="271" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="284" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="297" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="310" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="322" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="335" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="348" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="361" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="374" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="387" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="400" cy="74" r="4.5" class="dot-f"></circle>
+
+          <circle cx="434" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="449" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="464" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="479" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="494" cy="74" r="4.5" class="dot-f"></circle>
+
+          <circle cx="528" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="542" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="555" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="569" cy="74" r="4.5" class="dot-m"></circle>
+          <circle cx="583" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="597" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="610" cy="74" r="4.5" class="dot-f"></circle>
+          <circle cx="624" cy="74" r="4.5" class="dot-f"></circle>
+
+          <!-- shuffle arrows -->
+          <line class="svg-line" x1="151" y1="98" x2="151" y2="140" marker-end="url(#ar2)"></line>
+          <line class="svg-line" x1="316" y1="98" x2="316" y2="140" marker-end="url(#ar2)"></line>
+          <line class="svg-line" x1="464" y1="98" x2="464" y2="140" marker-end="url(#ar2)"></line>
+          <line class="svg-line" x1="576" y1="98" x2="576" y2="140" marker-end="url(#ar2)"></line>
+          <text class="svg-label" x="330" y="124">shuffle within, never across</text>
+
+          <!-- surrogate row -->
+          <text class="svg-label" x="86" y="169" text-anchor="end">surrogate</text>
+          <rect class="svg-box" x="96" y="146" width="110" height="36" rx="2"></rect>
+          <rect class="svg-box" x="226" y="146" width="180" height="36" rx="2"></rect>
+          <rect class="svg-box" x="426" y="146" width="75" height="36" rx="2"></rect>
+          <rect class="svg-box" x="521" y="146" width="110" height="36" rx="2"></rect>
+
+          <circle cx="103" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="117" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="130" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="144" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="158" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="172" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="185" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="199" cy="164" r="4.5" class="dot-f"></circle>
+
+          <circle cx="232" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="245" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="258" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="271" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="284" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="297" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="310" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="322" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="335" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="348" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="361" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="374" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="387" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="400" cy="164" r="4.5" class="dot-m"></circle>
+
+          <circle cx="434" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="449" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="464" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="479" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="494" cy="164" r="4.5" class="dot-f"></circle>
+
+          <circle cx="528" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="542" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="555" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="569" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="583" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="597" cy="164" r="4.5" class="dot-m"></circle>
+          <circle cx="610" cy="164" r="4.5" class="dot-f"></circle>
+          <circle cx="624" cy="164" r="4.5" class="dot-m"></circle>
+
+          <path class="svg-line" d="M 464 188 L 464 210 L 636 210" stroke-dasharray="3 3"></path>
+          <text class="svg-label" x="644" y="214">only 5 distinct labelings</text>
+        </svg>
+        <figcaption>Every surrogate carries the identical between-locality ecotype composition; only the assignment inside each locality changes. A clinal or isolation-by-distance signal is therefore rebuilt by the surrogates and fails the test — which is why this basis subsumes what a spatial null was there to catch. Norwegian, at 4F/1M, admits only five distinct labelings.</figcaption>
+      </figure>
+
+      <h3>What was removed, and on what grounds</h3>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Basis</th><th>Status</th><th>Grounds</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>Global permutation</th>
+              <td><span class="tag drop">dropped</span></td>
+              <td>Dominated. Within-locality shuffling preserves the between-locality contrast, so surrogates rebuild a clinal locus and it fails; global shuffling breaks the cline, so a clinal locus passes. Anything clearing the regional test clears the global one. One sentence in Methods.</td>
+            </tr>
+            <tr>
+              <th>Spatial (GP kernel)</th>
+              <td><span class="tag move">supplementary</span></td>
+              <td>Headline its gate failure: 792 peaks per surrogate, pooled count-FDR = 1.00 at every <span class="m">τ_C</span>, <span class="m">τ_C = NA</span>. Reported as a null that failed its own calibration check and was therefore not used for inference. Costs a paragraph; pre-empts the isolation-by-distance question a 47–75°N GEA paper will certainly get, and avoids the appearance of dropping a null that flagged the inversion and <em>Eda</em>.</td>
+            </tr>
+            <tr>
+              <th>Cross-engine (off-field)</th>
+              <td><span class="tag drop">invalid</span></td>
+              <td>A basis is a valid null only for the engine that conditions on it; off-field it injects structure the engine does not remove. The latent basis against EMMAX produced null overlap masses of 176 / 144 / 131 against an observed inversion score of 25, and reconstructed the inversion in 52% of surrogates. One sentence, so the missing 2×2 cross does not read as an omission.</td>
+            </tr>
+            <tr>
+              <th>Pooled count-FDR</th>
+              <td><span class="tag move">diagnostic</span></td>
+              <td>Retained as the gate statistic, removed as a calibration procedure. Re-anchor the “pooled count is blunter than location-matched” argument on the regional permutation (<span class="m">l_min = 157</span>) rather than the global one — it gets sharper.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The resulting table</h3>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Engine</th><th>Specificity (home field)</th><th>Attribution (within-locality)</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>EMMAX</th><td>MVN on <span class="m">K</span> — silent</td><td>17 / 17, <span class="m">q_R ≤ 0.015</span></td></tr>
+            <tr><th>LFMM</th><td>latent-PC — silent</td><td>90 / 90, <span class="m">q_R ≈ 0.011</span> (at <span class="m">B = 200</span>)</td></tr>
+          </tbody>
+        </table>
+        <caption>Two bases, one instrument, one gate.</caption>
+      </div>
+
+      <h3>Caveats to state in the text</h3>
+      <ul>
+        <li><strong>Norwegian stratum.</strong> 4F/1M gives <span class="m">C(5,1) = 5</span> distinct labelings, so roughly one surrogate in five reproduces the true assignment exactly, and a locus driven predominantly by the Norwegian contrast has its <span class="m">p</span> floored near 0.2. This is a bounded loss of <em>sensitivity</em> in one stratum, not a false-positive risk — state it that way.</li>
+        <li><strong>Permutation space overall is ample.</strong> <span class="m">C(8,2) × C(14,6) × C(5,1) × C(8,4) = 28 × 3003 × 5 × 70 = 29,429,400</span>. <span class="m">B = 200</span> is nowhere near exhausting it.</li>
+        <li><strong>Set <span class="m">B = 200</span> for both engines.</strong> The LFMM regional null currently runs at <span class="m">B = 96</span>, floor <span class="m">1/97 = 0.0103</span>; EMMAX runs at 200, floor 0.005. Dropping the spatial and global bases frees roughly half the LFMM scan budget — spend it here so the two are comparable.</li>
+        <li><strong>A floor is not a ranking.</strong> With every region pinned at the <span class="m">p</span>-floor, <span class="m">q_R</span> says “not a structure artifact”; it cannot separate the inversion from the weakest region. Ranking is <span class="m">C⁽²⁾</span>'s job, and saying so explicitly is the honest division of labour.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ INTEGRATION ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§5</span><span class="rail-tag">Integrate</span></div>
+    <div class="body-col">
+      <h2>Second-tier C-score</h2>
+      <p>Once the null only assigns per-region significance, <span class="m">τ_C</span> stops being something to calibrate. It becomes a nuisance parameter like <span class="m">ρ</span> and <span class="m">q*</span> — and the pipeline already has a way to dispose of those.</p>
+
+      <div class="eq">
+        U = { g ∈ G : g yields ≥ 1 region with q_R &lt; α_R }     (the usable grid)<br>
+        C⁽²⁾_ℓ = (1 / |U|) · Σ<sub>g∈U</sub> 1[ ∃ region R ∋ ℓ with q_R(g) &lt; α_R ] ∈ (0,1]
+        <span class="note">Normalising by <span class="m">|U|</span> is what defeats cherry-picking: a locus significant only in the single cell that maximises the region count scores <span class="m">1/|U| ≈ 0</span>.</span>
+      </div>
+
+      <p>This is the marker C-score one level up — two nested grids, one consistency principle. It does not abolish parameter dependence; it lifts it from the choice of a single cell to the choice of a <em>grid range</em> and a null, which is a broad, reportable choice rather than a cherry-pick. Report the ranked loci together with the grid range, and treat low-<span class="m">C⁽²⁾</span> regions explicitly as parameter-sensitive.</p>
+
+      <div class="note-box claim">
+        <span class="label">Division of labour</span>
+        <p><span class="m">q_R</span> is the <strong>significance</strong> claim at a declared operating point. <span class="m">C⁽²⁾</span> is the <strong>robustness ranking</strong> across operating points. One table, two columns, one sentence saying which does which — otherwise the two read as redundant.</p>
+      </div>
+
+      <p>The existing “the null-quiet zone contains the high-PR ridge” material survives, but as a robustness observation about the grid being integrated over, not as a calibration step.</p>
+
+      <h4>Cost</h4>
+      <p>Surrogate <em>scans</em> are the only expensive step. <span class="m">C⁽²⁾</span> re-clusters cached surrogate C-vectors through the prebuilt edge graph, so the whole <span class="m">(τ_C, l_min)</span> sweep costs graph lookups, not genotype access. Switch <code>null_sig_landscape.R</code> from <code>null_popperm_3sp.rds</code> to the regional null — it will also become more discriminating.</p>
+    </div>
+  </section>
+
+  <!-- ============ SUPPORT ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§6</span><span class="rail-tag">Support</span></div>
+    <div class="body-col">
+      <h2>Kinship and detectability</h2>
+
+      <h3>The LD-aware kinship</h3>
+      <p>Two failure modes bracket the GRM problem. If it <em>includes</em> the regions under selection it absorbs their signal — a <em>regional</em> over-correction. If it is built from too many mutually correlated markers it deflates the whole test statistic — a <em>global</em> over-correction. They are not equally visible.</p>
+      <p>Build the GRM from LD-<em>independent</em> markers, <span class="m">{ j : w_j &lt; ω }</span>, reusing the same statistic the C-score uses. Then:</p>
+      <ul>
+        <li><strong>High <span class="m">w_j</span> at a signal</strong> — the expected case — means <span class="m">w_j</span>-pruning <em>excludes</em> it, so the GRM cannot absorb it.</li>
+        <li><strong>Low <span class="m">w_j</span> at a signal</strong> — a point signal in a weakly linked genome — means the rule keeps it, but a marker with little local LD carries almost no structure and is nearly inert.</li>
+        <li><strong>By-product</strong> — pruning high-<span class="m">w_j</span> markers removes the large low-recombination blocks that would otherwise dominate the relatedness estimate.</li>
+      </ul>
+      <p>Set <span class="m">ω</span> by the genomic inflation factor: tighten until <span class="m">λ ≥ 1</span> — the largest, most powerful marker set that is not yet deflated. <span class="m">λ</span> is used for this one job only. Regional absorption is invisible to it, because absorbing one high-LD region leaves the median marker untouched. <span class="m">w_j</span>-pruning forecloses the regional mode by construction; <span class="m">λ</span> trims the remaining excess. Residual structure a <span class="m">λ ≥ 1</span> kinship leaves behind is exactly what §4's null absorbs, so the division is clean: the kinship must only avoid deflation.</p>
+
+      <h3>Detectability — promote it to the front</h3>
+      <p>Outlier scans return candidates whether or not the data contain resolvable signal. Two truth-free quantities separate a <em>clear-peak</em> genome from a <em>saturated</em> one, using per-chromosome tail mass (markers exceeding a fixed C-score, robust to isolated high scorers in a way a per-chromosome maximum is not):</p>
+      <ul>
+        <li><strong>Between-chromosome variation.</strong> A few chromosomes towering over a near-zero bulk gives a large max/median ratio and high CV; a structure-dominated genome collapses the ratio toward one.</li>
+        <li><strong>Where the null falls silent.</strong> If signal is separable the null goes quiet at moderate <span class="m">τ_C</span>; if structure dominates the null stays as extreme as the observed data, so any threshold that suppresses structure suppresses everything.</li>
+      </ul>
+      <p>This section is currently third in §Methods but is logically first: it decides whether the rest is meaningful. Move it to the front so the reader meets “can this genome be scanned?” before “how do we threshold it.”</p>
+      <p>The limitation to state: where genuinely neutral chromosomes exist they define a floor for calibration, but on a saturated genome the apparently quiet chromosomes are simply those with the weakest signal. There the threshold is unavoidably a power/FDR choice rather than a signal-versus-neutral separation, and <span class="m">l_min</span> becomes the primary dial.</p>
+    </div>
+  </section>
+
+  <!-- ============ LIVE ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§7</span><span class="rail-tag">Live</span></div>
+    <div class="body-col">
+      <h2>The LFMM question, as the evidence stands</h2>
+      <p>Not settled, so the framework should not pretend it is. What each piece of evidence actually supports:</p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Evidence</th><th>Supports</th><th>Does not support</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>All 90 regions clear the regional permutation</th>
+              <td>None of them is a within-locality structure artifact</td>
+              <td>Any ranking among them — every region sits at the <span class="m">1/97</span> floor</td>
+            </tr>
+            <tr>
+              <th>~21 loci hit by LFMM and a Kingman EcoPeak set, missed entirely by EMMAX (15 at <span class="m">n ≥ 3</span> sets)</th>
+              <td>A genuine sensitivity gain, corroborated by an independent cohort, test and assembly</td>
+              <td>The 78 loci unique to the LFMM set, which Kingman cannot adjudicate either way</td>
+            </tr>
+            <tr>
+              <th>LFMM's four nulls are quieter than EMMAX's, spatial included (4 regions vs 792 peaks/surrogate)</th>
+              <td>The abstract's “LFMM inflates on continental-scale structure” cannot stand</td>
+              <td>A direct comparison — the two are currently reported on different statistics</td>
+            </tr>
+            <tr>
+              <th>782 LFMM SNPs at <span class="m">C &gt; 0.5</span> vs 13 for EMMAX; EcoPeak enrichment falls to 3.8× in that bin against EMMAX's 23×</th>
+              <td>Something is unexplained at the top of the LFMM C distribution</td>
+              <td>Attribution — polygenic signal and an anticonservative test fatten the tail identically</td>
+            </tr>
+            <tr>
+              <th><span class="m">λ ≈ 1.6–1.9</span> across <span class="m">K = 1–12</span></th>
+              <td>Ruling out unmodelled structure as the cause — that would respond to <span class="m">K</span></td>
+              <td>Rescuing the top bin; and note LFMM misses <em>Eda</em>, which EMMAX finds at <span class="m">l_min = 3</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note-box claim">
+        <span class="label">The test that would settle it</span>
+        <p>Rank the 90 LFMM regions by <span class="m">C⁽²⁾</span> and ask whether Kingman corroboration is monotone in that rank. If the ~21 corroborated loci sit at the top and the 78 unique ones at the bottom, you have simultaneously validated <span class="m">C⁽²⁾</span> as a credibility ranking against an external truth set <em>and</em> resolved the tie the permutation null cannot. If corroboration is flat in <span class="m">C⁽²⁾</span>, the declining-enrichment problem has propagated to region level and the text must say so. Either outcome is publishable; the first is a much better paper.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OPEN ============ -->
+  <section class="part">
+    <div class="rail"><span class="rail-num">§8</span><span class="rail-tag">Open</span></div>
+    <div class="body-col">
+      <h2>Open items</h2>
+      <p>Ordered by what blocks what. Items 1–3 are prerequisites for writing the null section; 4–7 are corrections to text already drafted.</p>
+
+      <ol class="items">
+        <li><span class="head">Recompute the gate as median-per-surrogate for both engines</span><span class="sub">Blocks the gate table, which blocks everything else in §4. EMMAX is currently median peaks/surrogate, LFMM pooled <span class="m">n(C&gt;0)</span>.</span></li>
+        <li><span class="head">Raise the LFMM regional permutation to <span class="m">B = 200</span></span><span class="sub">Common 0.005 floor with EMMAX. Funded by dropping the spatial and global LFMM scans — about half the ~104 min/scan budget.</span></li>
+        <li><span class="head">Point <code>null_sig_landscape.R</code> at the regional null</span><span class="sub">Currently reads <code>null_popperm_3sp.rds</code>. Changes every <span class="m">C⁽²⁾</span> in the paper, so do it before the ranking test below.</span></li>
+        <li><span class="head">Run the <span class="m">C⁽²⁾</span> vs Kingman ranking test</span><span class="sub">§7. Decides how the LFMM extra-regions claim is written.</span></li>
+        <li><span class="head">Reconcile the abstract with <code>lfmm_b1_fournulls.log</code></span><span class="sub">The abstract still asserts LFMM inflates on continental structure; the log shows its nulls quieter than EMMAX's on every basis.</span></li>
+        <li><span class="head">Cite Bourgon, Gentleman &amp; Huber (2010) for independent filtering</span><span class="sub">§2. Turns an empirical observation into a satisfied condition.</span></li>
+        <li><span class="head">Re-anchor the “pooled count-FDR is blunter” argument on the regional permutation</span><span class="sub"><span class="m">l_min = 157</span> makes the point more sharply than the global null did.</span></li>
+      </ol>
+
+      <hr class="sep">
+    </div>
+  </section>
+
+</div>

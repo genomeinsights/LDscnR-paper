@@ -63,3 +63,10 @@ manuscript/*.bbl
 manuscript/*.blg
 manuscript/*.log
 manuscript/*.out
+
+# macOS
+.DS_Store
+
+# kingman2021: large analysis bundles (regenerable from the joint VCF via R/run_all.sh)
+kingman2021/data/*.rds
+kingman2021/data/*.snp_p.tsv.gz

@@ -84,9 +84,25 @@ plot_one <- function(regs, qcol, tag) {
 }
 regE <- regs_of(C_emx); regL <- regs_of(C_lfmm)
 cat(sprintf("[3] EMMAX regions: %d ; LFMM regions: %d\n", length(regE), length(regL)))
+
+## export the region tables so downstream work (e.g. cross-dataset overlap) uses
+## exactly the regions drawn in the figures rather than a re-derivation
+mkey <- copy(map); setkey(mkey, marker)
+region_table <- function(regs, tag) {
+  if (!length(regs)) return(data.table())
+  rbindlist(lapply(seq_along(regs), function(i) {
+    mm <- mkey[J(regs[[i]])]
+    data.table(method = tag, region = i, Chr = mm$Chr[1],
+               start = min(mm$Pos), end = max(mm$Pos), n_snp = nrow(mm),
+               span = max(mm$Pos) - min(mm$Pos))
+  }))
+}
 gE <- plot_one(regE, "emx_q",  "EMMAX")
 gL <- plot_one(regL, "lfmm_q", "LFMM")
 tag <- sprintf("tau%.2f_lmin%d_rho%.2f", tau_C, l_min, PAR$rho_ld)
+regs_dt <- rbind(region_table(regE, "EMMAX"), region_table(regL, "LFMM"))
+fwrite(regs_dt, file.path("module_sticklebacks_LDscnR/results", paste0("regions_", tag, ".csv")))
+cat(sprintf("[3] wrote results/regions_%s.csv (%d rows)\n", tag, nrow(regs_dt)))
 ggsave(file.path(OUTFIG, paste0("manhattan_EMMAX_", tag, ".png")), gE, width = 18, height = 4.5, dpi = 180)
 ggsave(file.path(OUTFIG, paste0("manhattan_LFMM_",  tag, ".png")), gL, width = 18, height = 4.5, dpi = 180)
 ggsave(file.path(OUTFIG, paste0("manhattan_both_",  tag, ".png")), gE / gL, width = 18, height = 9, dpi = 180)

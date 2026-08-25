@@ -790,6 +790,40 @@ level; but the SNP-level C-score comparison is internal to the real data, does n
 on that truth set, and on its own shows the LFMM score to be miscalibrated where the
 EMMAX score is not.
 
+\paragraph{Higher sensitivity, not inflation.}
+An alternative to the inflation reading fits the evidence better, and the decisive test
+now supports it: LFMM detects \emph{more true positives} than EMMAX rather than more
+artifacts. First and most directly, a within-locality permutation null---ecotype shuffled
+among populations \emph{inside} each of the four sampling regions, which holds
+between-region structure fixed and so isolates parallel marine--freshwater signal---is
+cleared by \emph{all} $90$ LFMM regions (location-matched region-level $q_R < 0.05$;
+permuted surrogates reconstruct the observed loci with median frequency $0$), the Chr1
+inversion ($p = 0.03$) and the \emph{Eda} region ($p = 0.01$) included. Second, on the
+coalescent simulations---where truth is known---LFMM's region-detection PR-AUC is
+marginally \emph{higher} than EMMAX's, so a genuine sensitivity advantage is expected to
+carry over. Third, the genomic inflation of the LFMM scan is elevated but \emph{not} in
+the manner of unmodelled structure: on the raw statistics $\lambda \approx 1.7$, yet it is
+essentially \emph{insensitive to the number of latent factors} ($\lambda \approx
+1.6$--$1.9$ for $K = 1$ to $12$). Structure the factors fail to capture would be absorbed
+as $K$ grows, driving $\lambda$ toward one; a $\lambda$ that does not respond to $K$
+instead points to diffuse polygenic signal---as in LD-score regression, where $\lambda >
+1$ reflects polygenicity and not only confounding---consistent with the permutation result
+above. (An earlier version of this manuscript reported $\lambda \approx 1.0$ for LFMM;
+that value was measured \emph{after} genomic control, which rescales the median to one by
+construction and therefore cannot diagnose inflation. The uncorrected value is $\approx
+1.7$, while EMMAX's kinship-corrected scan on the same data is well calibrated at $\lambda
+\approx 1.09$.) Under this reading LFMM's extra regions (${\sim}90$ vs $17$) are further
+real marine--freshwater loci that EMMAX's more conservative scan and Kingman's cohort- and
+geography-limited EcoPeaks both miss; because Kingman is a \emph{positive} control only, a
+region's absence from it is not evidence that it is false. We therefore do not rank the
+engines on the real genome: EMMAX is more \emph{specific} to the independently corroborated
+architecture, LFMM more \emph{sensitive}. The one observation still cutting the other way
+is that LFMM's per-SNP C-score enrichment against the Kingman peaks \emph{declines} at its
+high end, which a pure extra-true-positives account does not predict---though
+panel-specific or non-recurrent loci would produce the same pattern. The remaining
+structure nulls and the paired EMMAX runs are in progress; the within-region null, which
+most directly separates adaptation from structure, is already decisive.
+
 \section{Supplementary: calibrating the kinship on the simulations}
 \label{sec:supp-grm}
 
