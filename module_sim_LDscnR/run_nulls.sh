@@ -16,13 +16,16 @@
 #   SIM_NULL_TYPES    default all five: genetic,latent,global_perm,env_orth,spatial
 #   SIM_NULL_B        draws per type (default 100)
 #
+# Home-field nulls are engine-specific and NOT crossed (genetic -> EMMAX only,
+# latent -> LFMM only); global_perm / env_orth / spatial run on both. The runner
+# skips the cross pairs itself, so the same command covers each engine's set.
+#
 # Recommended split (measured: EMMAX 15.6 min/cell/type, LFMM 3.5 h at B=100):
-#   ./run_nulls.sh 1    12                                   # EMMAX, 5 nulls, ~3.3 h
-#   ./run_nulls.sh 0.75 12 ; ./run_nulls.sh 0.5 12           # ~3.3 h each
-#   SIM_NULL_ENGINES=lfmm SIM_NULL_B=50 \
-#     SIM_NULL_TYPES=genetic,latent,env_orth ./run_nulls.sh 1 12    # ~13 h
-# EMMAX draws B=100 and LFMM takes the first 50, so the engines stay paired on
-# the shared prefix (same per-(type,b) seeds).
+#   ./run_nulls.sh 1    12                          # EMMAX, 4 nulls, ~2.6 h
+#   ./run_nulls.sh 0.75 12 ; ./run_nulls.sh 0.5 12  # ~2.6 h each
+#   SIM_NULL_ENGINES=lfmm ./run_nulls.sh 1 12       # LFMM, 2 nulls, ~17.5 h
+# Both engines use the same per-(type,b) seeds, so the shared method-agnostic
+# surrogates are identical between them -- the comparison is exactly paired.
 # ---------------------------------------------------------------------------
 set -u
 STAGE=${1:?usage: run_nulls.sh <stage: 1|0.75|0.5> [nproc]}

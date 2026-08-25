@@ -12,18 +12,24 @@
 ## patches and their env values exactly, so a lattice-level surrogate maps across
 ## all of them unchanged.
 ##
-## THE NULLS
-##   genetic     MVN(0, K) on the cell's mean kinship. EMMAX's home-field
-##               specificity null; a high-rank stress test for LFMM (whose 5
-##               factors cannot span full-rank K). The 10 per-file GRMs are
-##               independent estimates of the same sampling structure (same
-##               patches, same positions), so their mean is the cell's K -- and it
-##               keeps ONE phenotype per draw, which the pooled design needs.
-##   latent      MVN in the top-K subspace of the pooled genotype PCs. LFMM's
-##               home-field null and the exact analogue of K-MVN for EMMAX.
+## THE NULLS. Two kinds, and they are NOT crossed: a home-field null is drawn from
+## one engine's own model of structure, so it is only meaningful for that engine --
+## it asks "does this method invent signal from the structure it claims to correct?"
+## Running EMMAX against LFMM's latent basis (or the reverse) tests neither method's
+## specificity, so those pairs are skipped. The method-agnostic nulls run on both.
+##
+##   genetic     [EMMAX ONLY] MVN(0, K) on the cell's mean kinship -- EMMAX's own
+##               model of structure, so a clean surrogate here means EMMAX does not
+##               manufacture false positives from kinship. The 10 per-file GRMs are
+##               independent estimates of the same sampling structure (same patches,
+##               same positions), so their mean is the cell's K -- and it keeps ONE
+##               phenotype per draw, which the pooled design needs.
+##   latent      [LFMM ONLY] MVN in the top-K subspace of the pooled genotype PCs --
+##               LFMM's own model of structure, the exact analogue for that engine.
 ##   global_perm env shuffled among the 80 patches. Model-agnostic; destroys the
 ##               spatial structure entirely.
-##   env_orth    THE SIM-SPECIFIC ONE. The 48x48 env field is shifted toroidally
+##   env_orth    THE SIM-SPECIFIC ONE, and method-agnostic -- the fair cross-engine
+##               comparison. The 48x48 env field is shifted toroidally
 ##               and rotated/reflected, then read off at the sampled patches. A
 ##               torus shift is a RELABELLING of positions, so the empirical
 ##               autocorrelation function is preserved EXACTLY, while the field is
@@ -38,12 +44,16 @@
 ## Every surrogate is residualised against the observed env (resid(lm(s ~ Yobs))),
 ## as in the 3sp runner, so no null can accidentally carry the real signal.
 ##
-## COST (measured: emmax_fast 0.10 s/scan, ld_cscore 0.83 s per 31k SNPs; the
-## C-score dominates, not the association). One pooled draw over 10 chromosomes
-## ~9.4 s => B=100 for ONE cell and ONE type ~15.6 min. All 90 cells x 4 types
-## ~94 core-hours ~ 9-10 h on 10 workers, per subsample stage. LFMM is ~25 s per
-## file-scan, i.e. ~250x more per draw -- restrict it to a few cells (SIM_NULL_CELLS)
-## or a small B; it is OFF by default.
+## Engine x type pairs actually run:
+##   emmax : genetic, global_perm, env_orth, spatial
+##   lfmm  : latent,  global_perm, env_orth, spatial
+##
+## COST (measured: emmax_fast 0.10 s/scan, ld_cscore 0.83 s per 31k SNPs -- the
+## C-score dominates, not the association; LFMM 12.5 s per file). One pooled draw
+## over 10 chromosomes: EMMAX ~9.4 s, LFMM ~2.1 min => B=100 for ONE cell and ONE
+## type is ~15.6 min (EMMAX) or ~3.5 h (LFMM). Over the reduced scope (3 (V,c)
+## cells x 10 env = 30 cells): EMMAX 4 types ~31 core-h (~2.6 h on 12 cores) per
+## subsample stage; LFMM 2 types at B=100 ~210 core-h (~17.5 h on 12 cores).
 ##
 ## Run (from the LDscnR-paper root):
 ##   Rscript module_sim_LDscnR/run_sim_nulls.R V c env [tag]
@@ -75,6 +85,8 @@ if (!dir.exists(OUTDIR)) dir.create(OUTDIR, recursive = TRUE)
 PAR    <- list(alpha = 0.05, qstar = seq(0, 0.95, by = 0.05))
 K_LFMM <- 5L; K_LATENT <- 5L; SIDE <- 48L; SEED0 <- 7654321L; COR_MAX <- 0.3
 CANON  <- c("genetic", "latent", "global_perm", "env_orth", "spatial")   # fixed seed map
+## home-field nulls belong to ONE engine each; the rest are method-agnostic
+HOME   <- c(genetic = "emmax", latent = "lfmm")
 TYPES  <- intersect(TYPES, CANON); stopifnot(length(TYPES) > 0)
 ENGINES <- intersect(ENGINES, c("emmax", "lfmm")); stopifnot(length(ENGINES) > 0)
 
@@ -198,11 +210,18 @@ for (e in ENVS) {
     C <- cscore(P$map[[col]], P$LDW); names(C) <- P$map$marker; C })
 
   for (ty in TYPES) {
+    ## skip the type entirely if no active engine takes it (e.g. `latent` with
+    ## ENGINES=emmax) -- otherwise the surrogate draws are computed for nothing
+    engs_for_ty <- if (ty %in% names(HOME)) intersect(ENGINES, HOME[[ty]]) else ENGINES
+    if (!length(engs_for_ty)) next
+
     ## identical draws across engines and run order (seeded per type and draw)
     phen <- lapply(seq_len(B), function(b) {
       set.seed(SEED0 + 100000L * match(ty, CANON) + b); GEN[[ty]]() })
 
     for (eng in intersect(c("emmax", "lfmm"), ENGINES)) {
+      ## a home-field null is only meaningful for its own engine -- skip the cross
+      if (ty %in% names(HOME) && HOME[[ty]] != eng) next
       outf <- file.path(OUTDIR, sprintf("null_%s_%s_V%s_c%s_env%s.rds", eng, ty, V, CC, e))
       if (file.exists(outf)) { message("   ", basename(outf), " exists -> skip"); next }
       t0 <- Sys.time()
