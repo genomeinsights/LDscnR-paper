@@ -228,14 +228,14 @@
        canvas; restore the multi-column layouts explicitly */
     .steps { grid-template-columns: 1fr 1fr; }
     .step { padding: 0.5rem 0.7rem; }
-    .step .d { font-size: 8.6pt; }
+    .step .d { font-size: 8.3pt; }
     .points { grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
     .point span { font-size: 8.6pt; }
     .diffs { grid-template-columns: 1fr 1fr; gap: 0.5rem 1.3rem; }
     .diff { padding-top: 0.4rem; }
-    .diff span.body { font-size: 8.3pt; }
+    .diff span.body { font-size: 8.0pt; }
     figure { padding: 0.6rem 0.6rem 0.4rem; break-inside: avoid; }
-    figure svg { max-width: 112mm; margin: 0 auto; }
+    figure svg { max-width: 100mm; margin: 0 auto; }
     figcaption { font-size: 8.4pt; margin-top: 0.4rem; }
     footer { margin-top: 0.6rem; padding-top: 0.45rem; font-size: 8.4pt; }
     .steps, .points { break-inside: avoid; }
@@ -401,11 +401,11 @@
       </div>
       <div class="diff">
         <b>LD-based complexity reduction <span class="ref">the LDna lineage</span></b>
-        <span class="body">LDscnR descends from LD-network clustering, and inherits its unsolved problem. Li <em>et al.</em> (2018) cut tests by replacing each cluster with its principal components — cheaper, but the component is weaker than the strongest SNP in the region. Fang <em>et al.</em> (2021) kept the SNP-level statistics and swept the clustering parameters across 36 settings, then reported the setting that recovered the most regions. LDscnR takes the same sweep and <strong>integrates over it rather than selecting from it</strong>: choosing the best-performing cell reintroduces, at the parameter level, the multiple-testing problem being controlled within it.</span>
+        <span class="body">The consistency score originates here, not with LDscnR. Fang <em>et al.</em> (2021) ran <strong>144 tests</strong> on this same data — three LDna clustering parameters &times; four multiplicity and inflation corrections, one of them the permutation of Li <em>et al.</em> (2018), affordable only because complexity reduction had shrunk the test count — and scored each region by the proportion of tests finding it significant, discarding <em>C</em> &lt; 0.05. LDscnR keeps that principle and changes what it applies to: LD <em>filters</em> which SNPs are tested rather than replacing them with cluster-level units, the sweep runs over continuous nuisance parameters at two nested scales, and the structure-aware null is promoted from one correction among four to the inferential instrument. It is also <strong>the first time the consistency principle is benchmarked against simulations with known causal variants</strong>.</span>
       </div>
       <div class="diff">
         <b>How significance is established</b>
-        <span class="body">Permutation is the acknowledged gold standard for multiple-testing correction, because it accounts for the correlation structure of the genome directly. Under population structure the standard version is invalid — reshuffling phenotypes destroys the among-individual correlation the model assumes — and the correct substitute is already specified in the literature: draw surrogate phenotypes from MVN(0, &sigma;<sup>2</sup><sub>g</sub>A + &sigma;<sup>2</sup><sub>e</sub>I) and rerun the scan on each. What has limited it is cost, and cost scales with the number of tests. Li <em>et al.</em> bought affordability by dimension reduction, at the price of signal. <strong>LDscnR buys it by carrying the per-SNP burden earlier</strong>, so the null need only resolve a handful of regions per surrogate — 50–200 surrogates rather than tens of thousands — with the SNP-level statistics kept.</span>
+        <span class="body">Permutation is the acknowledged gold standard for multiple-testing correction, because it accounts for the correlation structure of the genome directly. Under population structure the standard version is invalid — reshuffling phenotypes destroys the among-individual correlation the model assumes — and the correct substitute is already specified: draw surrogate phenotypes from MVN(0, &sigma;<sup>2</sup><sub>g</sub>A + &sigma;<sup>2</sup><sub>e</sub>I) and rerun the scan on each. What limits it is cost, and cost scales with the number of tests. The lineage bought affordability by <em>complexity reduction</em> — testing cluster principal components or multi-locus alleles instead of SNPs — which shrinks the test count but tests a unit weaker than the strongest SNP in the region. <strong>LDscnR instead filters, keeps the per-SNP statistics, and moves inference to the region</strong>, so the null need only resolve a handful of regions per surrogate: 50–200 surrogates rather than tens of thousands.</span>
       </div>
     </div>
   </section>

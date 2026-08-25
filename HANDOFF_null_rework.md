@@ -139,6 +139,55 @@ say so.
 
 ---
 
+## Task 0 — ATTRIBUTION: the C-score is Fang et al. (2021), not this paper
+
+**Do this before writing any Methods prose.** `sec:cscore` currently reads as
+though the consistency score is introduced here. It is not. Fang et al. (2021),
+section "Assessing Sensitivity of Association Analyses to Parameter Settings",
+on this same dataset:
+
+> "With three parameters for defining LD clusters (|E|min, SNPmin, and Corth)
+> and four methods to correct for multiplicity and P value inflation, the three-
+> and nine-spined stickleback data sets were subjected to a total of 144 tests
+> each. [...] we calculated a consistency score C for each putative outlier
+> region, denoting the proportion of tests where a given genomic region was
+> found significant, with C = 1 indicating that a given region was significant
+> in all 144 tests. [...] We deemed outlier regions with C < 0.05 to be too
+> sensitive to parameter settings to be considered further."
+
+Already present in that paper, by name: the **C-score**, **tau_C = 0.05**,
+**l_min = 10** ("at least ten unique loci"), **d_cap = 500 kb single-linkage**,
+and the region-as-cluster-of-significant-loci definition. One of the four
+corrections is the **permutation of Li et al. (2018)** -- the MVN(0, s2g*A +
+s2e*I) surrogate -- feasible only because complexity reduction had shrunk the
+test count.
+
+Write `sec:cscore` as **following** Fang et al. (2021), and state what is
+actually new here:
+
+1. **What is integrated over.** Theirs: 3 clustering parameters x 4 correction
+   methods, a menu of analysis choices. Ours: continuous nuisance parameters of
+   the LD *filter* (rho, q*), natural [0,1] quantities, so the integration is
+   assumption-free rather than over an arbitrary menu.
+2. **What is tested.** Theirs: cluster-level units -- PCs in Li et al., SMLAs in
+   Fang et al. ("a modified version of EMMAX that allowed us to test for
+   associations between SMLAs rather than a single bi-allelic SNP at a time").
+   Ours: SNP-level statistics preserved; LD filters *which* SNPs are tested.
+3. **Two nested scales.** Theirs: one tier, at region level. Ours: marker C over
+   (rho, q*), then region C2 over (tau_C, l_min) -- and tau_C and l_min are
+   swept rather than fixed at 0.05 and 10.
+4. **The null's role.** Theirs: permutation is one correction among four inside
+   the score. Ours: the structure-aware surrogate is the inferential instrument
+   (location-matched region p -> BH q_R), with bases chosen to separate
+   specificity from attribution.
+5. **Benchmarking.** The consistency principle has **never been tested against
+   simulations with known causal variants**. Doing so is a genuine first here,
+   and is probably the single cleanest novelty claim the paper has.
+
+Getting this wrong is a reviewer-fatal risk: PK is an author on Fang et al.
+(2021), so presenting the C-score as new reads as self-plagiarism rather than
+oversight.
+
 ## Task 4b — Fang et al. 2021 is a method comparison, NOT a positive control
 
 **The example data IS the Fang et al. (2021) panel.** Same individuals, same
