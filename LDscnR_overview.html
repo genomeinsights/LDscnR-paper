@@ -231,11 +231,11 @@
     .step .d { font-size: 8.6pt; }
     .points { grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
     .point span { font-size: 8.6pt; }
-    .diffs { grid-template-columns: 1fr 1fr; gap: 0.6rem 1.4rem; }
+    .diffs { grid-template-columns: 1fr 1fr; gap: 0.5rem 1.3rem; }
     .diff { padding-top: 0.4rem; }
     .diff span.body { font-size: 8.6pt; }
     figure { padding: 0.6rem 0.6rem 0.4rem; break-inside: avoid; }
-    figure svg { max-width: 137mm; margin: 0 auto; }
+    figure svg { max-width: 126mm; margin: 0 auto; }
     figcaption { font-size: 8.6pt; margin-top: 0.5rem; }
     footer { margin-top: 0.6rem; padding-top: 0.45rem; font-size: 8.4pt; }
     .steps, .points { break-inside: avoid; }
@@ -405,7 +405,7 @@
       </div>
       <div class="diff">
         <b>How significance is established</b>
-        <span class="body">Testing against surrogate data that preserve the confounding structure while breaking the link to the variable of interest is the most rigorous option when the confounder is itself autocorrelated — standard practice in spatial ecology and neuroimaging. It is rare in genome scans because of cost: per-SNP significance requires resolving the null <em>tail</em> to genome-wide precision, and at ~100 minutes per whole-genome scan that runs to tens of thousands of core-hours. LDscnR carries the per-SNP burden earlier, so the null need only resolve a handful of regions per surrogate — <strong>50–200 surrogates instead of tens of thousands</strong>.</span>
+        <span class="body">Permutation is the acknowledged gold standard for multiple-testing correction in genome scans, because it accounts for the correlation structure of the genome directly — but it is computationally impractical at per-SNP resolution, and under population structure plain permutation is not even valid: shuffling destroys the relatedness the test must preserve. Structure-aware surrogates fix that, and have been prohibitively expensive for the same reason — per-SNP significance needs the null <em>tail</em> resolved to genome-wide precision. LDscnR carries the per-SNP burden earlier, so the null need only resolve a handful of regions per surrogate: <strong>50–200 surrogates instead of tens of thousands</strong>.</span>
       </div>
     </div>
   </section>
