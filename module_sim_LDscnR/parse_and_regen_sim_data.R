@@ -89,10 +89,15 @@ PARSED_DIR <- Sys.getenv("SIM_PARSED", "")
 ## them once with SUBSAMPLE = 1 and skip them on the subsample runs.
 POPGEN_DIR <- Sys.getenv("SIM_POPGEN", file.path(SIM_ROOT, "popgen_sim_data"))
 WIN_BP     <- as.numeric(Sys.getenv("SIM_WIN", "5e5"))   # BGS window grid (map resolution)
+## Write outputs to a local (internal-SSD) staging folder first and move them to
+## SIM_OUT when the file is complete -- the bundles are ~13 MB each and the external
+## volume is the slow leg. Empty = write straight to SIM_OUT.
+STAGE_DIR  <- Sys.getenv("SIM_STAGE", "")
 ## Fraction of the analysis individuals to keep WITHIN each population (1 = all).
 SUBSAMPLE  <- as.numeric(Sys.getenv("SIM_SUBSAMPLE", "1"))
 stopifnot(SUBSAMPLE > 0, SUBSAMPLE <= 1)
 if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
+if (nzchar(STAGE_DIR) && !dir.exists(STAGE_DIR)) dir.create(STAGE_DIR, recursive = TRUE)
 if (nzchar(PARSED_DIR) && !dir.exists(PARSED_DIR)) dir.create(PARSED_DIR, recursive = TRUE)
 if (nzchar(POPGEN_DIR) && !dir.exists(POPGEN_DIR)) dir.create(POPGEN_DIR, recursive = TRUE)
 
@@ -111,7 +116,13 @@ RHO_GRID   <- c(seq(0.05, 0.95, by = 0.05), 0.99)          # ld_w columns
 ## which are then dropped (keep_el = FALSE) -- no edge lists saved or retained. The
 ## complexity chain rebuilds what it needs per chromosome from `gds` on the fly
 ## (ld_complexity_reduction(gds = ...)), so nothing large is kept between steps.
-DECAY_ARGS <- list(min_maf_decay = 0.1, q = 0.95, n_sub_bg = 5000, n_win_decay = 5,
+## n_win_decay = 10 (was 5): 5 was chosen for earlier, much smaller SNP sets; at this
+## density it left only ~9 windows, and chromosomes whose per-window fits are marginal
+## (chr5 here) straddled summarize_decay()'s ">= 5 valid windows" gate and failed
+## stochastically. 10 gives ~19 windows, well clear of it. NOTE this changes the fitted
+## a/b/c -- see ?compute_LD_decay "Comparing decay estimates" -- so bundles built at 5
+## and at 10 are NOT comparable; regenerate the whole set, never mix.
+DECAY_ARGS <- list(min_maf_decay = 0.1, q = 0.95, n_sub_bg = 5000, n_win_decay = 10,
                    overlap = 0.5, max_SNPs_decay = Inf, prob_robust = 0.95,
                    max_pairs = 5000, ld_method = "corr", n_strata = 20, keep_el = FALSE,
                    slide = 1000, rho_targets = c(0.99),
@@ -211,6 +222,19 @@ extract_params <- function(base_name) {
   params <- data.table(t(strsplit(base_name, "_", fixed = TRUE)[[1]]))[, 1:6]
   setnames(params, c("sim", "bgs", "Chr", "V", "c", "env"))
   params[, env := gsub(".tgz", "", env)][]
+}
+
+## Move a finished file from staging to its final home. file.rename() is instant
+## within a filesystem but FAILS across devices (staging on the internal SSD, output on
+## the external volume), so fall back to copy + unlink there.
+finalise_file <- function(from, to) {
+  if (identical(from, to)) return(invisible(to))
+  if (!file.rename(from, to)) {
+    if (!file.copy(from, to, overwrite = TRUE))
+      stop("could not move ", from, " -> ", to)
+    unlink(from)
+  }
+  invisible(to)
 }
 
 ## Unpack into a private tmp folder. The number of leading path components to
@@ -904,7 +928,13 @@ process_file <- function(file_gz, out_path) {
             file.path(PARSED_DIR, paste0(basename(sub("\\.tgz$|\\.tar\\.gz$", "", file_gz)), ".rds")))
   }
 
-  res <- regen_from_parsed(d, out_path)
+  ## With staging on, everything is written to the local SSD first and moved to its
+  ## final home only once the file is complete -- so a killed run never leaves a
+  ## half-written bundle in SIM_OUT for skip-if-exists to treat as done.
+  stem      <- basename(sub("\\.tgz$|\\.tar\\.gz$", "", file_gz))
+  work_out  <- if (nzchar(STAGE_DIR)) file.path(STAGE_DIR, basename(out_path)) else out_path
+
+  res <- regen_from_parsed(d, work_out)
 
   ## popgen summaries go to their OWN files -- diagnostics about the simulation,
   ## not inputs to the benchmark bundle
@@ -912,15 +942,22 @@ process_file <- function(file_gz, out_path) {
     pg <- d$popgen
     ibd <- ibd_from_grm(res$GRM, d$env)
     pg$summary <- cbind(pg$summary, as.data.table(ibd))
-    stem <- basename(sub("\\.tgz$|\\.tar\\.gz$", "", file_gz))
-    saveRDS(pg, file.path(POPGEN_DIR, paste0(stem, ".rds")))
-    fwrite(pg$summary, file.path(POPGEN_DIR, paste0(stem, "_summary.csv")))
+    pg_dir <- if (nzchar(STAGE_DIR)) STAGE_DIR else POPGEN_DIR
+    saveRDS(pg, file.path(pg_dir, paste0(stem, ".rds")))
+    fwrite(pg$summary, file.path(pg_dir, paste0(stem, "_summary.csv")))
+    if (nzchar(STAGE_DIR)) {
+      finalise_file(file.path(pg_dir, paste0(stem, ".rds")),
+                    file.path(POPGEN_DIR, paste0(stem, ".rds")))
+      finalise_file(file.path(pg_dir, paste0(stem, "_summary.csv")),
+                    file.path(POPGEN_DIR, paste0(stem, "_summary.csv")))
+    }
     message("  wrote popgen: ", stem, ".rds  (Fst=", signif(pg$summary$fst_ntrl_wc, 3),
             ", delta_SA=", signif(pg$summary$delta_SA, 3),
             ", la_cor2=", signif(pg$summary$la_cor2, 3), ")")
   }
 
-  invisible(res$out_path)
+  finalise_file(work_out, out_path)      # bundle last: its presence marks the file done
+  invisible(out_path)
 }
 
 ## ---- driver (same CLI shape as regen_sim_data.R) ---------------------
