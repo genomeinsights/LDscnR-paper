@@ -115,23 +115,30 @@ if (RUN_C2 && !is.null(fit$c2)) {
 ## Runs only if the panel carries true_QTN. On real data this section is silently
 ## skipped -- which is exactly why the analysis above never looks at it.
 if ("true_QTN" %in% names(map) && nrow(regions)) {
-  qtn <- map[true_QTN %in% TRUE, .(Chr, Pos)]
+  ## true_pos_QTN, not true_QTN: flag_true_qtns() keeps only QTNs with MAF > 0.1
+  ## carrying >= 5% of their chromosome's additive variance. The others are
+  ## undetectable in principle and counting them understates recall.
+  qtn <- map[true_pos_QTN %in% TRUE, .(Chr = as.character(Chr), Pos)]
   regions[, has_qtn := vapply(seq_len(.N), function(i)
     any(qtn$Chr == chr[i] & qtn$Pos >= lo[i] & qtn$Pos <= hi[i]), logical(1))]
-  ## In these sims Chr2 of every replicate carries no causal variant, so a region
-  ## there is an unambiguous false positive.
-  regions[, on_neutral := grepl("_Chr2$", chr)]
+  ## A pooled cell is a GENOME and about half its chromosomes carry no detectable
+  ## QTN -- as in any real genome. The QTN-free set is derived from the truth, not
+  ## assumed to be "the Chr2s": some Chr1s carry none either, and hardcoding _Chr2
+  ## both undercounts and implies Chr2 is a designated control.
+  qtn_free_chr <- as.character(map[, .(nq = sum(true_pos_QTN %in% TRUE)), by = Chr][nq == 0, Chr])
+  regions[, on_qtn_free := chr %in% qtn_free_chr]
   sig <- regions[sig == TRUE]
   rec <- sum(vapply(seq_len(nrow(qtn)), function(j) nrow(sig) > 0 &&
     any(sig$chr == qtn$Chr[j] & sig$lo <= qtn$Pos[j] & sig$hi >= qtn$Pos[j]), logical(1)))
   q <- stats::p.adjust(P$p_obs, "BH")
   cat("\n[4] TRUTH (simulation only)\n")
-  cat(sprintf("    %d true QTN | %d significant regions | %d contain a QTN | %d on a neutral chromosome\n",
-              nrow(qtn), nrow(sig), sum(sig$has_qtn), sum(sig$on_neutral)))
+  cat(sprintf("    %d true QTN | %d significant regions | %d contain a QTN | %d on a QTN-free chromosome (%.0f%% vs %.0f%% by chance)\n",
+              nrow(qtn), nrow(sig), sum(sig$has_qtn), sum(sig$on_qtn_free),
+              100 * mean(sig$on_qtn_free), 100 * length(qtn_free_chr) / uniqueN(map$Chr)))
   cat(sprintf("    recall %d/%d | precision %.3f\n", rec, nrow(qtn),
               sum(sig$has_qtn) / max(nrow(sig), 1)))
   cat(sprintf("    single-SNP BH on the SAME p-values: %d markers, %d on neutral chromosomes, %d are QTN\n",
-              sum(q < PAR$fdr), sum(q < PAR$fdr & grepl("_Chr2$", map$Chr)),
+              sum(q < PAR$fdr), sum(q < PAR$fdr & as.character(map$Chr) %in% qtn_free_chr),
               sum(q[map$true_QTN %in% TRUE] < PAR$fdr)))
 }
 
