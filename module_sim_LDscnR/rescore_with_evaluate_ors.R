@@ -92,6 +92,16 @@ for (cell in cells) {
 
   pos <- stats::setNames(map$Pos, map$marker); chrv <- stats::setNames(as.character(map$Chr), map$marker)
   qtn_pos <- map[true_pos_QTN %in% TRUE, .(Chr = as.character(Chr), Pos)]
+  ## A pooled cell is a GENOME of 20 chromosomes, and about half of them carry no
+  ## detectable QTN -- as in any real genome. The QTN-free set is therefore NOT
+  ## "the Chr2s": across these ten genomes 104 of 200 chromosomes are QTN-free and
+  ## 4 of those are Chr1s that happen to carry none. Counting only _Chr2 both
+  ## undercounted and implied Chr2 is a designated control rather than simply one
+  ## chromosome among many without signal.
+  per_chr <- map[, .(nq = sum(true_pos_QTN %in% TRUE)), by = Chr]
+  qtn_free_chr <- as.character(per_chr[nq == 0, Chr])
+  n_chr <- nrow(per_chr)
+  frac_chr_qtn_free <- length(qtn_free_chr) / n_chr   # the null expectation for a call landing there
 
   for (f in sc) {
     x <- readRDS(f); basis <- x$params$basis; tau <- x$params$tau
@@ -103,9 +113,15 @@ for (cell in cells) {
         out[[k]] <- data.table(cell, basis, l_min = L, n_regions = 0L, n_sig = 0L,
                                TP = 0L, FP = 0L, FN = n_true, extras = 0L,
                                precision = NA_real_, recall = 0, dedup_losers = 0L,
-                               contain_TP = 0L, contain_recall = 0, neutral_FP = 0L,
+                               contain_TP = 0L, contain_recall = 0,
+                               sig_on_qtn_free = 0L, sig_on_qtn_bearing = 0L,
+                               n_chr = n_chr, frac_chr_qtn_free = frac_chr_qtn_free,
                                n_true = n_true, lambda_obs = x$null$lambda_obs %||% NA_real_,
-                               lambda_surr_med = stats::median(x$null$lambda_surr %||% NA_real_))
+                               lambda_surr_med = stats::median(x$null$lambda_surr %||% NA_real_),
+                               ## a cell that called NO regions is a primary result -- recall 0,
+                               ## precision undefined. Omitting the flag here dropped exactly the
+                               ## undetectable cells from the aggregate and biased it upward.
+                               r2_match = th$r2min, d_match = th$dmax, primary = TRUE)
         next }
       ## significance from a fresh region scan at this l_min (cheap: re-clusters
       ## the surrogates, but does NOT redo the C-score reduction)
@@ -137,7 +153,9 @@ for (cell in cells) {
         TP = ev$TP, FP = ev$FP, FN = ev$FN, extras = ev$extras,
         precision = ev$Precision, recall = ev$Recall, dedup_losers = dl,
         contain_TP = cTP, contain_recall = cRec,
-        neutral_FP = sum(grepl("_Chr2$", sps$chr)), n_true = n_true,
+        sig_on_qtn_free = sum(sps$chr %in% qtn_free_chr),
+        sig_on_qtn_bearing = sum(!(sps$chr %in% qtn_free_chr)),
+        n_chr = n_chr, frac_chr_qtn_free = frac_chr_qtn_free, n_true = n_true,
         lambda_obs = x$null$lambda_obs %||% NA_real_,
         lambda_surr_med = stats::median(x$null$lambda_surr %||% NA_real_),
         r2_match = r2m, d_match = dm, primary = grid$primary[gi])
@@ -151,11 +169,17 @@ fwrite(res, file.path(OUT, "rescore_evaluate_ors.csv"))
 cat(sprintf("\n[3] wrote rescore_evaluate_ors.csv (%d rows)\n", nrow(res)))
 
 cat("\n=== replicate-averaged over cells (mean +- SE), decay-derived thresholds ===\n")
-agg <- res[primary %in% TRUE, .(n_cells = .N,
+## recall is averaged over EVERY cell -- a cell that found nothing has recall 0
+## and must count. precision is undefined where no region was called (0/0), so it
+## is averaged over the cells that called at least one, and both n's are reported.
+agg <- res[primary %in% TRUE, .(n_cells = .N, n_prec = sum(!is.na(precision)),
                recall = sprintf("%.3f+-%.3f", mean(recall, na.rm=TRUE), sd(recall, na.rm=TRUE)/sqrt(.N)),
-               precision = sprintf("%.3f+-%.3f", mean(precision, na.rm=TRUE), sd(precision, na.rm=TRUE)/sqrt(.N)),
+               precision = sprintf("%.3f+-%.3f", mean(precision, na.rm=TRUE),
+                                   sd(precision, na.rm=TRUE)/sqrt(sum(!is.na(precision)))),
                TP = round(mean(TP),1), FP = round(mean(FP),1), dedup = round(mean(dedup_losers, na.rm=TRUE),1),
-               neutralFP = round(mean(neutral_FP),1),
+               on_qtn_free = round(mean(sig_on_qtn_free),1),
+               pct_on_qtn_free = round(100*sum(sig_on_qtn_free)/pmax(sum(sig_on_qtn_free+sig_on_qtn_bearing),1)),
+               pct_expected_by_chance = round(100*mean(frac_chr_qtn_free)),
                contain_recall = round(mean(contain_recall, na.rm=TRUE),3)),
            by = c("basis", "l_min")]
 setorderv(agg, c("basis", "l_min")); print(agg, nrow = 100)
