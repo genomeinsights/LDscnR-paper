@@ -509,6 +509,15 @@ bgs_windows <- function(ls, map_full, n_ind, win_bp = 5e5, cM_scale = 1) {
 
     w[, `:=`(Chr = ch, start = brk[win], mid = brk[win] + win_bp / 2)]
     w[, snp_density := n_snp / (win_bp / 1e6)]
+    ## Diversity per BASE PAIR, which is what a B statistic needs. `pi` above is the
+    ## mean over SNPs that survived the MAF filter, and that is conditioned on which
+    ## SNPs survived: background selection removes rare variants, so the survivors
+    ## are commoner on average and mean-per-SNP pi moves the WRONG WAY under BGS.
+    ## Measured on bgs3 (chr8, V2_c1, u = 3e-5/6e-5/1e-4 against three nobgs
+    ## replicates), B came out 1.12-1.16 per SNP but 0.93/0.87/0.77 per bp -- the
+    ## per-SNP version reverses the sign of the effect it is meant to measure.
+    ## Tajima's D carries the same conditioning and reads less negative under BGS.
+    w[, pi_bp := pi * n_snp / win_bp]
 
     ## local recombination: cM per Mb across the window, from the map itself
     w[, cM_start := cm_of(ch, start)]
@@ -533,7 +542,7 @@ bgs_windows <- function(ls, map_full, n_ind, win_bp = 5e5, cM_scale = 1) {
     w[, n_qtn := if (nrow(qtn)) vapply(seq_len(.N), function(i)
         sum(qtn$bp >= start[i] & qtn$bp < start[i] + win_bp), integer(1)) else 0L]
 
-    w[, .(Chr, win, start, mid, n_snp, snp_density, pi, Hs, Ho, Fst, mean_maf,
+    w[, .(Chr, win, start, mid, n_snp, snp_density, pi, pi_bp, Hs, Ho, Fst, mean_maf,
           tajima_D, cM_per_Mb, n_delet, delet_load_cM, n_qtn)]
   }), fill = TRUE)
 }
@@ -544,7 +553,8 @@ bgs_summary <- function(w) {
   if (is.null(w) || nrow(w) < 10) {
     for (k in c("bgs_n_win", "bgs_cor_pi_rec", "bgs_slope_pi_rec", "bgs_cor_pi_delet",
                 "bgs_B_rel_rec", "bgs_B_rel_delet", "bgs_tajD_mean", "bgs_tajD_lowrec_diff",
-                "bgs_cor_pi_rec_chr2", "bgs_cor_pi_delet_chr2"))
+                "bgs_cor_pi_rec_chr2", "bgs_cor_pi_delet_chr2",
+                "bgs_pi_bp_mean", "bgs_snp_density", "bgs_cor_pibp_rec", "bgs_cor_pibp_delet"))
       out[[k]] <- NA_real_
     return(out)
   }
@@ -572,6 +582,16 @@ bgs_summary <- function(w) {
   }
   out$bgs_B_rel_rec   <- rel(ok,  "cM_per_Mb")       ## < 1 if low recombination loses diversity
   out$bgs_B_rel_delet <- 1 / rel(okd, "delet_load_cM")
+
+  ## per-bp diversity and SNP density: the two statistics a B is read off. Reported
+  ## alongside the per-SNP correlations above, which are ascertainment-conditioned.
+  out$bgs_pi_bp_mean   <- mean(w$pi_bp, na.rm = TRUE)
+  out$bgs_snp_density  <- mean(w$snp_density, na.rm = TRUE)
+  okb <- w[is.finite(pi_bp) & is.finite(cM_per_Mb) & cM_per_Mb > 0]
+  out$bgs_cor_pibp_rec <- if (nrow(okb) > 5) stats::cor(okb$pi_bp, log(okb$cM_per_Mb)) else NA_real_
+  okd2 <- w[is.finite(pi_bp) & is.finite(delet_load_cM)]
+  out$bgs_cor_pibp_delet <- if (nrow(okd2) > 5 && stats::sd(okd2$delet_load_cM) > 0)
+    stats::cor(okd2$pi_bp, okd2$delet_load_cM) else NA_real_
 
   out$bgs_tajD_mean <- mean(w$tajima_D, na.rm = TRUE)
   if (nrow(ok) >= 10) {
