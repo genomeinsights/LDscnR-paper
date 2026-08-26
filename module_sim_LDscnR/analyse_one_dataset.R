@@ -47,6 +47,32 @@ if (!dir.exists(OUT)) dir.create(OUT, recursive = TRUE)
 ## Operating point. alpha is FIXED at 0.05 -- the alpha sweep belongs to the
 ## PR-AUC comparison of methods, not to region discovery. tau and l_min are
 ## nominal: ld_region_c2() integrates over them rather than trusting one cell.
+##
+## l_min = 3 IS A CHOICE, NOT A CALIBRATION, and it is provisional (PK, 2026-08-26).
+## calibrate_lmin() was meant to remove the need for a choice, but on these
+## simulations it returns 13-510 across ten genomes (only 2 of 9 at or below 20),
+## because it takes 1 + the 99th percentile of the null's largest-region size and
+## the surrogate region-size distribution is heavy-tailed. It is not usable as an
+## operating rule.
+##
+## The choice is between two objectives that disagree, measured over 9 genomes of
+## V2_c1 (module_sim_LDscnR/pr_cscore_vs_alpha.R, operating_point_vs_truth.R):
+##
+##   l_min      C-score advantage over BH alpha      PR at (tau 0.05, l_min) vs
+##              (paired PR-AUC difference)           the per-genome optimum
+##      1              +0.100                                 --
+##      3              +0.069  (C wins 7/9)                  33%
+##     10              +0.018  (C wins 5/9)                  60%
+##     20              +0.005  (C wins 4/9)                   --
+##
+## The C-score and the region-size filter are SUBSTITUTES: both suppress isolated
+## spurious markers, so tightening l_min raises absolute performance while eroding
+## the C-score's margin over plain BH. l_min = 3 keeps the margin the method is
+## claimed on; l_min = 10 -- which is what Fang et al. (2021) published -- gives
+## better absolute PR. Neither is wrong; they answer different questions.
+##
+## Nothing here is significant at n = 9, so this should be revisited once more
+## (V, c) cells are analysed.
 PAR <- list(alpha  = as.numeric(Sys.getenv("ALPHA",  "0.05")),
             qstar  = seq(0, 0.95, by = 0.05),
             tau    = as.numeric(Sys.getenv("TAU",    "0.05")),
