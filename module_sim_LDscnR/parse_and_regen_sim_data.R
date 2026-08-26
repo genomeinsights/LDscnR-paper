@@ -180,14 +180,29 @@ focal_QTN <- function(map, GTs, qtn_col = "true_QTN") {
   }), fill = TRUE)
 }
 
-## per-QTN additive variance 2 p (1-p) alpha^2
+## Per-QTN additive variance, 2 p (1-p) alpha^2 with alpha the SUBSTITUTION effect.
+##
+## alpha is 2a, not a. `allelic_values` holds the effect of ONE allele (+a / -a)
+## and the genotype counts copies of the NEGATIVE one, so each copy shifts the
+## phenotype by -2a: z = 2*sum(a) - 2*sum(a*g). Verified by reconstructing the
+## phenotype from genotypes and comparing with Nemo's own per-patch trait means
+## (adlt.q1.pN) -- the naive sum(a*g) gives r = -0.97 with slope -1.91, while
+## 2*sum(a) - 2*sum(a*g) gives r = +0.97 with slope +0.96, on both a V3-map file
+## (chr7, 2 QTNs) and a V4-map bgs3 file (chr8, 4 QTNs). The residual intercept is
+## the contribution of the FIXED QTNs, which Nemo does not output and which
+## therefore cannot be recovered from genotypes at all.
+##
+## The earlier version used a^2 and so under-reported Va by a factor of FOUR.
+## p_Va is unaffected -- it is Va_l / sum(Va), so a constant factor cancels, and
+## flag_true_qtns(p_va_min = ...) with it. Only the absolute Va, sum_Va and the
+## popgen va_sample were wrong.
 get_va <- function(map, GTs, qtn_rows) {
   if (length(qtn_rows) == 0L) return(numeric(0))
   sapply(qtn_rows, function(i) {
     a  <- map$allelic_values[i]
     gt <- GTs[, i, drop = TRUE]
     p  <- mean(gt) / 2
-    2 * p * (1 - p) * a^2
+    2 * p * (1 - p) * (2 * a)^2
   })
 }
 
@@ -682,7 +697,8 @@ sim_popgen <- function(files, base_name, params, GTs_all, map_all, pop_vec, env_
     a_q <- map_all$allelic_values[qtn]
     seg <- p_q > 0 & p_q < 1
     n_qtn_seg <- sum(seg)
-    va_sample <- sum(2 * p_q[seg] * (1 - p_q[seg]) * a_q[seg]^2, na.rm = TRUE)
+    ## substitution effect is 2a -- see get_va() for the phenotype-reconstruction check
+    va_sample <- sum(2 * p_q[seg] * (1 - p_q[seg]) * (2 * a_q[seg])^2, na.rm = TRUE)
   }
 
   ## ---- one-row summary ------------------------------------------------
