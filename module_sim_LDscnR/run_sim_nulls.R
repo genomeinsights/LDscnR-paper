@@ -127,7 +127,7 @@ pool_cell <- function(env) {
   ## an incomplete cell would pool a smaller genome and silently change both the
   ## ld_w quantile and the BH denominator -- refuse rather than half-pool
   if (length(files) != 10L)
-    stop(sprintf("expected 10 chromosome files for V%s_c%s_env%s, found %d", V, CC, e, length(files)))
+    stop(sprintf("expected 10 chromosome files for V%s_c%s_env%s, found %d", V, CC, env, length(files)))
   maps <- gts <- ldws <- decs <- prep <- mk_i <- vector("list", length(files))
   Kacc <- NULL; Yobs <- coords <- pops <- NULL
   for (i in seq_along(files)) {
@@ -208,10 +208,26 @@ env_orth_drawer <- function(env_id, pops, y) {
 }
 
 ## ---- engines ---------------------------------------------------------
-## returns one p per marker, in pooled marker order
+## EMMAX returns p directly (no genomic control, by design -- see below). LFMM
+## returns raw F, which the caller converts to p with a FIXED lambda.
+##
+## GENOMIC CONTROL, and why it is handled here rather than per scan:
+##   EMMAX  none at all. The GRM is tuned so lambda sits in [1, 1.1], so there is
+##          nothing to correct -- and correcting the observed while leaving the
+##          surrogates raw (which is what the stored emx_p did, in 19 of 100
+##          files) puts the two on different scales.
+##   LFMM   residual inflation is expected and fine, but the correction must be
+##          the SAME constant everywhere. lfmm2.test(genomic.control = TRUE)
+##          re-estimates lambda inside every scan, so each surrogate would be
+##          standardised by its own value -- that shrinks the null's spread and
+##          flatters the observed. Instead lambda is estimated ONCE on the
+##          observed F and applied unchanged to every permuted F.
+##
+## lambda is computed on the F scale -- median(F) / qf(0.5, df1, df2) -- not via
+## the chi-square convention.
 scan_engine <- function(engine, P, y) {
   if (engine == "emmax") return(emmax_pooled(P, y))
-  ## LFMM: per chromosome file, then pooled (mirrors the observed pipeline)
+  ## LFMM: per chromosome file, then pooled; RAW F, genomic.control = FALSE
   unlist(lapply(seq_along(P$mk_i), function(i) {
     mk <- P$mk_i[[i]]; G <- P$GTs[, mk, drop = FALSE]
     tmp <- tempfile("lfmmsim_"); dir.create(tmp); on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
@@ -219,9 +235,23 @@ scan_engine <- function(engine, P, y) {
     LEA::write.lfmm(G, gf); LEA::write.env(y, ef)
     pr <- LEA::lfmm2(gf, ef, K = K_LFMM)
     stats::setNames(suppressWarnings(
-      LEA::lfmm2.test(pr, gf, ef, genomic.control = TRUE, full = TRUE))$pvalues, mk)
+      LEA::lfmm2.test(pr, gf, ef, genomic.control = FALSE, full = TRUE))$fscores, mk)
   }))[P$map$marker]
 }
+
+## lambda on the F scale, and the p-values it implies
+lfmm_df2   <- function(n) n - K_LFMM - 1L                    # d = 1 predictor
+emmax_df2  <- function(n) n - 2L
+lambda_F   <- function(Fv, df2) stats::median(Fv) / stats::qf(0.5, 1, df2, lower.tail = FALSE)
+p_from_F   <- function(Fv, lambda, df2) stats::pf(Fv / lambda, 1, df2, lower.tail = FALSE)
+## same thing starting from p, for engines that only hand back p-values
+lambda_p   <- function(pv, df2) lambda_F(stats::qf(pv, 1, df2, lower.tail = FALSE), df2)
+
+## Diagnostic, never applied. Fixing lambda at the OBSERVED value is right only if
+## the surrogates are inflated to a similar degree: if the observed scan's lambda is
+## lifted by real polygenic signal, lambda_obs > lambda_surr and dividing the
+## surrogates by it over-corrects them, quieting the null. Recording each
+## surrogate's own lambda lets the analysis check that rather than assume it.
 
 ## ---- main loop: cell -> type -> engine -------------------------------
 for (e in ENVS) {
@@ -236,10 +266,26 @@ for (e in ENVS) {
               env_orth    = env_orth_drawer(e, P$pops, P$Yobs),
               spatial     = spatial_drawer(P$coords, P$Yobs))
 
-  ## Observed p per ENGINE, from that engine's own saved scan. EMMAX's emx_p and
-  ## LFMM's lfmm_p are different scans and must never be mixed.
-  p_obs_eng <- lapply(c(emmax = "emx_p", lfmm = "lfmm_p"),
-                      function(col) stats::setNames(P$map[[col]], P$map$marker))
+  ## Observed scans are recomputed HERE, through the identical code path the
+  ## surrogates take, rather than read from the bundles. The stored emx_p was
+  ## genomic-controlled whenever gif > 1.1 and the stored lfmm_p was corrected by
+  ## LEA's own per-scan lambda, so neither is commensurable with a raw surrogate.
+  ## EMMAX: raw p, no correction anywhere. LFMM: one lambda from the observed F,
+  ## reused for every permuted F.
+  df2 <- lfmm_df2(length(P$Yobs))
+  obs <- list(); lam <- list()
+  if ("emmax" %in% ENGINES) {
+    obs$emmax <- emmax_pooled(P, P$Yobs)
+    lam$emmax <- NA_real_                       # by design: no GC on either side
+  }
+  if ("lfmm" %in% ENGINES) {
+    F_obs      <- scan_engine("lfmm", P, P$Yobs)
+    lam$lfmm   <- lambda_F(F_obs, df2)
+    obs$lfmm   <- p_from_F(F_obs, lam$lfmm, df2)
+    message(sprintf("   LFMM observed lambda (F scale, df2=%d) = %.3f -- applied unchanged to every surrogate",
+                    df2, lam$lfmm))
+  }
+  p_obs_eng <- obs
 
   ## panel, written once per cell and reused by every engine x basis
   cell_id  <- sprintf("V%s_c%s_env%s", V, CC, e)
@@ -271,7 +317,13 @@ for (e in ENVS) {
       if (file.exists(outf)) { message("   ", basename(outf), " exists -> skip"); next }
       t0 <- Sys.time()
 
-      pl <- mclapply(phen, function(y) tryCatch(scan_engine(eng, P, y), error = function(err) err),
+      pl <- mclapply(phen, function(y) tryCatch({
+                       v <- scan_engine(eng, P, y)
+                       ## LFMM surrogates are corrected by the OBSERVED lambda, not
+                       ## their own -- the whole point of fixing it
+                       if (eng == "lfmm") v <- p_from_F(v, lam$lfmm, df2)
+                       v
+                     }, error = function(err) err),
                      mc.cores = CORES, mc.preschedule = FALSE)
       ok <- vapply(pl, is.numeric, logical(1))
       if (any(!ok)) message(sprintf("   [%s|%s] dropped %d failed draws", eng, ty, sum(!ok)))
@@ -281,6 +333,11 @@ for (e in ENVS) {
       ## repeated on every surrogate vector
       P_surr <- matrix(unlist(pl, use.names = FALSE), nrow = nrow(P$map), ncol = length(pl))
 
+      ## per-surrogate lambda: measured, reported, NOT applied (see above)
+      df2_eng   <- if (eng == "lfmm") df2 else emmax_df2(length(P$Yobs))
+      lam_surr  <- apply(P_surr, 2, lambda_p, df2 = df2_eng)
+      lam_obs_e <- if (eng == "lfmm") lam$lfmm else lambda_p(obs$emmax, df2_eng)
+
       ## names carried on p_obs so analyse_one_dataset.R can VERIFY the ordering
       ## rather than trust it -- a right-length vector in the wrong order is
       ## silently wrong, and this is where that would originate
@@ -289,6 +346,10 @@ for (e in ENVS) {
       saveRDS(list(p_obs = p_obs, p_perm = P_surr,
                    basis = ty, engine = eng, B = ncol(P_surr), cell = cell_id,
                    panel = basename(panel_f),
+                   ## how genomic control was handled, so the analysis need not guess
+                   lambda_obs = lam_obs_e, lambda_surr = lam_surr,
+                   gc_mode = if (eng == "emmax") "none"
+                             else sprintf("fixed lambda_obs = %.4f on F, df=(1,%d)", lam$lfmm, df2),
                    seed0 = SEED0, canon_index = match(ty, CANON)),
               outf)
 
@@ -299,6 +360,9 @@ for (e in ENVS) {
       message(sprintf("   [%-5s | %-11s] B=%d ; median surrogate p<1e-4 = %.0f (obs %d) ; %.1f min -> %s",
                       eng, ty, ncol(P_surr), med, sum(p_obs < 1e-4),
                       as.numeric(Sys.time() - t0, units = "mins"), basename(outf)))
+      message(sprintf("       lambda: observed %.3f | surrogates median %.3f (%.3f-%.3f)%s",
+                      lam_obs_e, stats::median(lam_surr), min(lam_surr), max(lam_surr),
+                      if (eng == "lfmm") "  [obs lambda applied to all]" else "  [no GC]"))
       message(sprintf("       Rscript module_sim_LDscnR/analyse_one_dataset.R %s %s",
                       basename(panel_f), basename(outf)))
     }
