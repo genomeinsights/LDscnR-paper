@@ -1,7 +1,7 @@
 #!/bin/bash
 # ---------------------------------------------------------------------------
 # Observed + surrogate p-values for the bgs4 paired design: two tags (bgs,
-# nobgs) x three (V,c) cells x env1 = six panels.
+# nobgs) x the V2_c1 cell x env1 = two panels (see the restriction note below).
 #
 #   ./run_bgs4_nulls.sh [nproc]      default 8
 #
@@ -20,8 +20,8 @@
 # one tag's phenotypes against the other tag's genotypes.
 #
 # COST: EMMAX is ~0.5 min per basis, LFMM ~35 min per basis at B=100 on 8
-# cores, so ~75 min per panel and ~7.5 h for all six. RESUMABLE -- existing
-# outputs are skipped.
+# cores, so ~75 min per panel -- ~2.5 h for the two panels of the restricted
+# arm. RESUMABLE -- existing outputs are skipped.
 # ---------------------------------------------------------------------------
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -44,7 +44,15 @@ if [ ! -d "$SIM_DATA" ]; then echo "!! no bundles at $SIM_DATA"; exit 1; fi
 for TAG in bgs nobgs; do
   export SIM_NULL_OUT=$SIM_ROOT/analysis_inputs_bgs4/$TAG
   mkdir -p "$SIM_NULL_OUT"
-  for cell in "0.5 2" "1 1.5" "2 1"; do
+  # BGS arm restricted to V2_c1. The two low-V cells were run on 2026-08-28 and
+  # excluded: EMMAX lambda leaves its [1, 1.1] design range as V falls (1.39-1.82
+  # vs 1.03-1.13 here) with no genomic control on either side to absorb it, and
+  # the lfmm `latent` null turns anti-conservative there -- surrogates return more
+  # p < 1e-4 hits than the observed scan (20204 vs 2280 at bgs V0.5_c2). Their
+  # outputs are in analysis_inputs_bgs4/excluded_lowV/, with the numbers in its
+  # README; the bundles still cover all three cells. Re-add "0.5 2" "1 1.5" below
+  # to run them again.
+  for cell in "2 1"; do
     set -- $cell
     V=$1; CC=$2
     n=$(ls "$SIM_DATA" | grep -c "^adapt_${TAG}_chr[0-9]*_V${V}_c${CC}_env1\.rds$")
