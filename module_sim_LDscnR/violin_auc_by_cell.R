@@ -38,8 +38,9 @@ cat(sprintf("  read %d file(s), %d rows, %d cells\n", length(fs), nrow(d), uniqu
 d[, V   := as.numeric(sub("^V([0-9.]+)_c.*",  "\\1", cell))]
 d[, cc  := as.numeric(sub("^V[0-9.]+_c([0-9.]+)_env.*", "\\1", cell))]
 d[, env := as.integer(sub(".*_env",  "", cell))]
+d_all <- copy(d)   # every cell, for the numeric tests below
 if (!KEEP_C2) { n0 <- nrow(d); d <- d[cc != 2]
-  cat(sprintf("  dropped c2: %d -> %d rows\n", n0, nrow(d))) }
+  cat(sprintf("  dropped c2 FROM THE FIGURE: %d -> %d rows\n", n0, nrow(d))) }
 if (!nrow(d)) stop("nothing left after filtering")
 
 ## Prefer the COMMON-SUPPORT AUCs when the CSV has them. pr_auc() integrates to
@@ -122,3 +123,103 @@ print(gen[, .(n_genomes = .N, gap = round(mean(gap), 3), se = round(se(gap), 3),
           by = .(V, cc)][order(V, cc)])
 cat("\n(row-level SEs, shown for comparison only -- these are pseudo-replicated)\n")
 print(d[is.finite(gap), .(n_rows = .N, se_row = round(se(gap), 3)), by = .(V, cc)][order(V, cc)])
+
+## ---- absolute vs relative advantage -----------------------------------
+## Two questions that are easy to conflate, and that this design answers
+## differently:
+##   ABSOLUTE  how many PR-AUC points does C buy?
+##   RELATIVE  how much of what is achievable does it buy?
+## Baselines differ ~17-fold across cells (alpha AUC 0.03 to 0.54), so absolute
+## differences are comparable WITHIN a cell and not across -- the same
+## fold-vs-absolute problem as enrichment against a base rate that varies.
+##
+## Ratios are taken PER GENOME with engine x l_min averaged first, and only
+## where the denominator is > 0: one genome has alpha AUC of exactly 0, which
+## makes the ratio undefined and, worse, would enter a Spearman as +Inf and
+## rank top. Medians are reported alongside means because the mean is inflated
+## by the small-denominator tail (V1_c1.5: mean 64% vs median 40%).
+## Runs on EVERY cell, including c2. c2 is dropped from the FIGURE because it
+## varies two things at once, but excluding it from the test would flatter the
+## absolute claim: c2 is the hardest cell and the one that breaks monotonicity
+## at the low end, so dropping it moves absolute-gap-vs-power from rho -0.19
+## (ns) to -0.38 (p = 0.003). The c2-excluded version is reported below as a
+## sensitivity, not as the headline.
+cs_ok <- all(c("PR_AUC_C_cs","PR_AUC_alpha_cs") %in% names(d_all)) && any(is.finite(d_all$PR_AUC_C_cs))
+if (cs_ok) {
+  gA <- d_all[is.finite(PR_AUC_C_cs) & is.finite(PR_AUC_alpha_cs),
+              .(C = mean(PR_AUC_C_cs), A = mean(PR_AUC_alpha_cs)), by = .(V, cc, env, tag)]
+} else {
+  gA <- d_all[is.finite(PR_AUC_C) & is.finite(PR_AUC_alpha),
+              .(C = mean(PR_AUC_C), A = mean(PR_AUC_alpha)), by = .(V, cc, env, tag)]
+}
+gA[, gap := C - A]
+nz <- gA[A > 0][, rel := gap / A][]
+cat(sprintf("\n=== absolute vs relative advantage (%d genomes; %d with alpha AUC == 0 excluded from ratios) ===\n",
+            nrow(gA), sum(gA$A == 0)))
+print(merge(
+  gA[, .(power = round(mean(A), 3), abs_gap = round(mean(gap), 3), abs_se = round(se(gap), 3)),
+     by = .(V, cc)],
+  nz[, .(n_ratio = .N, rel_median = paste0(round(100 * median(rel), 1), "%"),
+         rel_mean = paste0(round(100 * mean(rel), 1), "%")), by = .(V, cc)],
+  by = c("V", "cc"))[order(-power)])
+
+## Reported at TWO levels, deliberately, instead of one pooled p-value.
+## Power varies mostly BETWEEN cells (~77% of its variance), so a pooled
+## Spearman over ~79 genomes treats a four-point comparison as 79 independent
+## observations and returns a p-value like 3e-06 that no reviewer should
+## believe. That is the same pseudo-replication as the row-vs-genome problem
+## above, one level up. The between-cell component has effective n = 4; the
+## within-cell component is real but individually underpowered, and the ten
+## environments inside a cell share burn-ins besides.
+sp <- function(x, y) { ct <- suppressWarnings(stats::cor.test(x, y, method = "spearman"))
+  c(rho = unname(ct$estimate), p = ct$p.value, n = length(x)) }
+cat("\n=== does the advantage track power? reported at both levels ===\n")
+vb <- gA[, .(m = mean(A)), by = .(V, cc)]
+## proper sums-of-squares split; var() of the four cell means is NOT a
+## decomposition (it ignores group sizes and can exceed the total)
+gm  <- mean(gA$A)
+ssb <- gA[, .N * (mean(A) - gm)^2, by = .(V, cc)][, sum(V1)]
+sst <- sum((gA$A - gm)^2)
+cat(sprintf("  power variance between cells: %.0f%%  within cells: %.0f%%  (SS split)\n",
+            100 * ssb / sst, 100 * (1 - ssb / sst)))
+
+cat("\n  BETWEEN cells (n = number of cells, the honest n for this component):\n")
+cm <- nz[, .(power = median(A), rel = median(rel)), by = .(V, cc)][order(-power)]
+print(cm[, .(V, cc, power = round(power, 3), rel_median = paste0(round(100 * rel, 1), "%"))])
+if (nrow(cm) > 2) { r <- sp(cm$power, cm$rel)
+  cat(sprintf("    Spearman on %d cell medians: rho %+.2f (p not meaningful at this n)\n", r["n"], r["rho"])) }
+
+cat("\n  WITHIN cells (replication of the sign; each individually underpowered):\n")
+wi <- nz[, as.list(sp(A, rel)), by = .(V, cc)]
+print(wi[, .(V, cc, n, rho = round(rho, 3), p = round(p, 3))])
+k <- sum(wi$rho < 0); n <- nrow(wi)
+cat(sprintf("    %d of %d cells negative -- sign test p = %.3f\n", k, n,
+            stats::binom.test(k, n, 0.5)$p.value))
+
+## permutation keeping cell structure: shuffles rel WITHIN each cell, so the
+## between-cell ordering cannot contribute. This is the defensible single
+## number for the within-cell component.
+set.seed(1)
+obs <- suppressWarnings(stats::cor(nz$A, nz$rel, method = "spearman"))
+perm <- replicate(2000, {
+  z <- copy(nz)[, rel := sample(rel), by = .(V, cc)]
+  suppressWarnings(stats::cor(z$A, z$rel, method = "spearman")) })
+## The null preserves each cell's mean rel and mean A, so the BETWEEN-cell
+## ordering survives shuffling and only the WITHIN-cell association is tested.
+pp <- (1 + sum(perm <= obs)) / (1 + length(perm))
+cat(sprintf("    within-cell permutation (2000x, shuffled inside cells): observed rho %+.3f, p %s\n",
+            obs, if (pp <= 1/(1 + length(perm))) sprintf("< %.4f", 1/(1 + length(perm))) else sprintf("= %.3f", pp)))
+
+cat("\n  sensitivity of the relative result to unstable denominators:\n")
+for (thr in c(0.02, 0.05)) { h <- nz[A >= thr]
+  if (nrow(h) > 5) { r <- sp(h$A, h$rel)
+    cat(sprintf("    alpha AUC >= %.2f: rho %+.3f (n=%d, pooled -- see caveat above)\n",
+                thr, r["rho"], r["n"])) } }
+cat("  sensitivity to dropping c2 (the FIGURE's exclusion, not the test's):\n")
+g2 <- gA[cc != 2]
+if (nrow(g2) > 5) { r <- sp(g2$A, g2$gap)
+  cat(sprintf("    absolute gap vs power, c2 excluded: rho %+.3f (n=%d); with c2: rho %+.3f (n=%d)\n",
+              r["rho"], r["n"], sp(gA$A, gA$gap)["rho"], nrow(gA))) }
+cat("\n  Read them as different questions: absolute is largest at intermediate\n")
+cat("  power and vanishes where detection is impossible; relative rises as power\n")
+cat("  falls, then plateaus. Neither is the other's correction.\n")
