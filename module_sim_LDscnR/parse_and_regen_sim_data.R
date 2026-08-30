@@ -145,7 +145,11 @@ CR_RHO     <- 0.5                                           # ld_complexity_redu
 ## threshold means the same thing on chromosomes with different recombination.
 ## Deriving it requires LD_decay at the call site.
 PRUNE_ARGS <- list(ld_w_col = "ld_w_095", ld_w_threshold = 0.025, score_threshold = 0.80,
-                   min_r2_rho = 0.5, distance_threshold = 5e5, compute_unflagged_eMLG = FALSE)
+                   ## 1e5, not 5e5: the cap is nearly inert on these simulations, where
+                   ## blocks are short relative to either value, but decisive on a real
+                   ## panel -- 5e5 absorbs 120 of 165 Eda markers into one 821-marker,
+                   ## 18.4 Mb group on the stickleback data. Set it by the case it binds on.
+                   min_r2_rho = 0.5, distance_threshold = 1e5, compute_unflagged_eMLG = FALSE)
 GRM_LDW_THRESHOLD <- 0.02                                  # used only if GRM_METHOD == "ld_w_threshold"
 LFMM_K     <- 5L
 
