@@ -20,7 +20,13 @@
 ##
 ## Run from the LDscnR-paper root:
 ##   Rscript module_sim_LDscnR/bgs_vs_nobgs_prauc.R [outdir]
-## Env: SIM_DATA (default regen_sim_data_bgs4), CELLS, LMINS (default 1,3)
+## Env: SIM_DATA (default regen_sim_data_bgs4), CELLS, LMINS (default 1,3),
+##      CORES (default 1) -- forks the tau/alpha sweeps and qtn_ld_table.
+##      The sweeps are the wall-clock: each threshold is an independent
+##      ld_regions + evaluate_ors over one marker subset. Forking shares the
+##      pooled GTs copy-on-write, so memory is roughly flat in CORES, but a
+##      pooled genome is ~2 GB resident before forking -- watch it alongside
+##      other jobs rather than setting this to every core you have.
 ## =====================================================================
 suppressMessages({ library(data.table); library(LDscnR) })
 `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -30,6 +36,19 @@ OUT <- if (length(a)) a[1] else "module_sim_LDscnR/results"
 SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs4")
 CELLS <- strsplit(Sys.getenv("CELLS", "V0.5_c2_env1,V1_c1.5_env1"), ",")[[1]]
 LMINS <- as.integer(strsplit(Sys.getenv("LMINS", "1,3"), ",")[[1]])
+CORES <- max(1L, as.integer(Sys.getenv("CORES", "1")))
+
+## mclapply returns try-error OBJECTS in place of failed elements rather than
+## raising, so a partial failure would flow into rbindlist and silently corrupt
+## a PR-AUC. Check explicitly and stop instead.
+.lapply <- function(X, FUN) {
+  if (CORES <= 1L) return(lapply(X, FUN))
+  r <- parallel::mclapply(X, FUN, mc.cores = CORES)
+  bad <- vapply(r, inherits, logical(1), "try-error")
+  if (any(bad)) stop("mclapply failed on ", sum(bad), " of ", length(r),
+                     " elements; first: ", conditionMessage(attr(r[[which(bad)[1]]], "condition")))
+  r
+}
 ALPHA_C <- 0.05; QSTAR <- seq(0, 0.95, by = 0.05)
 RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5; MAX_TAU <- 40L
 ALPHAS <- sort(unique(c(10^seq(-6, log10(0.5), length.out = 30), 0.05)))
@@ -71,7 +90,7 @@ for (cell in CELLS) for (tag in c("bgs", "nobgs")) {
     uni <- unique(c(names(C)[which(C > 0)], map$marker[which(q < max(ALPHAS))]))
     if (!length(uni)) next
     edges <- ld_edges(uni, P$GTs, map[, .(marker, Chr, Pos)], P$decay_sum, rho_ld = RHO_LD, dcap = DCAP)
-    qtab  <- qtn_ld_table(P$GTs, map, uni, 2e6, cores = 1)
+    qtab  <- qtn_ld_table(P$GTs, map, uni, 2e6, cores = CORES)
 
     sc <- function(mk) { if (!length(mk)) return(NULL)
       ra <- ld_regions(mk, edges)
@@ -82,8 +101,8 @@ for (cell in CELLS) for (tag in c("bgs", "nobgs")) {
 
     tv <- sort(unique(C[C > 0]))
     if (length(tv) > MAX_TAU) tv <- as.numeric(stats::quantile(tv, seq(0, 1, length.out = MAX_TAU), type = 1))
-    prC <- rbindlist(lapply(unique(tv), function(t) { s <- sc(names(C)[which(C >= t)]); if (!is.null(s)) s[, knob := t]; s }))
-    prA <- rbindlist(lapply(ALPHAS,     function(al){ s <- sc(map$marker[which(q < al)]);  if (!is.null(s)) s[, knob := al]; s }))
+    prC <- rbindlist(.lapply(unique(tv), function(t) { s <- sc(names(C)[which(C >= t)]); if (!is.null(s)) s[, knob := t]; s }))
+    prA <- rbindlist(.lapply(ALPHAS,     function(al){ s <- sc(map$marker[which(q < al)]);  if (!is.null(s)) s[, knob := al]; s }))
     for (L in LMINS) {
       k <- k + 1L
       res[[k]] <- data.table(cell, tag, engine = eng, l_min = L, n_true = n_true,
@@ -101,7 +120,7 @@ for (cell in CELLS) for (tag in c("bgs", "nobgs")) {
 out <- rbindlist(res)
 fwrite(out, file.path(OUT, "bgs_vs_nobgs_prauc.csv"))
 out[, C_minus_alpha := round(PR_AUC_C - PR_AUC_alpha, 3)]
-cat("\n=== PR-AUC: four combinations, bgs vs nobgs ===\n")
+cat(sprintf("\n=== PR-AUC: four combinations, bgs vs nobgs (CORES=%d) ===\n", CORES))
 print(out[, .(cell, tag, engine, l_min, n_true,
               C = round(PR_AUC_C, 3), alpha = round(PR_AUC_alpha, 3), C_minus_alpha)])
 cat("\n=== effect of BGS on overall performance (mean over cells) ===\n")
