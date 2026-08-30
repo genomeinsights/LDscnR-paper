@@ -8,10 +8,11 @@
 ## chromosome, so it varies two things at once and is not comparable with the
 ## others as a design point. Set KEEP_C2=1 to include it.
 ##
-## The V x c grid is deliberately left as a grid even though it is not full:
-## bgs5 has V0.5_c1, V1_c1.5, V2_c1 (+ the excluded V0.5_c2), so empty panels
-## are real gaps in the design rather than missing data, and hiding them would
-## make the design look complete when it is not.
+## facet_wrap, not facet_grid: the V x c design is not full (bgs5 has V0.5_c1,
+## V1_c1.5, V2_c1 + the excluded V0.5_c2), and a grid spends half the figure on
+## empty panels. Wrap shows only the cells that exist and absorbs new ones as
+## they are simulated. The panel label carries V, c and what V means, so the
+## gaps are still legible from the labels rather than from blank space.
 ##
 ## V is selection VARIANCE, so larger V = weaker selection = lower power.
 ## The x axis is therefore ordered by decreasing power left to right.
@@ -47,28 +48,33 @@ long <- melt(d, id.vars = c("cell","V","cc","env","tag","engine","l_min"),
 long[, method := factor(fifelse(method == "PR_AUC_C", "C-score", "BH alpha"),
                         levels = c("BH alpha", "C-score"))]
 long <- long[is.finite(PR_AUC)]
+sel <- c("0.5" = "strong", "1" = "medium", "2" = "weak")
+long[, panel := sprintf("V = %s, c = %s\n(%s selection)", V, cc,
+                        ifelse(is.na(sel[as.character(V)]), "?", sel[as.character(V)]))]
+long[, panel := factor(panel, levels = unique(panel[order(V, cc)]))]
 
-## method is the COLOUR and tag the x grouping, not the other way round: the
-## comparison that matters is C against alpha, and a fill contrast within a
-## group is easier to read than one across adjacent groups.
-p <- ggplot(long, aes(tag, PR_AUC, fill = method)) +
+## Colour is engine x method, with the two crossed deliberately in the palette:
+## HUE carries alpha vs C (grey vs blue) because that is the comparison being
+## read, and SHADE carries emmax vs lfmm as the secondary split. x stays
+## bgs/nobgs so every contrast of interest is within a panel.
+long[, grp := interaction(engine, method, sep = " / ", lex.order = TRUE)]
+PAL <- c("emmax / BH alpha" = "#C6C9CC", "lfmm / BH alpha" = "#7F868C",
+         "emmax / C-score"  = "#7FBCDD", "lfmm / C-score"  = "#1F5F8B")
+p <- ggplot(long, aes(tag, PR_AUC, fill = grp)) +
   geom_violin(position = position_dodge(0.8), width = 0.85,
               alpha = 0.55, colour = NA, scale = "width", trim = TRUE) +
   geom_boxplot(position = position_dodge(0.8), width = 0.13,
                outlier.shape = NA, alpha = 0.9, linewidth = 0.3) +
-  stat_summary(aes(group = method), fun = mean, geom = "point",
+  stat_summary(aes(group = grp), fun = mean, geom = "point",
                position = position_dodge(0.8), shape = 23, size = 1.8,
                fill = "white", stroke = 0.4) +
-  facet_grid(cc ~ V, labeller = labeller(
-    V  = function(x) sprintf("V = %s  (%s selection)", x,
-           c("0.5" = "strong", "1" = "medium", "2" = "weak")[as.character(x)]),
-    cc = function(x) sprintf("c = %s", x))) +
-  scale_fill_manual(values = c("BH alpha" = "#B4B8BC", "C-score" = "#2C7FB8"), name = NULL) +
+  facet_wrap(~ panel, nrow = 1) +
+  scale_fill_manual(values = PAL, name = NULL) +
   labs(x = NULL, y = "PR-AUC",
        title = "PR-AUC by selection regime: C-score against BH alpha",
        subtitle = paste("bgs5, 10 environments per cell, both engines and l_min 1/3 pooled.",
                         "Diamond = mean. V is selection VARIANCE, so larger V = weaker selection.",
-                        "Empty panels are gaps in the design, not missing runs.", sep = "\n")) +
+                        "Hue = BH alpha vs C-score; shade = emmax vs lfmm.", sep = "\n")) +
   theme_bw(base_size = 11) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
         legend.position = "top", plot.subtitle = element_text(size = 8, colour = "grey30"))
