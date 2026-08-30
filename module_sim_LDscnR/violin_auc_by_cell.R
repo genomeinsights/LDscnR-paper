@@ -48,10 +48,16 @@ long <- melt(d, id.vars = c("cell","V","cc","env","tag","engine","l_min"),
 long[, method := factor(fifelse(method == "PR_AUC_C", "C-score", "BH alpha"),
                         levels = c("BH alpha", "C-score"))]
 long <- long[is.finite(PR_AUC)]
-sel <- c("0.5" = "strong", "1" = "medium", "2" = "weak")
-long[, panel := sprintf("V = %s, c = %s\n(%s selection)", V, cc,
-                        ifelse(is.na(sel[as.character(V)]), "?", sel[as.character(V)]))]
-long[, panel := factor(panel, levels = unique(panel[order(V, cc)]))]
+## Panels are ordered by MEASURED difficulty (mean alpha PR-AUC), not by V.
+## V is selection variance, so larger V is weaker selection -- but power here is
+## governed by c, not V: at V = 0.5 the alpha AUC runs 0.539 (c=1) to 0.031
+## (c=2), a 17-fold range at identical V, and V = 2 is EASIER than V = 1.
+## Ordering by V would therefore read as a difficulty gradient that does not
+## exist. The label carries the measured value so the axis states itself.
+diff_by <- long[method == "BH alpha", .(a = mean(PR_AUC, na.rm = TRUE)), by = .(V, cc)]
+long <- merge(long, diff_by, by = c("V", "cc"), all.x = TRUE)
+long[, panel := sprintf("V = %s, c = %s\nalpha AUC = %.2f", V, cc, a)]
+long[, panel := factor(panel, levels = unique(panel[order(-a)]))]
 
 ## Colour is engine x method, with the two crossed deliberately in the palette:
 ## HUE carries alpha vs C (grey vs blue) because that is the comparison being
@@ -73,7 +79,8 @@ p <- ggplot(long, aes(tag, PR_AUC, fill = grp)) +
   labs(x = NULL, y = "PR-AUC",
        title = "PR-AUC by selection regime: C-score against BH alpha",
        subtitle = paste("bgs5, 10 environments per cell, both engines and l_min 1/3 pooled.",
-                        "Diamond = mean. V is selection VARIANCE, so larger V = weaker selection.",
+                        "Panels ordered by measured difficulty (mean BH-alpha PR-AUC), easiest first.",
+                        "V is selection variance; power is governed by c, not V, so V is not the difficulty axis.",
                         "Hue = BH alpha vs C-score; shade = emmax vs lfmm.", sep = "\n")) +
   theme_bw(base_size = 11) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
@@ -83,12 +90,22 @@ f <- file.path(OUT, "violin_auc_by_cell.png")
 ggsave(f, p, width = 10, height = 6.5, dpi = 150)
 cat("  wrote", f, "\n\n")
 
-cat("=== mean PR-AUC by cell x method (replicate-averaged, +/- SE) ===\n")
 se <- function(x) sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
-print(long[, .(n = .N, mean = round(mean(PR_AUC), 3), se = round(se(PR_AUC), 3)),
-           by = .(V, cc, method)][order(V, cc, method)])
-cat("\n=== C - alpha, paired within row (the quantity of interest) ===\n")
-print(d[, .(n = .N, diff = round(mean(PR_AUC_C - PR_AUC_alpha, na.rm = TRUE), 3),
-            se = round(se(PR_AUC_C - PR_AUC_alpha), 3),
-            C_wins = sum(PR_AUC_C > PR_AUC_alpha, na.rm = TRUE)),
-        by = .(V, cc)][order(V, cc)])
+cat("=== mean PR-AUC by cell x method ===\n")
+print(long[, .(n = .N, alpha_AUC = round(a[1], 3), mean = round(mean(PR_AUC), 3)),
+           by = .(V, cc, method)][order(-alpha_AUC, method)])
+
+## SEs are computed over GENOMES, not rows. A genome is (cell, env, tag); the
+## 2 engines x 2 l_min rows within it are four measurements OF that genome, not
+## four independent draws. Pooling them quadruples n and shrinks the SE by ~1.5-1.9x
+## here, which is pseudo-replication: it turned t = -3.2 into a real-looking
+## result on V0.5_c1 when the genome-level value is -1.7.
+d[, env := as.integer(sub(".*_env", "", cell))]
+d[, gap := PR_AUC_C - PR_AUC_alpha]
+gen <- d[is.finite(gap), .(gap = mean(gap)), by = .(V, cc, env, tag)]
+cat("\n=== C - alpha, SE over genomes (cell x env x tag) -- the independent unit ===\n")
+print(gen[, .(n_genomes = .N, gap = round(mean(gap), 3), se = round(se(gap), 3),
+              t = round(mean(gap) / se(gap), 1), C_wins = sum(gap > 0)),
+          by = .(V, cc)][order(V, cc)])
+cat("\n(row-level SEs, shown for comparison only -- these are pseudo-replicated)\n")
+print(d[is.finite(gap), .(n_rows = .N, se_row = round(se(gap), 3)), by = .(V, cc)][order(V, cc)])
