@@ -42,10 +42,22 @@ if (!KEEP_C2) { n0 <- nrow(d); d <- d[cc != 2]
   cat(sprintf("  dropped c2: %d -> %d rows\n", n0, nrow(d))) }
 if (!nrow(d)) stop("nothing left after filtering")
 
+## Prefer the COMMON-SUPPORT AUCs when the CSV has them. pr_auc() integrates to
+## whatever recall a sweep reached, and the two arms do not reach the same
+## place: measured here, BH alpha attains higher max recall than C in nearly
+## every row (C reaches further in only ~2-5% of them), despite C sweeping a
+## 1.6-2.7x larger candidate set. So the raw comparison is integrated over a
+## wider domain for alpha and is biased AGAINST C. The *_cs columns truncate
+## both arms at the recall both attain, which is the like-for-like number.
+## Falls back to the raw columns for older CSVs that lack them.
+CS <- all(c("PR_AUC_C_cs","PR_AUC_alpha_cs") %in% names(d)) &&
+      any(is.finite(d$PR_AUC_C_cs))
+mv <- if (CS) c("PR_AUC_C_cs","PR_AUC_alpha_cs") else c("PR_AUC_C","PR_AUC_alpha")
+cat(sprintf("  metric: %s\n", if (CS) "common-support AUC (both arms truncated at shared max recall)"
+                               else "RAW AUC (no _cs columns present)"))
 long <- melt(d, id.vars = c("cell","V","cc","env","tag","engine","l_min"),
-             measure.vars = c("PR_AUC_C","PR_AUC_alpha"),
-             variable.name = "method", value.name = "PR_AUC")
-long[, method := factor(fifelse(method == "PR_AUC_C", "C-score", "BH alpha"),
+             measure.vars = mv, variable.name = "method", value.name = "PR_AUC")
+long[, method := factor(fifelse(grepl("_C", method), "C-score", "BH alpha"),
                         levels = c("BH alpha", "C-score"))]
 long <- long[is.finite(PR_AUC)]
 ## Panels are ordered by MEASURED difficulty (mean alpha PR-AUC), not by V.
@@ -76,9 +88,10 @@ p <- ggplot(long, aes(tag, PR_AUC, fill = grp)) +
                fill = "white", stroke = 0.4) +
   facet_wrap(~ panel, nrow = 1) +
   scale_fill_manual(values = PAL, name = NULL) +
-  labs(x = NULL, y = "PR-AUC",
+  labs(x = NULL, y = if (CS) "PR-AUC (common support)" else "PR-AUC",
        title = "PR-AUC by selection regime: C-score against BH alpha",
-       subtitle = paste("bgs5, 10 environments per cell, both engines and l_min 1/3 pooled.",
+       subtitle = paste(sprintf("bgs5, 10 environments per cell, both engines and l_min 1/3 pooled. %s.",
+                           if (CS) "Both arms integrated to the recall both attain" else "Raw AUCs"),
                         "Panels ordered by measured difficulty (mean BH-alpha PR-AUC), easiest first.",
                         "V is selection variance; power is governed by c, not V, so V is not the difficulty axis.",
                         "Hue = BH alpha vs C-score; shade = emmax vs lfmm.", sep = "\n")) +
@@ -101,7 +114,7 @@ print(long[, .(n = .N, alpha_AUC = round(a[1], 3), mean = round(mean(PR_AUC), 3)
 ## here, which is pseudo-replication: it turned t = -3.2 into a real-looking
 ## result on V0.5_c1 when the genome-level value is -1.7.
 d[, env := as.integer(sub(".*_env", "", cell))]
-d[, gap := PR_AUC_C - PR_AUC_alpha]
+d[, gap := if (CS) PR_AUC_C_cs - PR_AUC_alpha_cs else PR_AUC_C - PR_AUC_alpha]
 gen <- d[is.finite(gap), .(gap = mean(gap)), by = .(V, cc, env, tag)]
 cat("\n=== C - alpha, SE over genomes (cell x env x tag) -- the independent unit ===\n")
 print(gen[, .(n_genomes = .N, gap = round(mean(gap), 3), se = round(se(gap), 3),
