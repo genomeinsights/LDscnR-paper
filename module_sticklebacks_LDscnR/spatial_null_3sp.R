@@ -52,7 +52,7 @@ cat(sprintf("[3] C_obs: %d C>0 ; universe=%d ; saved %s\n",
 
 ## quick calibrated look (same knobs as the pop-perm report)
 edges <- ld_edges(null$universe, d$GTs, map[, .(marker, Chr, Pos)],
-                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 5e5)
+                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 1e5)
 op_l  <- calibrate_lmin(null, edges, tau = 0.05, q = 0.99)
 tau_e <- calibrate_tauc(null, edges, l_min = op_l, fdr = 0.05, tau_grid = seq(0.05, 1, 0.05))
 cat(sprintf("\n=== SPATIAL null: calibrated tau_C=%.3f, l_min=%d ===\n", tau_e, op_l))

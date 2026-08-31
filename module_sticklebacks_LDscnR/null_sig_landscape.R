@@ -26,7 +26,7 @@ BND <- "module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"
 NULLF <- "module_sticklebacks_LDscnR/results/null_popperm_3sp.rds"
 RES <- "module_sticklebacks_LDscnR/results"; OUTFIG <- "module_sticklebacks_LDscnR/figures"
 TAUS <- seq(0.02, 0.5, by = 0.02); LMINS <- c(1,2,3,5,10,15,20); NCELL <- length(TAUS)*length(LMINS)
-RHO_LD <- 0.60; DCAP <- 5e5; BCAP <- 100L; FDR <- 0.05; OP_TAU <- 0.05; OP_LMIN <- 3L; GAP <- 1e4
+RHO_LD <- 0.60; DCAP <- 1e5; BCAP <- 100L; FDR <- 0.05; OP_TAU <- 0.05; OP_LMIN <- 3L; GAP <- 1e4
 ZISSOU <- c("#3B9AB2","#78B7C5","#EBCC2A","#E1AF00","#F21A00")
 
 d <- readRDS(BND); map <- as.data.table(d$map)

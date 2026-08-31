@@ -17,7 +17,7 @@ m3 <- as.data.table(d$map)
 C  <- ld_cscore(m3$lfmm_p, d$ld_ws, alpha = 0.05, qstar = seq(0, 0.95, by = 0.05)); names(C) <- m3$marker
 uni <- names(C)[C > 0]
 edges <- ld_edges(uni, d$GTs, m3[, .(marker, Chr, Pos)],
-                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 5e5)
+                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 1e5)
 regs <- ld_regions(names(C)[C >= 0.05], edges); regs <- regs[lengths(regs) >= 3L]
 mpos <- stats::setNames(m3$Pos, m3$marker); mchr <- stats::setNames(as.character(m3$Chr), m3$marker)
 L <- rbindlist(lapply(seq_along(regs), function(i) { r <- regs[[i]]

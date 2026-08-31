@@ -33,7 +33,7 @@ C_lfmm <- ld_cscore(m3$lfmm_p, d$ld_ws, alpha = 0.05, qstar = seq(0, .95, .05))
 names(C_emx) <- names(C_lfmm) <- m3$marker
 uni   <- union(names(C_emx)[C_emx > 0], names(C_lfmm)[C_lfmm > 0])
 edges <- ld_edges(uni, d$GTs, m3[, .(marker, Chr, Pos)], as.data.table(d$LD_decay$decay_sum),
-                  rho_ld = 0.60, dcap = 5e5)
+                  rho_ld = 0.60, dcap = 1e5)
 mpos <- stats::setNames(m3$Pos, m3$marker); mchr <- stats::setNames(as.character(m3$Chr), m3$marker)
 regset <- function(C, lmin) { r <- ld_regions(names(C)[C >= 0.05], edges); r <- r[lengths(r) >= lmin]
   if (!length(r)) return(data.table(Chr = character(), start = numeric(), end = numeric()))

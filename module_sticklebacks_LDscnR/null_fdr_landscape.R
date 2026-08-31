@@ -20,7 +20,7 @@ RES    <- "module_sticklebacks_LDscnR/results"; OUTFIG <- "module_sticklebacks_L
 NULLS  <- c("genetic (MVN)"      = "null_uncapped_3sp",  "global perm."        = "null_popperm_3sp",
             "regional perm."     = "null_regionperm_3sp","spatial (MVN kernel)"= "null_spatial_3sp")
 TAUS   <- seq(0.02, 0.5, by = 0.02); LMINS <- c(1,2,3,5,10,15,20)
-RHO_LD <- 0.60; DCAP <- 5e5; OP_TAU <- 0.05; OP_LMIN <- 3L
+RHO_LD <- 0.60; DCAP <- 1e5; OP_TAU <- 0.05; OP_LMIN <- 3L
 ZISSOU <- c("#3B9AB2","#78B7C5","#EBCC2A","#E1AF00","#F21A00")
 
 d  <- readRDS(BND); map <- as.data.table(d$map); decay <- as.data.table(d$LD_decay$decay_sum)

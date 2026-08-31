@@ -30,7 +30,7 @@ PAR <- list(
   tau_C  = if (length(a) >= 1) a[1] else "0.05",     # numeric, or "auto" (calibrate_tauc)
   l_min  = if (length(a) >= 2) a[2] else "10",       # integer, or "auto" (calibrate_lmin)
   rho_ld = if (length(a) >= 3) as.numeric(a[3]) else 0.60,
-  alpha  = 0.05, qstar = seq(0, 0.95, by = 0.05), dcap = 5e5, B = 100L, seed = 1L,
+  alpha  = 0.05, qstar = seq(0, 0.95, by = 0.05), dcap = 1e5, B = 100L, seed = 1L,
   fdr = 0.05, lmin_q = 0.99, lmin_tau = 0.05)
 if (!dir.exists(OUTFIG)) dir.create(OUTFIG, recursive = TRUE)
 

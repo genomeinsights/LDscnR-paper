@@ -39,7 +39,7 @@ PAR <- list(
   alpha   = 0.05,                       # fixed within-candidate FDR (C-score)
   qstar   = seq(0, 0.95, by = 0.05),    # C-score stringency grid
   rho_ld  = 0.75,                       # LD-decay-relative r^2 link (matches the sims)
-  dcap    = 5e5,                        # hard 500 kb gap-split
+  dcap    = 1e5,                        # hard 500 kb gap-split
   B       = 100L,                       # structure-null surrogates
   seed    = 1L,
   fdr      = 0.05,                       # target region-level FDR for calibrate_tauc

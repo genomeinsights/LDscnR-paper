@@ -28,7 +28,7 @@ for (p in c(C2$RES, C2$FIG, C2$CACHE)) if (!dir.exists(p)) dir.create(p, recursi
 C2$TAUS    <- seq(0.02, 0.50, by = 0.02)
 C2$LMINS   <- c(1L, 2L, 3L, 5L, 10L, 15L, 20L)
 C2$RHO_LD  <- 0.60
-C2$DCAP    <- 5e5
+C2$DCAP    <- 1e5
 C2$FDR     <- 0.05
 C2$OP_TAU  <- 0.05
 C2$OP_LMIN <- 3L

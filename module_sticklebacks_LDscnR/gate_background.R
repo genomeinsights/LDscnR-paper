@@ -35,7 +35,7 @@ suppressMessages({ library(data.table); library(LDscnR) })
 
 RES <- "module_sticklebacks_LDscnR/results"
 BND <- "module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"
-TAU <- 0.05; LMIN <- 3L; RHO_LD <- 0.60; DCAP <- 5e5
+TAU <- 0.05; LMIN <- 3L; RHO_LD <- 0.60; DCAP <- 1e5
 
 ## ---- the (engine x basis) cells --------------------------------------------------
 ## `set` distinguishes the two EMMAX null generations; `canonical` marks the one

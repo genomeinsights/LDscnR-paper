@@ -41,7 +41,7 @@ C  <- if (METHOD == "LFMM") {
 }
 names(C) <- m3$marker
 edges <- ld_edges(names(C)[C > 0], d$GTs, m3[, .(marker, Chr, Pos)],
-                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 5e5)
+                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 1e5)
 mpos <- stats::setNames(m3$Pos, m3$marker); mchr <- stats::setNames(as.integer(gsub("Chr","",m3$Chr)), m3$marker)
 rng  <- m3[, .(lo = min(Pos), hi = max(Pos)), by = .(chr_num = as.integer(gsub("Chr","",Chr)))]; setkey(rng, chr_num)
 

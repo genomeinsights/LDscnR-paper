@@ -30,7 +30,7 @@ SIM_CACHE <- "module_sim_LDscnR/data/cache"
 SIM_RES   <- "module_sim_LDscnR/results"
 V <- "2"; CC <- "1"; TAG <- "nobgs"; ENVS <- 1:5
 ## sim-canonical clustering + grid (module_sim_LDscnR/run_sim_LDscnR.R PAR)
-S_RHO_LD <- 0.75; S_RHO_D <- 0.95; S_DCAP <- 5e5
+S_RHO_LD <- 0.75; S_RHO_D <- 0.95; S_DCAP <- 1e5
 S_TAUS <- seq(0.05, 1.00, by = 0.05); S_LMINS <- c(1L, 2L, 4L, 8L)
 S_NCELL <- length(S_TAUS) * length(S_LMINS)
 OP_TAU <- 0.05; OP_LMIN <- 2L                 # permissive anchor point: keeps false

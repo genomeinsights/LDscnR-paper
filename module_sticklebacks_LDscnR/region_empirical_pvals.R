@@ -33,7 +33,7 @@ TAU    <- if (length(a) >= 1) as.numeric(a[1]) else 0.05
 LMIN   <- if (length(a) >= 2) as.integer(a[2]) else 3L
 RHO_LD <- if (length(a) >= 3) as.numeric(a[3]) else 0.60
 NULLF  <- if (length(a) >= 4) a[4] else "module_sticklebacks_LDscnR/results/null_popperm_3sp.rds"
-DCAP   <- 5e5
+DCAP   <- 1e5
 BUNDLE <- "module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"
 OUTRES <- "module_sticklebacks_LDscnR/results"; OUTFIG <- "module_sticklebacks_LDscnR/figures"
 for (p in c(OUTRES, OUTFIG)) if (!dir.exists(p)) dir.create(p, recursive = TRUE)

@@ -11,7 +11,7 @@ a  <- commandArgs(trailingOnly = TRUE)
 V  <- if (length(a) >= 1) a[1] else "2"
 cc <- if (length(a) >= 2) a[2] else "1"; ENV <- as.character(1:5)
 RHO_LD_SET <- c(0.75, 0.85, 0.90, 0.95); ALPHA_SIM <- c(0.001, 0.01, 0.05, 0.1)
-QSTAR <- seq(0, 0.95, by = 0.05); TAUC <- seq(0.05, 1, by = 0.05); LMIN <- 2L; DCAP <- 5e5
+QSTAR <- seq(0, 0.95, by = 0.05); TAUC <- seq(0.05, 1, by = 0.05); LMIN <- 2L; DCAP <- 1e5
 
 prauc <- function(Cv, edges, cache) { pc <- rbindlist(lapply(TAUC, function(t) {
     mk <- names(Cv)[Cv >= t]; reg <- if (length(mk)) cluster_from_cache(mk, edges) else list()

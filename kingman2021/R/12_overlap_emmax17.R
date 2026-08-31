@@ -19,7 +19,7 @@ m3 <- as.data.table(d$map)
 nl <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_sticklebacks_LDscnR/results/null_popperm_3sp.rds"))
 C  <- nl$C_obs
 edges <- ld_edges(nl$universe, d$GTs, m3[, .(marker, Chr, Pos)],
-                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 5e5)
+                  as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 1e5)
 regs <- ld_regions(names(C)[C >= 0.05], edges); regs <- regs[lengths(regs) >= 3L]
 mpos <- stats::setNames(m3$Pos, m3$marker); mchr <- stats::setNames(as.character(m3$Chr), m3$marker)
 L <- rbindlist(lapply(seq_along(regs), function(i) { r <- regs[[i]]

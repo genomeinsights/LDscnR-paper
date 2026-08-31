@@ -19,7 +19,7 @@ nulls <- lapply(files, function(f) { x <- readRDS(file.path(RES, f))
 univ <- unique(unlist(lapply(nulls, `[[`, "universe"), use.names = FALSE))
 cat(sprintf("[1] shared edge graph over %d markers\n", length(univ))); flush.console()
 t0 <- Sys.time()
-edges <- ld_edges(univ, d$GTs, map[, .(marker, Chr, Pos)], decay, rho_ld = 0.60, dcap = 5e5)
+edges <- ld_edges(univ, d$GTs, map[, .(marker, Chr, Pos)], decay, rho_ld = 0.60, dcap = 1e5)
 cat(sprintf("    built in %.1f s\n", as.numeric(Sys.time()-t0, units="secs"))); flush.console()
 
 cat("\n########## A. ld_gate() vs the ad-hoc gate_background.csv ##########\n")

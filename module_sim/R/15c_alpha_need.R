@@ -16,7 +16,7 @@ V  <- if (length(a) >= 1) a[1] else "2"
 cc <- if (length(a) >= 2) a[2] else "1"
 ENV <- 1:5
 QSTAR <- seq(0, 0.95, by = 0.05); TAUC <- seq(0.05, 1.0, by = 0.05)
-LMIN <- 2L; RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
+LMIN <- 2L; RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5
 ALPHA_FULL <- c(0.001, 0.01, 0.05, 0.1); ALPHA_05 <- 0.05
 
 ## C-score over a chosen alpha set: frac of (rho,q*,alpha) cells candidate & FDR<alpha

@@ -8,7 +8,7 @@ suppressMessages({ library(data.table); library(LDscnR) })
 setwd("~/gitlab/LDscnR-paper")
 RES <- "module_sticklebacks_LDscnR/results"
 OUT <- "/private/tmp/claude-539526166/-Users-petrikem-gitlab-LDscnR/f5c2953d-f16b-4266-bda5-08c843e9b161/scratchpad"
-TAU <- 0.05; LMIN <- 3L; DCAP <- 5e5; FDR <- 0.05
+TAU <- 0.05; LMIN <- 3L; DCAP <- 1e5; FDR <- 0.05
 RHOS <- c(0.60, 0.75)
 
 d <- readRDS("module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds")

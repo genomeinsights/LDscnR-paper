@@ -19,7 +19,7 @@ CORES <- as.integer(Sys.getenv("LFMM_CORES", "5"))
 if (CORES > 1L) { data.table::setDTthreads(1L); Sys.setenv(OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1") }
 BND <- "module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"
 RAW <- "~/gitlab/LD-scaling-genome-scans/empirical_data/3sp/3sp_data.RData"
-K_LFMM <- 5L; QSTAR <- seq(0, 0.95, by = 0.05); ALPHA <- 0.05; TAU <- 0.05; LMIN <- 3L; RHO_LD <- 0.60; DCAP <- 5e5
+K_LFMM <- 5L; QSTAR <- seq(0, 0.95, by = 0.05); ALPHA <- 0.05; TAU <- 0.05; LMIN <- 3L; RHO_LD <- 0.60; DCAP <- 1e5
 
 d  <- readRDS(BND); map <- as.data.table(d$map); eco <- d$eco; n <- length(eco)
 e  <- new.env(); load(path.expand(RAW), envir = e); ph <- as.data.table(e$pheno_3sp)
