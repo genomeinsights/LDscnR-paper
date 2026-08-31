@@ -28,6 +28,26 @@
 ## panels; do not read individual curve heights. n = 2 burn-in replicates,
 ## one environment, one cell.
 ##
+## THE ENRICHMENT IS NOT GEOMETRY. Tested against a rotation null (ld_w shifted
+## circularly along marker order, preserving its autocorrelation and the tagging
+## pattern while breaking their alignment, 999 rotations): at the top 10%, 18 of
+## 18 datasets significant at the rotation floor, null mean 1.00 against observed
+## 1.40-6.23. Worth stating explicitly because a containment-style statistic over
+## CLUSTERS does collapse against size-matched controls (99.8x -> 6.6x elsewhere
+## in the project); a per-marker statistic cannot have that failure mode, and the
+## spatial analogue was checked rather than assumed.
+##
+## THE SUB-1 CURVES IN pilot_26 / bgs ARE ONE DATASET, NOT A PATTERN. The
+## commit message of b24e993 called them a reproducible blind spot on the
+## strength of "both replicates, same direction". Hypergeometric test on the
+## same comparison: rep2 is genuine depletion (0 observed against 7.3 expected,
+## p = 5.3e-04, survives Bonferroni over all 16 datasets), rep1 is a coin flip
+## (18 against 22.4, p = 0.18). The blind-spot INTERPRETATION -- a real cold spot
+## need not contain a causal variant -- may well be right, but one significant
+## dataset does not establish it. Note also that a fold of 0.00 from a 5.3% base
+## rate expecting 7.3 markers is a degenerate estimator, the same class of error
+## as scoring a mostly-zero C-score with a genome-wide AUC.
+##
 ## Run from the LDscnR-paper root:
 ##   Rscript module_sim_LDscnR/pilot_qtn_enrichment.R
 ## Env: SIM_ROOT, REF_CELL (default V1_c1.5_env2), OUT
