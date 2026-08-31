@@ -45,7 +45,7 @@ SCAN_DIR <- a[1]; OUT <- if (length(a) >= 2) a[2] else SCAN_DIR
 PANEL_DIR <- Sys.getenv("PANEL_DIR", "/Volumes/Nemo/Nemo_sim/analysis_inputs")
 CORES <- as.integer(Sys.getenv("CORES", "2"))
 LMINS <- as.integer(strsplit(Sys.getenv("LMINS", "2,3,5,10,20"), ",")[[1]])
-RHO_R2 <- 0.75; RHO_D <- 0.95; DCAP <- 5e5      # score_thresholds(), as run_sim_LDscnR.R uses
+RHO_R2 <- 0.75; RHO_D <- 0.95; DCAP <- 1e5      # score_thresholds(); matches the bundles' stage-2 cap
 ## Threshold sensitivity. Fixed scoring thresholds are standard in method
 ## papers; what has to be stable is the ORDERING of the settings compared, not
 ## the absolute counts. Supplying R2_GRID/D_GRID re-scores the same regions at

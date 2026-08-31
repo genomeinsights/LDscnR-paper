@@ -49,7 +49,7 @@ message(sprintf("  [envs] using %d env cell(s): %s", length(ENVS), paste(ENVS, c
 CORES  <- as.integer(Sys.getenv("SIM_CORES", "1")); QTAB_C <- if (CORES > 1L) 1L else 4L
 if (CORES > 1L) { data.table::setDTthreads(1L); Sys.setenv(OMP_NUM_THREADS = "1") }  # avoid fork thread oversubscription
 PAR <- list(qstar = seq(0, 0.95, by = 0.05), alpha = c(0.001, 0.01, 0.05, 0.1),
-            rho_ld = 0.75, rho_d = 0.95, dcap = 5e5, B = 100L, seed = 1L,
+            rho_ld = 0.75, rho_d = 0.95, dcap = 1e5, B = 100L, seed = 1L,
             lmin = c(1L, 2L, 4L), fdr = 0.05, lmin_q = 0.99, lmin_tau = 0.05,
             tau_grid = seq(0.02, 1, by = 0.02))
 gcta_grm <- function(X) { p <- colMeans(X)/2; k <- p>0 & p<1; X <- X[,k,drop=FALSE]; p <- p[k]

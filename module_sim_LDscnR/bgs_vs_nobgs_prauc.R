@@ -50,7 +50,13 @@ CORES <- max(1L, as.integer(Sys.getenv("CORES", "1")))
   r
 }
 ALPHA_C <- 0.05; QSTAR <- seq(0, 0.95, by = 0.05)
-RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5; MAX_TAU <- 40L
+## 1e5, not 5e5: the stage-2 partition in the bundles moved to
+## distance_threshold = 1e5 on 2026-08-29, and the scoring geometry has to match
+## it or regions are formed on one distance scale and the partition on another.
+## It is also load-bearing rather than nominal: d(rho=0.95) is 636-845 kb on these
+## cells, so a 5e5 cap BINDS and is what actually sets the window -- region
+## formation is cap-governed, not decay-governed, at either value.
+RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5; MAX_TAU <- 40L
 ALPHAS <- sort(unique(c(10^seq(-6, log10(0.5), length.out = 30), 0.05)))
 if (!dir.exists(OUT)) dir.create(OUT, recursive = TRUE)
 

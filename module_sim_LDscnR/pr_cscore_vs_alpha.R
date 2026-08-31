@@ -34,7 +34,13 @@ PANEL_DIR <- Sys.getenv("PANEL_DIR", "/Volumes/Nemo/Nemo_sim/analysis_inputs")
 ENGINE <- Sys.getenv("ENGINE", "emmax")
 LMINS <- as.integer(strsplit(Sys.getenv("LMINS", "1,2,3,5"), ",")[[1]])
 MAX_TAU <- as.integer(Sys.getenv("MAX_TAU", "40"))
-RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
+## 1e5, not 5e5: the stage-2 partition in the bundles moved to
+## distance_threshold = 1e5 on 2026-08-29, and the scoring geometry has to match
+## it or regions are formed on one distance scale and the partition on another.
+## It is also load-bearing rather than nominal: d(rho=0.95) is 636-845 kb on these
+## cells, so a 5e5 cap BINDS and is what actually sets the window -- region
+## formation is cap-governed, not decay-governed, at either value.
+RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5
 ## alpha grid spanning the usable range on a log scale -- 7 points as in
 ## run_sim_LDscnR.R is too sparse to integrate a PR curve over
 ALPHAS <- sort(unique(c(10^seq(-6, log10(0.5), length.out = 34), 0.05)))

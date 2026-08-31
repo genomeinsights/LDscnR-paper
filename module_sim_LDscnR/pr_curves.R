@@ -30,7 +30,7 @@ PANEL_DIR <- Sys.getenv("PANEL_DIR", "/Volumes/Nemo/Nemo_sim/analysis_inputs")
 ENGINE <- Sys.getenv("ENGINE", "emmax")
 MAX_TAU <- as.integer(Sys.getenv("MAX_TAU", "60"))
 LMINS <- as.integer(strsplit(Sys.getenv("LMINS", "1,2,3,5,10,20"), ",")[[1]])
-RHO_R2 <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
+RHO_R2 <- 0.75; RHO_D <- 0.95; DCAP <- 1e5   # matches the bundles' stage-2 cap
 if (!dir.exists(OUT)) dir.create(OUT, recursive = TRUE)
 
 ## one fit per cell is enough -- prefer env_orth, fall back to whatever exists

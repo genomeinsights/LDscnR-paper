@@ -61,7 +61,7 @@ CORES  <- as.integer(Sys.getenv("SIM_CORES", "1"))          # env-level parallel
 QTAB_C <- if (CORES > 1L) 1L else 4L
 if (CORES > 1L) { data.table::setDTthreads(1L); Sys.setenv(OMP_NUM_THREADS = "1") }  # avoid fork thread oversubscription                        # avoid nested threads under mclapply
 PAR <- list(qstar = seq(0, 0.95, by = 0.05), alpha = c(0.001, 0.01, 0.05, 0.1),
-            lmin = c(1L, 2L, 4L, 8L), rho_ld = 0.75, rho_d = 0.95, dcap = 5e5, max_tau = 50L)
+            lmin = c(1L, 2L, 4L, 8L), rho_ld = 0.75, rho_d = 0.95, dcap = 1e5, max_tau = 50L)
 
 gcta_grm <- function(X) { p <- colMeans(X) / 2; k <- p > 0 & p < 1; X <- X[, k, drop = FALSE]; p <- p[k]
   Z <- sweep(sweep(X, 2, 2 * p, "-"), 2, sqrt(2 * p * (1 - p)), "/"); tcrossprod(Z) / ncol(Z) }

@@ -63,7 +63,7 @@ if (CORES > 1L) { data.table::setDTthreads(1L); Sys.setenv(OMP_NUM_THREADS = "1"
 PAR <- list(
   alpha   = c(0.001, 0.01, 0.05, 0.1),          # alpha axis of the C-score (swept -> integrated)
   qstar   = seq(0, 0.95, by = 0.05),
-  rho_ld  = 0.75, rho_d = 0.95, dcap = 5e5,      # clustering (sim-calibrated)
+  rho_ld  = 0.75, rho_d = 0.95, dcap = 1e5,      # clustering; matches stage-2 distance_threshold
   B       = 100L, seed = 1L, basis = "spatial",  # structure-null: spatial autocorrelation (Nemo)
   fdr     = 0.05, lmin_q = 0.99, lmin_tau = 0.05,
   tau_grid  = seq(0.05, 1.0, by = 0.05),

@@ -33,7 +33,7 @@ if (!length(a)) stop("usage: score_c2_against_truth.R <scan_dir> [outdir]")
 SCAN_DIR <- a[1]; OUT <- if (length(a) >= 2) a[2] else SCAN_DIR
 PANEL_DIR <- Sys.getenv("PANEL_DIR", "/Volumes/Nemo/Nemo_sim/analysis_inputs")
 ENGINE <- Sys.getenv("ENGINE", "emmax"); BASIS <- Sys.getenv("BASIS", "env_orth")
-RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
+RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5   # matches the bundles' stage-2 cap
 if (!dir.exists(OUT)) dir.create(OUT, recursive = TRUE)
 
 ## rank-based AUC with proper tie handling (C2 is discrete, so ties are common

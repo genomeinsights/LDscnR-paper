@@ -79,7 +79,7 @@ PAR <- list(alpha  = as.numeric(Sys.getenv("ALPHA",  "0.05")),
             l_min  = as.integer(Sys.getenv("LMIN",   "3")),
             fdr    = as.numeric(Sys.getenv("FDR",    "0.05")),
             rho_ld = as.numeric(Sys.getenv("RHO_LD", "0.75")),
-            dcap   = as.numeric(Sys.getenv("DCAP",   "5e5")),
+            dcap   = as.numeric(Sys.getenv("DCAP",   "1e5")),   # matches the bundles' stage-2 cap
             tau_grid  = seq(0.05, 0.30, by = 0.05),
             lmin_grid = c(2L, 3L, 5L, 10L, 20L))
 RUN_C2 <- Sys.getenv("RUN_C2", "1") == "1"
