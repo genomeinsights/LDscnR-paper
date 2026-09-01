@@ -227,63 +227,105 @@ kable(cc[, .(arm=tag, k, wins, losses, ties, `% non-tied`=round(pct_nt), median=
       caption = "Background selection reduces the gain: the nobgs arm shows larger and more consistent improvement than the bgs arm at every k. Consistent with BGS costing recall rather than enrichment.")
 ```
 
-# Null behaviour {#sec:fdr}
+# Null behaviour: two nulls, and they disagree {#sec:fdr}
+
+An earlier draft reported one null and dismissed the other. That was wrong, and
+the dismissed one carries the more important result.
 
 ```{r fdrtab, results="asis"}
-g <- fdr[basis=="genetic"]
-B <- 100; nenv <- uniqueN(g$env)
-agg <- g[, .(rej = round(sum(reject_rate)*B), draws = .N*B), by=.(method,k)]
-agg[, `:=`(rate = rej/draws)]
-agg[, `:=`(lo = mapply(function(x,n) binom.test(x,n)$conf.int[1], rej, draws),
-           hi = mapply(function(x,n) binom.test(x,n)$conf.int[2], rej, draws))]
-gwr <- agg[method=="genome_wide"]
-cat("\\begin{tabular}{@{}lrrl@{}}\n\\toprule\n")
-cat("Selection & $k$ & rejection rate & 95\\% CI \\\\\n\\midrule\n")
-for (m in c("ld_w","MAF","random")) for (kk in sort(unique(agg[method!="genome_wide"]$k))) {
-  z <- agg[method==m & k==kk]; if (!nrow(z)) next
-  cat(sprintf("%s & %s & %.3f & [%.3f, %.3f] \\\\\n", esc(m), format(kk, big.mark=","), z$rate, z$lo, z$hi))
+## NB, not B: "B" is a COLUMN in this CSV and would mask a scalar of that name,
+## silently returning one row per input row instead of one per group. An earlier
+## version of this chunk had exactly that bug and reported CIs computed on 100
+## draws rather than 1000.
+NB <- 100L
+addci <- function(d) {
+  d[, rate := rej/draws]
+  d[, lo := mapply(function(x,n) binom.test(x,n)$conf.int[1], rej, draws)]
+  d[, hi := mapply(function(x,n) binom.test(x,n)$conf.int[2], rej, draws)]
+  d[]
 }
-cat("\\midrule\n")
-cat(sprintf("genome-wide & all & %.3f & [%.3f, %.3f] \\\\\n", gwr$rate[1], gwr$lo[1], gwr$hi[1]))
+gwa <- addci(fdr[method == "genome_wide", .(draws = .N*NB, rej = round(sum(reject_rate)*NB)), by = basis])
+oth <- addci(fdr[method != "genome_wide", .(draws = .N*NB, rej = round(sum(reject_rate)*NB)), by = .(basis, method, k)])
+ks  <- sort(unique(oth$k))
+cat("\\begin{tabular}{@{}llrrr@{}}\n\\toprule\n")
+cat("Null & Selection & $k$ & rejection rate & 95\\% CI \\\\\n\\midrule\n")
+for (bs in c("genetic","env_orth")) {
+  g <- gwa[basis==bs]
+  cat(sprintf("\\textbf{%s} & \\textbf{unfiltered scan} & all & \\textbf{%.3f} & [%.3f, %.3f] \\\\\n",
+      gsub("_","\\\\_",bs), g$rate, g$lo, g$hi))
+  for (m in c("ld_w","MAF","random")) for (kk in ks) {
+    z <- oth[basis==bs & method==m & k==kk]; if (!nrow(z)) next
+    cat(sprintf(" & %s & %s & %.3f & [%.3f, %.3f] \\\\\n",
+        gsub("_","\\\\_",m), format(kk, big.mark=","), z$rate, z$lo, z$hi))
+  }
+  cat("\\midrule\n")
+}
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
-\noindent Under surrogate **environments** (genetic basis, which is the
-calibrated one; $\lambda_{\text{surr}}$
-`r sprintf("%.3f--%.3f", min(g$lambda_surr), max(g$lambda_surr))`), local-LD
-filtered rates were
-`r sprintf("%.3f--%.3f", min(agg[method=="ld_w"]$rate), max(agg[method=="ld_w"]$rate))`
-and **showed no detectable excess over $\alpha = 0.05$**. Random selection reached
-`r sprintf("%.3f", max(agg[method=="random"]$rate))` at one $k$, above 0.05 in
-point estimate; the confidence intervals overlap 0.05 throughout, so no filter is
-shown to be anticonservative and none is shown to be conservative either.
+\noindent Both nulls are surrogate **environments** over 1,000 draws
+(10 environments $\times$ 100 surrogates), and under both
+$\lambda_{\text{surr}} \approx$
+`r sprintf("%.2f", mean(fdr$lambda_surr))`, so neither result is genomic
+inflation.
 
 \begin{keybox}
-\textbf{What this does and does not establish.} Every hypothesis is null here, so
-FDR equals the probability of at least one rejection and the table is a valid
-\emph{global-null} check. It does \textbf{not} demonstrate FDR control under
-mixtures of null and alternative hypotheses, and it does not establish the
-Bourgon et al. independence condition in general.
+\textbf{The conventional scan fails the structure-preserving null.} Under
+\texttt{env\_orth} the unfiltered genome-wide analysis --- the $\alpha$ baseline
+that every power comparison in this document is measured against --- rejects in
+`r sprintf("%.0f\\%%", 100*gwa[basis=="env_orth"]$rate)` of surrogates at
+$\alpha = 0.05$. Filtering reduces that to
+`r sprintf("%.3f", min(oth[basis=="env_orth" & method=="ld_w"]$rate))`, an
+`r sprintf("%.0f\\%%", 100*(1-min(oth[basis=="env_orth" & method=="ld_w"]$rate)/gwa[basis=="env_orth"]$rate))`
+reduction, \textbf{but does not repair it}: the residual still exceeds $\alpha$.
 
-\textbf{It also does not license choosing $k$.} It licenses evaluating a fixed,
-prespecified $k$ under the tested null. Choosing $k$ after inspecting discovery
-counts or comparison curves is outcome-tuned model selection, and testing several
-fixed $k$ values under the null does not remove that. For any application, $k$
-must be prespecified on genotype-only criteria, or the whole $k$-curve reported
-as the result, or $k$ chosen by nested validation.
-
-\textbf{Coverage.} The null check uses \texttt{V2\_c1}, nobgs only. The power
-experiment spans four cells and both arms. Dependence between $ld_w$, MAF,
-cluster size and null p-values may change with background LD and BGS, so this
-single-cell check cannot license filtering across the whole experiment.
+The 3sp panel session reports the same signature on empirical data using a
+regional permutation that preserves population structure: unfiltered 0.37,
+filtered 0.21--0.34. Two datasets, two null constructions, one conclusion ---
+\emph{filtering improves calibration under structure and cannot rescue a scan
+that is already anti-conservative.}
 \end{keybox}
 
-The false-positive count is heavy-tailed: at $k = 500$ the $ld_w$ set has the
-same rejection *rate* as MAF but roughly twelve times the mean rejection *count*,
-so about 96% of surrogates give nothing and the remainder give tens to hundreds.
-The `env_orth` basis is not usable for this purpose --- it rejects genome-wide in
-16--57% of surrogates while $\lambda \approx 0.99$, making it a
-different-environment null rather than a no-signal null.
+## Which null is the right one
+
+`genetic` surrogates leave the scan calibrated at
+`r sprintf("%.3f", gwa[basis=="genetic"]$rate)`; `env_orth` surrogates do not.
+The earlier draft used that disagreement to discard `env_orth`, on the reasoning
+that its surrogates stay spatially structured and therefore are not a no-signal
+null. **That reasoning was convenient rather than correct.** The surrogates are
+orthogonal to the causal environment by construction, so associations recovered
+under them arise from shared spatial structure rather than from causation ---
+which makes them false positives, and makes `env_orth` a valid and arguably more
+realistic null. Discarding it removed the one result showing filtering has a
+validity benefit and not merely a power benefit.
+
+Both are reported here. Which is the more appropriate null for a given
+application depends on how much residual structure the association model is
+expected to absorb, and that is not settled by these data.
+
+## What this does and does not establish
+
+\begin{keybox}
+Every hypothesis is null in both experiments, so FDR equals the probability of at
+least one rejection and these are valid \textbf{global-null} checks. They do
+\textbf{not} establish FDR control under mixtures of null and alternative
+hypotheses, nor the Bourgon et al. independence condition in general.
+
+They also do \textbf{not license choosing $k$}. They license evaluating a fixed,
+prespecified $k$ under the tested null. Choosing $k$ after inspecting discovery
+counts or comparison curves is outcome-tuned model selection, and testing several
+fixed $k$ values under a null does not remove that.
+
+\textbf{Coverage.} Both nulls use \texttt{V2\_c1}, nobgs only, while the power
+experiment spans four cells and both arms. Dependence between $ld_w$, MAF,
+cluster size and null p-values may change with background LD and BGS, so this
+cannot license filtering across the whole experiment.
+\end{keybox}
+
+The false-positive count is also heavy-tailed: at $k = 500$ the $ld_w$ set has
+about the same rejection rate as MAF but roughly twelve times the mean rejection
+count, so approximately 96% of surrogates give nothing and the remainder give
+tens to hundreds.
 
 # Status of each claim
 
@@ -295,7 +337,9 @@ rows <- list(
  c("Among filters evaluated, only LD-derived ones repay the lost coverage","Supported","MAF, random and recombination all worse than no filtering"),
  c("Which LD filter is better depends on regime","\\textbf{Established}","Filter-by-cell interaction; $ld_w$ wins 2 cells, loses 1 decisively"),
  c("$ld_w$ is generally preferable to cluster size","\\textbf{Not supported}","Fails in \\texttt{V0.5\\_c2} by a median of $-8.5$"),
- c("Global-null rejection rate is controlled","Supported","One cell, one arm; CIs overlap $\\alpha$"),
+ c("Global-null rejection rate is controlled under a genetic-basis null","Supported","One cell, one arm; CIs overlap $\\alpha$"),
+ c("The unfiltered scan is anti-conservative under a structure-preserving null","\\textbf{Established}","0.338 [0.309, 0.368] vs $\\alpha$ 0.05; matches the 3sp panel's 0.37"),
+ c("Filtering improves calibration under structure","Supported","0.338 to 0.057, an 83\\% reduction; does not reach $\\alpha$"),
  c("FDR is controlled under mixtures","\\textbf{Not tested}","Complete-null design only"),
  c("A usable rule for choosing $k$ exists","\\textbf{Not established}","$k$ remains a free, outcome-facing parameter"),
  c("This transfers to empirical data","Untested here","Simulations only"))
@@ -328,7 +372,9 @@ rows <- list(
  c("``True discovery''","Renamed QTN-proximal throughout"),
  c("``The filter must be LD-structure-based''","Weakened to the filters evaluated"),
  c("``Indistinguishable at every window'' conflicted with $p = 0.030$","Replaced by the stratified interaction analysis"),
- c("\\texttt{79\\%\\%} rendering bug; cramped tables","Fixed; tables given explicit column widths"))
+ c("\\texttt{79\\%\\%} rendering bug; cramped tables","Fixed; tables given explicit column widths"),
+ c("The \\texttt{env\\_orth} null was dismissed as ``not a true null''","REINSTATED. Its surrogates are orthogonal to the causal environment, so rejections under them are false positives. Both nulls now reported side by side"),
+ c("Confidence intervals were computed on 100 draws, not 1{,}000","A scalar named \\texttt{B} was masked by a COLUMN named \\texttt{B} in the input, so the grouping returned one row per input row. Intervals were ten times too wide"))
 for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
