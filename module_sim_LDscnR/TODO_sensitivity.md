@@ -55,6 +55,33 @@ full width for all 80 panels — reduce the panel count first if a pilot is want
 - **A region unstable in one dimension** remains distinguishable from one
   unstable in all three, which was the point of reporting C per parameter.
 
+## Two axes, not one: what C is a stability measure OF
+
+Raised by the 3sp panel session and it changes the design. All three swept
+parameters — `ld_w_threshold`, `min_r2_rho`, minimum cluster size — move the
+**selection or the unit definition**. **None moves the test.** So C over that grid
+measures how stable the *selection* is, and "called under every setting" reads as
+though it were a statement about the finding.
+
+The second association engine is exactly the missing axis:
+
+| Axis | Varied | Held fixed | C measures |
+|:--|:--|:--|:--|
+| **Selection** | the 27-cell parameter grid | engine | stability of the units and filter |
+| **Test** | EMMAX vs LFMM | units, filter, truth, budget | stability of the association test |
+
+**Report them as two numbers, never as one.** Combined into a single C over 54
+cells they are not interpretable, because a region can be perfectly stable on one
+axis and unstable on the other and the scalar hides which. Reported separately
+they answer different questions, and the pair is more informative than either.
+
+On the panel side the selection axis is the one already known to be confounded —
+a region called under every `ld_w` floor is stable because the filter keeps
+finding it, not because the test keeps rejecting it. That confound does not exist
+here, since the arms compared in this module share an identical unit set and
+nothing is pre-filtered, which makes this the cleaner place to demonstrate
+whether the two axes give different answers at all.
+
 ## Cautions carried from this module
 
 - **Report the factorial structure, not just C.** With 27 cells, a region at
@@ -64,7 +91,14 @@ full width for all 80 panels — reduce the panel count first if a pilot is want
   C-like quantity failed, and the one that looked principled (τ = 0.05) was a
   coin flip.
 - **Denominator discipline.** Report how many settings were examined alongside
-  every C, since C = 1 over three settings is not C = 1 over thirty.
+  every C, since C = 1 over three settings is not C = 1 over thirty — and also
+  **whether they lie on a grid or a line**. C = 1 over ten settings varying one
+  parameter is a much weaker statement than C = 1 over ten varying three, and the
+  count alone does not distinguish them.
+
+- **Name the axis.** State whether a reported C is selection stability or test
+  stability. Unlabelled, "called under every setting" reads as a claim about the
+  finding rather than about the analysis.
 - **Stability is not validity.** A region called under every setting may still be
   a false positive; the sweep varies the analysis, not the truth.
 
