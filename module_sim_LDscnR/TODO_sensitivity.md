@@ -99,6 +99,13 @@ whether the two axes give different answers at all.
 - **Name the axis.** State whether a reported C is selection stability or test
   stability. Unlabelled, "called under every setting" reads as a claim about the
   finding rather than about the analysis.
+- **Firing rate is not impact.** A bug that fires rarely but *selectively on the
+  heavy end of a distribution* is worse than one firing often and uniformly. The
+  3sp panel session's sampler bug fired on 5.1% of draws and removed ~73% of the
+  null's hits, because the classes where it fired were the large clusters
+  carrying most of the mass. The question for any defect is not "can it fire" but
+  "if it fired, would it fire where the mass is".
+
 - **Print a bounded diagnostic next to its bound.** If any cell does matching or
   sampling, report a statistic that can come back *impossible* rather than merely
   disappointing. The 3sp panel session caught a live sampler bug because
