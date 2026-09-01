@@ -937,6 +937,259 @@ No account is offered. Four mechanisms have been proposed for a quantity that
 turned out to be nine tenths arithmetic, and "clusters with more markers contain
 more QTN, plus a residual spread" is where this closes.
 
+# The distance threshold: the parameter nobody was checking {#sec:dthr}
+
+Every script in this module hand-sets `distance_threshold = 1e5`. So does the
+panel session's. The package does **not** require this: with
+`distance_threshold = NULL` it derives a per-chromosome value,
+$d = d_{\text{from\_rho}}(a_{\text{pred}}, \rho) = \rho/(a(1-\rho))$, exactly as
+`min_r2` is already derived. Both sessions had been overriding a rule with a
+constant, and neither had noticed.
+
+The first reading of that was alarming and wrong. The derived value here averages
+**1,167 kb** against the hand-set 100 kb, which looks like a twelve-fold regime
+change. It is not, because **the bp ratio is not the operating point**:
+`distance_threshold` splits a run at a *consecutive marker gap*.
+
+```{r gaps, results="asis"}
+cat("\\begin{tabular}{@{}lr@{}}\n\\toprule\n")
+cat("median gap & 800 bp \\\\\n99.9th percentile gap & 20.7 kb \\\\\nlargest gap observed & 308 kb \\\\\n\\midrule\n")
+cat("gaps exceeding the hand-set 1e5 & 0.004\\% \\\\\n")
+cat("gaps exceeding the derived 1167 kb & 0.000\\% \\\\\n")
+cat("chromosomes where derived $>$ largest observed gap & \\textbf{20 of 20} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Both settings mean "never split" on data this dense, and twelve-fold
+between two numbers past the top of the gap distribution is inert.
+
+**The same substitution is decisive on the stickleback panel, in the opposite
+direction.** There the derived threshold is 3--18 kb --- *smaller* than the
+hand-set 100 kb --- and cuts into the body of the gap distribution: 6,416 gaps
+exceed it against 4. So the identical rule is inert on one dataset and a
+roughly 1,300-fold change in split events on the other.
+
+\begin{keybox}
+That is an LDscnR calibration issue rather than a parameter choice.
+$d = 19/a$ at $\rho = 0.95$, so the window \textbf{collapses as decay speeds
+up} --- and it carries no term for the size of the feature stage-2 merging
+exists to bridge. Inversions and cold blocks do not shrink because LD decays
+faster elsewhere in the genome. On the panel the derived rule produces a
+\textbf{6 kb median} merge distance on a genome whose motivating feature is a
+430 kb inversion, so the hand-set 1e5 was not an arbitrary constant: it was
+compensating for a formula that cannot reach the features.
+\end{keybox}
+
+# The decay window: 20, not 50 {#sec:window}
+
+Fitting `n_win_decay` at 10 / 20 / 50 with everything else held at the bundles'
+own settings, RNG pinned in the caller (the installed LDscnR predates
+`compute_LD_decay`'s `seed` argument):
+
+```{r win, results="asis"}
+cat("\\begin{tabular}{@{}rrrrrrr@{}}\n\\toprule\n")
+cat("$w$ & windows & median $a$ & $a$ spread & $b$ & $c$ & disagreement \\\\\n\\midrule\n")
+cat("10 & 18 & 1.87e-05 & 5.48$\\times$ & 0.03048 & 0.9936 & 0.273 \\\\\n")
+cat("\\textbf{20} & 38 & 2.56e-05 & 4.35$\\times$ & 0.03048 & 0.9941 & \\textbf{0.095} \\\\\n")
+cat("50 & 96 & 3.18e-05 & 2.99$\\times$ & 0.03048 & 0.9801 & 0.159 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Paired over files, 20 beats 10 on **9 of 10** (sign $p = 0.021$); 50 is
+5 of 10 against 20 ($p = 1.0$) for 2.5$\times$ the windows.
+
+Two errors on the way, both recorded because they are the kind that survive:
+
+**A five-file subset looked monotone through 50** (0.286 $\to$ 0.088 $\to$
+0.038) and would have supported it. On all ten it is not monotone, and $c$ also
+degrades at 50 --- the wider window changes the character of the fit rather than
+sharpening it. Note $a$'s *spread* keeps shrinking to 50; that compression is
+over-smoothing, not sharpening, so spread is not a quality measure.
+
+**The metric was narrower than its name.** $|a - a_{\text{pred}}|/a_{\text{pred}}$
+reads as distance from a size-corrected prediction, but each bundle holds two
+*equal-size* chromosomes, so $a_{\text{pred}}$ is exactly their mean and the
+deviation is identical for both by arithmetic. It measures between-chromosome
+disagreement within one simulation. The independent unit is the **file**
+($n=10$), not the chromosome ($n=20$); the sign tests were first run at $n=20$ on
+duplicated values.
+
+Also: $b$ is identical across all three windows, which is the check that pinning
+the RNG worked. And $a$ **reorders** --- Spearman$(a_{w10}, a_{w50}) = 0.60$,
+median change 72% --- so any between-chromosome $a$ ranking is not robust to this
+setting.
+
+# The recombination proxy: T1 passes, T2 pre-registered {#sec:proxy}
+
+PK's argument for adapting `distance_threshold` to the local recombination
+landscape rests on LD decay being a usable proxy for it. The sims are the right
+instrument: the true rate is a simulation *input*, and the cM map increments at
+10,123 distinct positions on a 29.9 Mb chromosome --- **roughly 1.1 kb effective
+resolution**, against the panel's 838 bins at a median of 489 kb.
+
+No new fit was needed. `LD_decay$by_chr[[chr]]$decay` already stores a per-window
+$a/b/c$ with start/end.
+
+```{r t1, results="asis"}
+cat("\\begin{tabular}{@{}rrrrrr@{}}\n\\toprule\n")
+cat("$w$ & med span & Spearman vs \\textbf{true} cM/Mb & positive & $a = 0$ & $a>0$ only \\\\\n\\midrule\n")
+cat("5 & 3.77 Mb & 0.690 & 19/20 & 2.44\\% & 0.690 \\\\\n")
+cat("10 & 1.89 Mb & 0.758 & 20/20 & 3.86\\% & 0.758 \\\\\n")
+cat("\\textbf{20} & 1.01 Mb & 0.830 & 20/20 & 6.98\\% & \\textbf{0.782} \\\\\n")
+cat("50 & 0.41 Mb & 0.829 & 20/20 & 12.60\\% & 0.742 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent **T1 passes**: median within-chromosome Spearman +0.757 at the built
+setting, 20 of 20 positive, sign $p = 1.9\times10^{-6}$. An *external* criterion
+therefore also picks $w = 20$, agreeing with \S\ref{sec:window}'s internal one.
+
+**The plateau at 20--50 was an artefact.** The headline figure is a composite of
+two capabilities --- *detecting* cold blocks ($a = 0$, where the median true rate
+is exactly 0.000 at $w \ge 20$) and *tracking* the rate continuously elsewhere.
+Flat from 20 to 50 only because detection improves with resolution while
+continuous tracking degrades, the two cancelling. On the continuous part there is
+a clear peak at 20 and a real fall at 50. **The operational number is 0.782, not
+0.830**, because the $a = 0$ windows are exactly the ones a cap overrides.
+
+## What bgs5 contains
+
+Nemo has no structural variants, so the analogue of an inversion is a contiguous
+zero-recombination block. 24.1% of 50 kb bins have exactly zero recombination:
+**459 blocks, median 100 kb, q90 550 kb, max 3.7 Mb; 55 at or above 430 kb**, 18
+over 1 Mb, 103 Mb of 427 Mb inside one. So bgs5 holds 55 analogues of the single
+feature motivating a local threshold on the panel.
+
+## T2, pre-registered
+
+**T1 does not carry T2.** Cluster geometry is 30$\times$ enriched for containing
+QTN and no restriction built on it beats using every cluster
+(\S\ref{sec:sparse}); a quantity can track truth and still not improve the
+partition. T2 asks whether $d = f(a_{\text{local}})$ beats the flat threshold on
+QTN precision **and** recall; T2b runs it inside versus outside cold blocks,
+where a flat threshold should fail if it fails anywhere. Recorded before running:
+**if T1 passes and T2 fails, the conclusion is that the proxy is sound and the
+pipeline should not use it.**
+
+# Three transfer functions, all refuted the same way {#sec:transfer}
+
+$d = \rho/(a(1-\rho))$ diverges as $a \to 0$, and here $a \to 0$ is a *correct*
+answer. Three fixes were proposed and all three failed:
+
+```{r tf, results="asis"}
+cat("\\begin{tabular}{@{}p{3.6cm}p{11cm}@{}}\n\\toprule\n")
+cat("\\textbf{Proposal} & \\textbf{Why it failed} \\\\\n\\midrule\n")
+cat("Shrink $a_{\\text{local}}$ toward the chromosome fit where the window is poorly determined & The degenerate windows are \\textbf{not} poorly determined. Median true rate 0.083 cM/Mb against 3.310 elsewhere (Wilcoxon $p = 1.1\\times10^{-9}$) at essentially unchanged fit quality (contrast 0.948 against 0.965) --- cold blocks reported correctly. Shrinking erases the signal that motivates locality, and no fit-quality diagnostic separates them. \\\\\n")
+cat("Cap at feature extent (block q90, 550 kb) & An order of magnitude too tight: costs $0.830 \\to 0.656$ to buy nothing a generous cap does not. \\\\\n")
+cat("Floor at feature extent & Measured on the panel: binds on \\textbf{98.4\\%} of windows, so the rule outputs one constant across the genome. A clamp whose lower bound binds almost everywhere is a flat threshold with extra steps. \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+All three act hardest exactly where the local estimate is most informative. Two
+were proposed here and only the third was flagged in advance. The criterion is
+now stated for any fourth proposal: \textbf{check whether it acts most
+aggressively on the windows that motivate locality, before implementing it.}
+\end{keybox}
+
+## Exclusion is not capping, and overstates by 5$\times$
+
+Both sessions quoted *exclusion* numbers as *cap* numbers for several messages.
+A cap is $d \leftarrow \min(d, \text{cap})$ with the window **retained**, so it
+keeps that window's rank against the uncapped ones; removal does not.
+
+```{r capsw, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrrrrr@{}}\n\\toprule\n")
+cat("cap & 250 kb & 550 kb & 1 Mb & 2.1 Mb & 3.7 Mb & 10 Mb & 30 Mb & none \\\\\n\\midrule\n")
+cat("at ceiling & 89.9\\% & 65.1\\% & 45.7\\% & 32.3\\% & 26.2\\% & 17.5\\% & 10.8\\% & 0.0\\% \\\\\n")
+cat("$\\rho$ & 0.381 & 0.656 & 0.755 & 0.793 & 0.803 & 0.826 & 0.829 & 0.830 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent The cost is **monotone in the cap**, so there is no optimum and "which
+cap" is the wrong question. A 10 Mb ceiling costs 0.004 while bounding a quantity
+that otherwise reaches **4,961 Mb on a 30 Mb chromosome**. The cap belongs where
+the derived distance stops being physically meaningful, not where the features
+stop.
+
+A baseline trap, caught only by sweeping: capping at 2.1 Mb first appeared to
+*improve* things (0.782 $\to$ 0.793). It does not --- 0.782 is the $a > 0$
+subset, since $d = \infty$ is not finite and those windows drop out, while the
+capped series retains them tied at the ceiling. Like-for-like uncapped is 0.830.
+
+# The minimum-cluster-size floor is inert above 2 {#sec:floor}
+
+The panel session obtains 1 discovery at floor 2 and 14 at floor 8, raising
+whether the higher floor *detects* more or merely escapes multiplicity --- BH
+over 2,631 units against 790,578 markers being a 300$\times$ smaller correction.
+The sims can measure the recall cost the panel cannot. 80 panels, floor applied
+**before** BH so the multiplicity genuinely changes:
+
+```{r fl, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("arm & units tested & discoveries & precision & recall \\\\\n\\midrule\n")
+cat("single-SNP & 292,194 & 74.9 & 0.187 & \\textbf{0.378} \\\\\n")
+cat("floor 1 & 84,869 & 20.0 & 0.350 & 0.229 \\\\\n")
+cat("floor 2 & 40,590 & 23.0 & 0.338 & 0.245 \\\\\n")
+cat("floor 5 & 12,723 & 23.9 & \\textbf{0.393} & 0.253 \\\\\n")
+cat("floor 8 & 6,657 & 24.3 & 0.372 & 0.261 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent The means suggest a gentle rise. Paired across panels with ties, it is
+not there: floor 2 $\to$ 8 gives recall 35 W / 22 L / 23 T ($p = 0.11$),
+precision 38 / 30 / 12 ($p = 0.40$), discoveries 43 / 26 / 11 ($p = 0.053$).
+**Above 2 the floor is inert.**
+
+A predicted asymmetry is therefore **refuted**: the claim was that if the panel
+gains while the sims *lose*, that is what multiplicity relief predicts. The sims
+neither gain nor lose, so there is no asymmetry to interpret. What survives is
+weaker --- if the panel's effect is relief it should scale with the multiplicity
+escaped, and 6$\times$ here yields nothing detectable while 300$\times$ there
+yields 14$\times$. Consistent with relief; not proof.
+
+\begin{keybox}
+\textbf{Floor 1 $\to$ 2 gains recall and loses precision} (16 W / 38 L,
+$p = 0.0038$): removing singletons lowers the multiplicity, so more clusters
+clear BH. Floor 2 remains right on the \emph{structural} ground --- Simes over a
+singleton is that marker's own $p$, so below 2 the cluster test is not a cluster
+test --- but it must not be sold as a precision improvement, because measured it
+is not one.
+\end{keybox}
+
+\noindent And the headline trade-off is unchanged at every floor: single-SNP
+beats every floor on recall (0 W / 63 L against floor 2) and loses to every floor
+on precision (60 W / 11 L). The floor moves along the clustering trade-off; it
+does not change it.
+
+# What the empirical panel can and cannot do {#sec:panel-limits}
+
+Two independent findings landed on the same conclusion, so it is stated once:
+
+- **Truth resolution.** The panel's narrowest window (362 kb) is 0.74$\times$ its
+  own 489 kb map bins --- finer than what it is scored against --- so its
+  correlation decline below roughly 500 kb is its map running out, not the proxy
+  degrading. The sims' narrowest is 367$\times$ *coarser* than truth.
+- **Cap inertness.** Every cap moves the panel's correlation by at most 0.005,
+  because its divergent windows are 0.6--1.8% of the total against a third here.
+
+\begin{keybox}
+\textbf{The panel can falsify the proxy but cannot calibrate it}, because
+calibration needs variation in exactly the regime the panel lacks. This is a
+property of the \emph{stickleback map and its LD structure}, not of empirical
+data in general --- a species with a dense pedigree map would not have the
+limit.
+\end{keybox}
+
+\noindent The two datasets also differ structurally, confirmed by three
+independent routes: near-zero $a$ rises with resolution here (2.44 $\to$ 12.60%)
+and *falls* there (1.75 $\to$ 0.64%); capping lowers the correlation here and
+raises it there; and the panel has no zero-recombination bins at all. bgs5 has a
+cold-block regime and the panel does not. Consequently, should T2 succeed, the
+honest claim is that $a_{\text{local}}$ **helps in the cold-block regime and is
+inert to degenerate outside it** --- not that it helps in general and the panel
+merely failed to confirm.
+
 # Provenance
 
 ```{r gens, results="asis"}
@@ -957,6 +1210,9 @@ against 0.022 for pairs 1 bp--10 kb apart.
 
 Scripts: `filter_then_test_clusters.R`, `filter_then_test.R`, `filter_fdr_check.R`,
 `stratified_paired_table.R`, `recluster_filter_test.R`, and the three `plot_*` scripts.
+For \S\ref{sec:dthr}--\S\ref{sec:panel-limits}: `operating_points.R`,
+`decay_window_test.R`, `proxy_T1_local_decay.R`, `proxy_T1_by_window.R`,
+`cap_cost.R`, `floor_sweep.R`.
 Parameters: $\alpha$ 0.05; stage-2 `min_r2_rho` 0.5, `distance_threshold` 1e5;
 scoring `dmax_cap` 1e5. Commits `60c8134`, `88797ff`, `7e595b5`.
 
