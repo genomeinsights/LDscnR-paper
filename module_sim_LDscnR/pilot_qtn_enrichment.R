@@ -53,6 +53,10 @@
 ## Env: SIM_ROOT, REF_CELL (default V1_c1.5_env2), OUT
 ## =====================================================================
 suppressMessages({ library(data.table); library(ggplot2); library(LDscnR) })
+## scoring distance cap. 1e5 matches the bundles' clustering distance_threshold
+## (commit 8dbb09a harmonised these); earlier runs used a stale 5e5, which scored
+## regions built at 100 kb against a 500 kb truth window.
+DCAP <- as.numeric(Sys.getenv("DCAP", "1e5"))
 ROOT <- Sys.getenv("SIM_ROOT", "/Volumes/Nemo/Nemo_sim")
 REF  <- Sys.getenv("REF_CELL", "V1_c1.5_env2")
 OUT  <- Sys.getenv("OUT", "module_sim_LDscnR/figures")
@@ -68,7 +72,7 @@ curve_for <- function(f, nm) {
   x <- readRDS(f); m <- flag_true_qtns(as.data.table(x$map))
   if (!sum(m$true_pos_QTN %in% TRUE)) return(NULL)
   th  <- score_thresholds(as.data.table(x$LD_decay$decay_sum),
-                          rho_r2 = 0.75, rho_d = 0.95, dmax_cap = 5e5)
+                          rho_r2 = 0.75, rho_d = 0.95, dmax_cap = DCAP)
   pos <- is.finite(m$max_LD_with_QTN) & m$max_LD_with_QTN >= th$r2min
   base <- mean(pos); if (!base) return(NULL)
   arm <- if (grepl("_nobgs_", basename(f))) "nobgs" else "bgs"

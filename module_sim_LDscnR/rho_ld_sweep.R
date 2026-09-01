@@ -24,6 +24,10 @@
 ## Env: SIM_DATA, OUT, CELLS, RHOS, LMINS, ENVS
 ## =====================================================================
 suppressMessages({library(data.table); library(LDscnR)})
+## scoring distance cap. 1e5 matches the bundles' clustering distance_threshold
+## (commit 8dbb09a harmonised these); earlier runs used a stale 5e5, which scored
+## regions built at 100 kb against a 500 kb truth window.
+DCAP <- as.numeric(Sys.getenv("DCAP", "1e5"))
 SIM   <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs5")
 OUT   <- Sys.getenv("OUT", "module_sim_LDscnR/results/bgs5_headtohead")
 CELLS <- strsplit(Sys.getenv("CELLS", "V0.5_c1,V0.5_c2,V1_c1.5,V2_c1"), ",")[[1]]
@@ -54,7 +58,7 @@ for (cell in CELLS) for (tag in c("bgs", "nobgs")) for (env in ENVS) {
   if (!is.null(done) && nrow(done[cell == ..cell & tag == ..tag & env == ..env])) next
   P <- pool(cell, tag, env); if (is.null(P)) next
   if (!sum(P$map$true_pos_QTN %in% TRUE)) next
-  th <- score_thresholds(P$decay_sum, rho_r2 = 0.75, rho_d = 0.95, dmax_cap = 5e5)
+  th <- score_thresholds(P$decay_sum, rho_r2 = 0.75, rho_d = 0.95, dmax_cap = DCAP)
   Cvs <- qs <- list()
   for (eng in c("emmax", "lfmm")) {
     pe <- P$map[[if (eng == "emmax") "emx_p" else "lfmm_p"]]

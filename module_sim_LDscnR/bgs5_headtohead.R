@@ -25,6 +25,10 @@
 ## =====================================================================
 suppressMessages({library(data.table); library(LDscnR)})
 
+## scoring distance cap. 1e5 matches the bundles' clustering distance_threshold
+## (commit 8dbb09a harmonised these); earlier runs used a stale 5e5, which scored
+## regions built at 100 kb against a 500 kb truth window.
+DCAP <- as.numeric(Sys.getenv("DCAP", "1e5"))
 SIM   <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs5")
 OUT   <- Sys.getenv("OUT", "module_sim_LDscnR/results/bgs5_headtohead")
 CELLS <- strsplit(Sys.getenv("CELLS", "V0.5_c1,V0.5_c2,V1_c1.5,V2_c1"), ",")[[1]]
@@ -110,7 +114,7 @@ for (cell in CELLS) for (tag in c("bgs", "nobgs")) for (env in 1:10) {
   ## regions ARE false positives. The two differ whenever a locus fragments, and
   ## the difference inflates precision. Both are recorded: *_prec / *_PR follow
   ## evaluate_ors, *_precS / *_PRS use FP = n - TP.
-  th_   <- score_thresholds(P$decay_sum, rho_r2 = 0.75, rho_d = 0.95, dmax_cap = 5e5)
+  th_   <- score_thresholds(P$decay_sum, rho_r2 = 0.75, rho_d = 0.95, dmax_cap = DCAP)
   qtab  <- qtn_ld_table(P$GTs, P$map, uni, 2e6, cores = 1)
   n_true <- sum(P$map$true_pos_QTN %in% TRUE)
   sc <- function(mk, L) {

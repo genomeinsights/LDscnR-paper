@@ -59,7 +59,11 @@ ALPHA_C <- 0.05; QSTAR <- seq(0, 0.95, by = 0.05)
 ## where the GAP between consecutive linked markers exceeds the cap, and at these
 ## densities the median gap is ~1 kb, the 99th percentile 12 kb, and 2 of 15,993
 ## gaps exceed 1e5. No cold-spot block splits at either cap.
-RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5; MAX_TAU <- 40L
+## RHO_LD default raised 0.75 -> 0.90: the rho_ld sweep (rho_ld_sweep.R) found
+## PR peaks at 0.90-0.95 for BOTH arms across every l_min, with no sign of the
+## over-merging failure mode up to 0.99. Small effect, consistent direction.
+RHO_LD <- as.numeric(Sys.getenv("RHO_LD", "0.90"))
+RHO_D <- 0.95; DCAP <- as.numeric(Sys.getenv("DCAP", "1e5")); MAX_TAU <- 40L
 ALPHAS <- sort(unique(c(10^seq(-6, log10(0.5), length.out = 30), 0.05)))
 if (!dir.exists(OUT)) dir.create(OUT, recursive = TRUE)
 
@@ -166,7 +170,7 @@ if (length(skips)) {
 cat(sprintf("\ncoverage: %d rows from %d cell(s) x 2 tags x 2 engines x %d l_min (expected %d)\n",
             nrow(out), length(CELLS), length(LMINS), length(CELLS)*2L*2L*length(LMINS)))
 out[, C_minus_alpha := round(PR_AUC_C - PR_AUC_alpha, 3)]
-cat(sprintf("\n=== PR-AUC: four combinations, bgs vs nobgs (CORES=%d) ===\n", CORES))
+cat(sprintf("\n=== PR-AUC: four combinations, bgs vs nobgs (CORES=%d, rho_ld=%.2f, dcap=%g) ===\n", CORES, RHO_LD, DCAP))
 print(out[, .(cell, tag, engine, l_min, n_true,
               C = round(PR_AUC_C, 3), alpha = round(PR_AUC_alpha, 3), C_minus_alpha)])
 cat("\n=== effect of BGS on overall performance (mean over cells) ===\n")
