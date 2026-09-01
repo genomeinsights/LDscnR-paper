@@ -790,7 +790,8 @@ simulations the split is genuinely marker density within coherent blocks, not
 object type.
 
 \begin{keybox}
-\textbf{Which leaves the enrichment difference unexplained.} Long-and-dense holds
+\textbf{Which leaves the enrichment difference unaccounted for at this point in
+the work.} It is largely resolved in Section~\ref{sec:opportunity}. Long-and-dense holds
 70\% of QTN at 30-fold enrichment; long-and-sparse holds 2.5\% at 0.7-fold. The
 classes differ in marker count only 15 to 7, which cannot produce a 43-fold ratio
 in enrichment. No account of this is offered here, and the two mechanisms
@@ -847,10 +848,86 @@ smaller ones, and edge effects are conceivable if clustering tends to terminate
 at markers with unusual LD. Neither seems able to hide a centring signal of the
 size the account requires, but the test is not airtight.
 
-**The enrichment therefore remains unexplained**, and three mechanisms are on the
-record as refuted rather than deleted: demographically manufactured long-range LD
+**The enrichment is largely accounted for by the opportunity null**
+(Section~\ref{sec:opportunity}), which is not a mechanism but the absence of one.
+Three mechanisms are on the record as refuted rather than deleted: demographically manufactured long-range LD
 and an object-type distinction, both from the panel session and both withdrawn on
 their own measurements; and selection-manufactured blocks, withdrawn here.
+
+# The opportunity null accounts for most of the enrichment {#sec:opportunity}
+
+Three *mechanisms* for the 43-fold difference were proposed and refuted. The
+resolution was not a fourth mechanism but the **absence** of one, proposed by the
+3sp panel session: a QTN is a marker position, so the chance that a cluster
+**contains** one scales with its marker count. The enrichment was computed per
+**unit**, while opportunity is per **marker**.
+
+```{r opp, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrr@{}}\n\\toprule\n")
+cat("Class & \\% units & \\% markers & \\% QTN & fold / unit & fold / marker \\\\\n\\midrule\n")
+cat("long \\& dense & 2.30 & 21.05 & 70.0 & \\textbf{30.4} & \\textbf{3.33} \\\\\n")
+cat("long \\& sparse & 3.36 & 11.16 & 2.5 & 0.7 & 0.22 \\\\\n")
+cat("short \\& dense & 39.06 & 47.47 & 27.5 & 0.7 & 0.58 \\\\\n")
+cat("singleton & 53.61 & 18.85 & 0.0 & 0.0 & 0.00 \\\\\n")
+cat("short \\& sparse & 1.67 & 1.47 & 0.0 & 0.0 & 0.00 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+Long-and-dense is 2.3\% of units but \textbf{21\% of markers}. Per marker the
+enrichment falls from \textbf{30.4-fold to 3.3-fold} --- about nine tenths of it
+was denominator. The null also explains the rest of the table: every class moves
+toward 1 except long-and-dense, which stays above, and long-and-sparse, which
+falls to 0.22 and is genuinely depleted even after accounting for opportunity.
+
+It also predicts the uniform placement measured in
+Section~\ref{sec:centrality}: under pure opportunity nothing radiates from the
+QTN, so its position within the cluster should be uniform, which is what a KS
+test finds ($p = 0.34$). All three refuted mechanisms predicted centring.
+\end{keybox}
+
+**Both denominators are reported rather than one replacing the other.** The
+classes are defined partly by density, so normalising by marker share partly
+defines the effect away, and the per-unit figure is not simply wrong: it is the
+right number for *which units should I examine*, while the per-marker figure
+answers *is causal variation concentrated here*. They are answers to different
+questions.
+
+## An independent precedent, and a warning about how to control it
+
+Paper 1's pruning benchmark ran the same control on a sister statistic --- how
+often $w_j$-selected clusters contain a marker tagging a detectable QTN --- and
+reports the cost explicitly:
+
+```{r prec1, results="asis"}
+cat("\\begin{tabular}{@{}lr@{}}\n\\toprule\n")
+cat("top 99 clusters, uncontrolled base rate & 103.6-fold \\\\\n")
+cat("top 99 clusters, size-matched controls & 6.6-fold \\\\\n")
+cat("\\midrule\n")
+cat("attributed to size coupling & \\textbf{94\\%} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent with the coupling visible in the same place: a median of 16.3 markers
+in their top 99 against 3 across all clusters, against 15 and 1 here. Two
+independent analyses in the same pipeline family, two different estimators of the
+correction --- marker-share normalisation here, size-matched controls there ---
+and both find roughly 90\% of the effect is the coupling, leaving residuals of
+3.3-fold and 6.6-fold.
+
+\begin{keybox}
+\textbf{A warning taken from that section, for anyone repeating the control with
+matching rather than normalisation:} exact size-matching balances perfectly but
+thins the control pool until a cluster returns as its own control, dragging the
+fold toward 1. Their matching used a caliper of 0.05 in $\log_{10}$ markers with
+200 null draws per cell, deliberately comparable rather than exact.
+\end{keybox}
+
+**Status of the question.** Largely resolved: most of the 43-fold was opportunity.
+What remains is a threefold per-marker concentration in long dense blocks and a
+fourfold depletion in long sparse ones, neither of which has a mechanism, and
+both of which are small enough that "clusters with more markers contain more
+QTN" is close to a complete account.
 
 # Provenance
 
