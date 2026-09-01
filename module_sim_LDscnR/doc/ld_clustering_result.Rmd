@@ -158,6 +158,67 @@ cat(sprintf("\\textbf{pooled} & %d & %d & %d & %s \\\\\n", s$w, s$l, s$t, fp(s$p
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
+# The metric is a claim, not a convention {#sec:metric}
+
+Clustering and the single-SNP scan sit at **different operating points**, so
+which is "better" is decided by how precision and recall are weighted --- and
+that choice is an assumption about the use, not a neutral convention.
+
+```{r pr2, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat(" & \\multicolumn{2}{c}{\\texttt{nobgs}} & \\multicolumn{2}{c}{\\texttt{bgs}} \\\\\n")
+cat("Analysis & precision & recall & precision & recall \\\\\n\\midrule\n")
+cat("single SNP & 0.101 & \\textbf{0.372} & 0.111 & \\textbf{0.348} \\\\\n")
+cat("Simes over cluster members & \\textbf{0.254} & 0.155 & \\textbf{0.194} & 0.177 \\\\\n")
+cat("eMLG & 0.225 & 0.165 & 0.200 & 0.179 \\\\\n")
+cat("LD-central representative & 0.262 & 0.150 & 0.125 & 0.095 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Simes has **higher precision in 62 of 71 non-tied panels** --- 34 W / 3 L
+in `nobgs` ($p = 1.2\times10^{-7}$) and 28 W / 6 L in `bgs` ($p = 2.0\times10^{-4}$)
+--- and lower recall. The single-SNP scan finds more loci and buries them: a
+median of 51 of its 67 flagged clusters tag no QTN at all, against 7 of 10 for
+Simes.
+
+## Where the comparison turns
+
+$F_\beta = (1+\beta^2)PR / (\beta^2 P + R)$ weights recall $\beta$ times as
+heavily as precision.
+
+```{r fb, results="asis"}
+cat("\\begin{tabular}{@{}rrrl@{}}\n\\toprule\n")
+cat("$\\beta$ & median $F$ (single SNP) & median $F$ (Simes) & paired over 80 panels \\\\\n\\midrule\n")
+cat("0.25 & 0.107 & \\textbf{0.229} & 60 W / 12 L, $p = 8\\times10^{-9}$ \\\\\n")
+cat("0.50 & 0.120 & \\textbf{0.185} & 56 W / 16 L, $p = 2\\times10^{-6}$ \\\\\n")
+cat("1.00 & 0.152 & \\textbf{0.181} & 48 W / 24 L, $p = 0.006$ \\\\\n")
+cat("1.50 & \\textbf{0.188} & 0.153 & 43 W / 29 L, $p = 0.12$ \\\\\n")
+cat("2.00 & \\textbf{0.214} & 0.147 & 34 W / 38 L, $p = 0.72$ \\\\\n")
+cat("3.00 & \\textbf{0.270} & 0.169 & 20 W / 52 L, $p = 2\\times10^{-4}$ \\\\\n")
+cat("4.00 & \\textbf{0.319} & 0.174 & 15 W / 57 L, $p = 7\\times10^{-7}$ \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{The crossover lies between $\beta = 1.5$ and $2$.} Weight recall no more
+than about 1.5 times precision and clustering wins; weight it twice or more and
+the single-SNP scan wins. At the balanced $F_1$ clustering wins ($p = 0.006$).
+
+The $P \times R$ product used elsewhere in this module sits near $\beta = 1$, so
+the results reported there are conditional on that weighting. \textbf{This is
+stated rather than buried:} a single performance number cannot settle this
+comparison, and any claim that one analysis is better is a claim about $\beta$.
+\end{keybox}
+
+Which regime applies depends on the use. For a scan whose output is a candidate
+list for experimental follow-up, each false positive costs real work and
+$\beta < 1$ is defensible --- clustering wins there decisively, 60 W / 12 L at
+$\beta = 0.25$. For a discovery scan feeding a meta-analysis, where a missed
+locus is the expensive error, $\beta > 2$ is defensible and the single-SNP scan
+wins. Neither is the default.
+
+![The trade-off. A: the two analyses occupy different operating points. B: median $F_\beta$ curves cross, so no single number settles the comparison. C: the paired win rate against $\beta$, with the indistinguishable region shaded.](../figures/fbeta_tradeoff.png)
+
 # Scope, and what it means for real data
 
 \begin{keybox}
