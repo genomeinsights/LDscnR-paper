@@ -95,24 +95,18 @@ Section~\ref{sec:fdr} tests this empirically rather than assuming it.
 
 ## The machinery
 
-```{r machinery}
-kable(data.frame(
-  Component = c("Unit", "Filter", "Test", "Truth", "Controls", "Null"),
-  Choice = c(
-    "Stage-2 LD cluster, represented by its pruned marker",
-    "Top $k$ units by median $ld_w$ of members, computed before any phenotype",
-    "BH at 0.05 within the selected set only",
-    "bp distance to nearest driving QTN, causal variants excluded",
-    "MAF, cluster size, random --- all at identical $k$",
-    "Surrogate environments (genetic basis), 100 draws"),
-  Why = c(
-    "Stage-2 membership is recomputed per bundle and required to reproduce the stored GRM marker set exactly",
-    "Median rather than max: robust to one extreme member",
-    "Identical to the conventional analysis, applied to fewer tests",
-    "Shares no machinery with $ld_w$; an $r^2$-tagging truth would flatter it by construction",
-    "Isolates enrichment from mere size reduction, and $ld_w$ from frequency",
-    "Preserves spatial and genetic structure; a naive shuffle destroys what $ld_w$ keys on"),
-  check.names = FALSE), booktabs = TRUE) 
+```{r machinery, results="asis"}
+cat("\\begin{tabular}{@{}p{1.7cm}p{5.4cm}p{7.3cm}@{}}\n\\toprule\n")
+cat("\\textbf{Component} & \\textbf{Choice} & \\textbf{Why} \\\\\n\\midrule\n")
+rows <- list(
+ c("Unit","Stage-2 LD cluster, represented by its pruned marker","Membership is recomputed per bundle and required to reproduce the stored GRM marker set exactly"),
+ c("Filter","Top $k$ units by median $ld_w$ of members, computed before any phenotype","Median rather than max: robust to a single extreme member"),
+ c("Test","BH at 0.05 within the selected set only","Identical to the conventional analysis, applied to fewer tests"),
+ c("Truth","bp distance to nearest driving QTN, causal variants excluded","Shares no machinery with $ld_w$; an $r^2$-tagging truth would flatter it by construction"),
+ c("Controls","MAF, cluster size, random --- all at identical $k$","Isolates enrichment from mere size reduction, and $ld_w$ from frequency"),
+ c("Null","Surrogate environments (genetic basis), 100 draws","Preserves spatial and genetic structure; a naive shuffle destroys what $ld_w$ keys on"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
 The genome-wide scan --- BH at 0.05 over all units --- **is** the conventional
@@ -203,6 +197,58 @@ genome-wide in 16--57\% of surrogates while $\lambda \approx 0.99$, so it is a
 different-environment null rather than a no-signal null.
 \end{keybox}
 
+
+# The result is not uniform across simulation cells {#sec:cells}
+
+The pooled numbers above average over four cells that differ in selection
+strength and in background LD. They do not behave alike, and one of them
+reverses the conclusion.
+
+```{r cell-baseline}
+gws <- clu[method=="genome_wide" & window_kb==50,
+           .(panels = .N, `median true` = median(n_tp), `mean true` = round(mean(n_tp),2),
+             `% panels with zero` = round(100*mean(n_tp==0))), by = cell][order(cell)]
+kable(gws, booktabs = TRUE,
+      caption = "Signal available to the conventional alpha analysis, per cell (50 kb window). Where the baseline is zero, beating it requires only one discovery.")
+```
+
+```{r cell-winrate}
+byc <- f[window_kb==50 & method %in% c("ld_w","size"),
+         .(win = winrate(n_tp - gw_tp), p = signp(n_tp - gw_tp),
+           med_gain = median(n_tp - gw_tp)), by = .(cell, method, k)]
+tw <- dcast(byc, cell + method ~ k, value.var = "win")
+setnames(tw, c("cell","filter", paste0("k=", sort(unique(byc$k)))))
+kable(tw[order(cell, filter)], digits = 0, booktabs = TRUE,
+      caption = "Percent of 20 panels per cell in which the filter beats the genome-wide alpha analysis (50 kb window). Below 50 means the filter is WORSE than not filtering.")
+```
+
+\begin{keybox}
+\textbf{$ld_w$ fails in \texttt{V0.5\_c2}, and cluster size does not.} $ld_w$ wins
+in 28\% of panels there --- worse than no filtering --- flat across $k$ until the
+selection is so large it has stopped being a filter. Cluster size wins in
+\textbf{100\% of panels at every $k$} in the same cell. This is the widest
+separation between the two filters anywhere in the data.
+\end{keybox}
+
+`V0.5_c2` is the high-background-LD cell ($b = 0.42$; it is the cell where the
+old fixed $r^2 \geq 0.27$ cut sat *below* background LD). A plausible reading is
+that $ld_w$ is a **local**-LD statistic, and where everything is correlated with
+everything there is no local structure left for it to key on, whereas large
+clusters still mark real linkage blocks. That is an interpretation of one cell,
+not a tested mechanism.
+
+Two consequences. First, the pooled claim in Section~\ref{sec:size} understates
+the case against $ld_w$: the two filters are not merely indistinguishable on
+average, $ld_w$ is **less robust across regimes**. Second, any application should
+establish which regime it is in before choosing a filter.
+
+```{r cell-gain}
+tg <- dcast(byc[method=="ld_w"], cell ~ k, value.var = "med_gain")
+setnames(tg, c("cell", paste0("k=", sort(unique(byc$k)))))
+kable(tg, booktabs = TRUE,
+      caption = "Median gain in true discoveries over the genome-wide analysis, ld_w filter, 50 kb. Read alongside the win rates: a high win rate on a zero baseline can rest on a gain of one.")
+```
+
 # The size control, and what it costs the claim {#sec:size}
 
 ```{r size-tab}
@@ -238,23 +284,19 @@ little. The information has already been spent.
 
 # What is established, and what is not
 
-```{r status}
-kable(data.frame(
-  Claim = c("Independent filtering of LD clusters beats a genome-wide scan",
-            "The filter must be LD-structure-based",
-            "Filtered BH controls FDR under a structure-preserving null",
-            "The gain grows with the multiplicity burden",
-            "$ld_w$ specifically is needed at selection time",
-            "This transfers to empirical data"),
-  Status = c("Established", "Established", "Established",
-             "Supported", "NOT supported", "Untested here"),
-  Basis = c("80 panels, 56--97% win rate, rising with $k$",
-            "MAF and random are significantly WORSE than no filtering",
-            "Rates 0.027--0.039 vs alpha 0.05, at or below genome-wide",
-            "Marker tracks (30k) weaker than pooled panels (86k); one comparison, not a designed sweep",
-            "Cluster size matches it at every $k$",
-            "Simulations only; the 3sp panel session reports a much larger effect"),
-  check.names = FALSE), booktabs = TRUE, longtable = TRUE)
+```{r status, results="asis"}
+cat("\\begin{tabular}{@{}p{6.0cm}p{2.2cm}p{6.2cm}@{}}\n\\toprule\n")
+cat("\\textbf{Claim} & \\textbf{Status} & \\textbf{Basis} \\\\\n\\midrule\n")
+rows <- list(
+ c("Independent filtering of LD clusters beats a genome-wide scan","Established","80 panels, 56--97\\% win rate, rising with $k$"),
+ c("The filter must be LD-structure-based","Established","MAF and random are significantly WORSE than no filtering"),
+ c("Filtered BH controls FDR under a structure-preserving null","Established","Rates 0.027--0.039 vs $\\alpha$ 0.05, at or below genome-wide"),
+ c("The gain grows with the multiplicity burden","Supported","Marker tracks (30k) weaker than pooled panels (86k); one comparison, not a designed sweep"),
+ c("$ld_w$ specifically is needed at selection time","\\textbf{Not supported}","Cluster size matches it at every $k$, and beats it outright in \\texttt{V0.5\\_c2}"),
+ c("The filters behave alike across regimes","\\textbf{Contradicted}","$ld_w$ wins 28\\% of panels in \\texttt{V0.5\\_c2} where cluster size wins 100\\%"),
+ c("This transfers to empirical data","Untested here","Simulations only; the 3sp panel session reports a much larger effect"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
 ## What would falsify the main claim
@@ -275,6 +317,35 @@ EMMAX engine is analysed here.
 
 # Provenance
 
+## Which simulation generation each result uses
+
+These results do **not** all come from the same simulations, and the main
+cluster-level result does not come from the newest.
+
+```{r gens, results="asis"}
+cat("\\begin{tabular}{@{}p{2.5cm}p{3.5cm}p{2.8cm}p{5.6cm}@{}}\n\\toprule\n")
+cat("\\textbf{Generation} & \\textbf{Maps} & \\textbf{Fitted half-decay} & \\textbf{Used for} \\\\\n\\midrule\n")
+rows <- list(
+  c("\\texttt{bgs5}", "MAP\\_RES 3.3e-5; 31.5\\% of markers share a position",
+    "55.8 kb (18 win/chr, $\\sim$3 Mb spans)",
+    "\\textbf{cluster-level power (the main result) and both manhattans}"),
+  c("\\texttt{pilot\\_v2\\_v05c1}", "MAP\\_RES 3.3e-6; no shared positions",
+    "13.3 kb (95 win/chr, $\\sim$0.56 Mb spans)",
+    "marker-level power only; \\texttt{V0.5\\_c1} only"),
+  c("\\texttt{analysis\\_inputs}", "pre-bgs5", "not compared",
+    "FDR validity only; \\texttt{V2\\_c1}, nobgs, \\texttt{gc\\_mode = none}"))
+for (r in rows) cat(paste(r, collapse = " & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+The two generations differ 4.2$\times$ in fitted half-decay, and at $\rho = 0.5$
+the half-decay **is** the stage-2 clustering distance --- so the test units
+themselves would differ on the newer maps. The difference traces to the decay
+fitting scale rather than to the maps: same-position marker pairs show $r^2$ of
+0.023 against 0.022 for pairs 1 bp--10 kb apart, so the collapsed positions do
+not inflate LD. Whether the main result survives re-clustering at the newer
+decay settings is **untested**.
+
 ```{r prov}
 kable(data.frame(
   Item = c("Power, cluster level", "Power, marker level", "FDR validity",
@@ -283,7 +354,7 @@ kable(data.frame(
              "`filter_then_test.R`, 63 runs of `pilot_v2_v05c1` tracks",
              "`filter_fdr_check.R`, 10 environments x 100 surrogates x 2 bases",
              "`plot_filter_then_test.R`, `plot_filter_manhattan.R`, `plot_filter_manhattan_ld.R`",
-             "`regen_sim_data_bgs5`, 800 files, 4 cells x 10 env x 2 arms x 10 map sets",
+             "`regen_sim_data_bgs5` (older generation, see above), 800 files",
              "`analysis_inputs`, V2_c1, B = 100, `gc_mode = none`",
              "`pilot_v2_v05c1/tracks`, V0.5_c1, 8 environments",
              "alpha 0.05; stage-2 `min_r2_rho` 0.5, `distance_threshold` 1e5; scoring `dmax_cap` 1e5",
