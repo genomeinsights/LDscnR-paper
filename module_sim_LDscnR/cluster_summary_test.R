@@ -18,6 +18,12 @@
 ##                   choice of representative, as opposed to the LD-central one
 ##
 ## Scored at LOCUS level: clusters flagged, and how many contain a driving QTN.
+##
+## CROSSED WITH ld_w FILTERING. Every filtering result elsewhere in this module
+## used the REPRESENTATIVE p-value, which the comparison below shows is the
+## weakest of the summarisation rules. Filtering has therefore only ever been
+## evaluated on a lossy summary. Here each summarisation is crossed with
+## cluster-ranked ld_w selection at several k, so the two axes are separated.
 ## Env: SIM_DATA, CELL, TAG, ENV, FILES, ALPHA
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
@@ -27,6 +33,7 @@ CELL <- Sys.getenv("CELL", "V0.5_c1"); TAG <- Sys.getenv("TAG", "nobgs")
 ENV  <- as.integer(Sys.getenv("ENV", "3"))
 FILES <- as.integer(strsplit(Sys.getenv("FILES", "1,2,3,4,5,6,7,8,9,10"), ",")[[1]])
 ALPHA <- as.numeric(Sys.getenv("ALPHA", "0.05"))
+KS    <- as.integer(strsplit(Sys.getenv("KS", "1000,5000,20000,50000"), ",")[[1]])
 dir.create(OUT, showWarnings = FALSE, recursive = TRUE)
 
 simes <- function(p) { p <- sort(p[is.finite(p)]); n <- length(p)
@@ -51,6 +58,7 @@ per_file <- function(i) {
                p_best = min(emx_p, na.rm = TRUE),
                p_simes= simes(emx_p),
                n      = .N,
+               ld_w   = median(ld_w_095, na.rm = TRUE),
                has_qtn= any(true_pos_QTN %in% TRUE),
                Chr = Chr[1], Pos = median(Pos)), by = CL]
 
@@ -80,19 +88,36 @@ su <- rbindlist(lapply(FILES, per_file), fill = TRUE)
 cat(sprintf("\n  %d clusters, %d contain a driving QTN; eMLG p available for %d (%.0f%%)\n",
             nrow(su), sum(su$has_qtn), sum(is.finite(su$p_emlg)), 100*mean(is.finite(su$p_emlg))))
 
-score <- function(col) {
+score <- function(col, keep = NULL, kk = NA_integer_) {
   p <- su[[col]]; ok <- is.finite(p)
+  if (!is.null(keep)) ok <- ok & keep
   q <- rep(NA_real_, length(p)); q[ok] <- p.adjust(p[ok], "BH")
   sig <- which(!is.na(q) & q < ALPHA)
-  data.table(summary = col, tested = sum(ok), flagged = length(sig),
+  data.table(summary = col, k = kk, tested = sum(ok), flagged = length(sig),
              with_qtn = sum(su$has_qtn[sig]),
              precision = if (length(sig)) mean(su$has_qtn[sig]) else NA_real_,
              recall = sum(su$has_qtn[sig]) / sum(su$has_qtn),
              cutoff = if (length(sig)) max(p[sig]) else NA_real_)
 }
-res <- rbindlist(lapply(c("p_rep","p_emlg","p_best","p_simes","p_maxldw"), score))
+SUMS <- c("p_rep","p_emlg","p_best","p_simes","p_maxldw")
+res <- rbindlist(lapply(SUMS, score))
 res[, PR := precision * recall]
-print(res)
+cat("\n=== A. no filtering, all clusters ===\n"); print(res)
+
+## cluster-ranked ld_w selection, crossed with summarisation
+ord <- order(-su$ld_w)
+cx <- rbindlist(lapply(KS, function(kk) {
+  if (kk >= nrow(su)) return(NULL)
+  keep <- rep(FALSE, nrow(su)); keep[head(ord, kk)] <- TRUE
+  rbindlist(lapply(SUMS, function(cl) score(cl, keep, kk)))
+}))
+cx[, PR := precision * recall]
+cat("\n=== B. crossed with cluster-ranked ld_w filtering ===\n")
+print(dcast(cx, k ~ summary, value.var = "with_qtn")[order(k)])
+cat("  (cells are QTN-bearing clusters recovered, out of", sum(su$has_qtn), ")\n")
+cat("\n  precision:\n"); print(dcast(cx, k ~ summary, value.var = "precision")[order(k)])
+cat("\n  clusters flagged:\n"); print(dcast(cx, k ~ summary, value.var = "flagged")[order(k)])
+res <- rbind(res, cx, fill = TRUE)
 fwrite(cbind(cell = CELL, tag = TAG, env = ENV, res),
        file.path(OUT, sprintf("cluster_summary_test_%s_%s_env%d.csv", CELL, TAG, ENV)))
 cat("\n  p_best has NO within-cluster correction and is anti-conservative;\n")
