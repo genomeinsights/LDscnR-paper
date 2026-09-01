@@ -124,7 +124,7 @@ one <- function(cell, tag) {
     arms[[paste0("ld_w_",   kk)]] <- sig_of(idx_of(mk_of(head(cl_rank[order(-ldw)]$g, kk))))
     arms[[paste0("MAF_",    kk)]] <- sig_of(idx_of(mk_of(head(cl_rank[order(-maf)]$g, kk))))
     arms[[paste0("size_",   kk)]] <- sig_of(idx_of(mk_of(head(cl_rank[order(-n)]$g,   kk))))
-    arms[[paste0("random_", kk)]] <- sig_of(idx_of(mk_of(sample(cl_rank$g, kk)))) }
+    arms[[paste0("random_", kk)]] <- sig_of(idx_of(mk_of(cl_rank$g[sample.int(nrow(cl_rank), kk)]))) }
 
   ## truth table over every marker that any stage-2 cluster could report
   uni  <- unique(unlist(grp, use.names = FALSE))

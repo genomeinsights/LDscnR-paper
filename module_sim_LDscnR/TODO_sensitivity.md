@@ -99,6 +99,14 @@ whether the two axes give different answers at all.
 - **Name the axis.** State whether a reported C is selection stability or test
   stability. Unlabelled, "called under every setting" reads as a claim about the
   finding rather than about the analysis.
+- **Print a bounded diagnostic next to its bound.** If any cell does matching or
+  sampling, report a statistic that can come back *impossible* rather than merely
+  disappointing. The 3sp panel session caught a live sampler bug because
+  `max |lspan_case - lspan_control| = 4.619` against a caliper of 0.20 is
+  arithmetically impossible for a correct matcher, which localised the fault with
+  no judgement call. A standardised mean difference has no such bound and would
+  have absorbed the same corruption as a plausible-looking 0.4.
+
 - **Stability is not validity.** A region called under every setting may still be
   a false positive; the sweep varies the analysis, not the truth.
 

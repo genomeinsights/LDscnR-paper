@@ -202,7 +202,7 @@ cat(sprintf("    %d of %d cells negative -- sign test p = %.3f\n", k, n,
 set.seed(1)
 obs <- suppressWarnings(stats::cor(nz$A, nz$rel, method = "spearman"))
 perm <- replicate(2000, {
-  z <- copy(nz)[, rel := sample(rel), by = .(V, cc)]
+  z <- copy(nz)[, rel := rel[sample.int(.N)], by = .(V, cc)]
   suppressWarnings(stats::cor(z$A, z$rel, method = "spearman")) })
 ## The null preserves each cell's mean rel and mean A, so the BETWEEN-cell
 ## ordering survives shuffling and only the WITHIN-cell association is tested.

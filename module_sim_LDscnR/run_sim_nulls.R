@@ -145,7 +145,7 @@ spatial_drawer <- function(coords, y) {
 global_perm_drawer <- function(pops, y) {
   up <- unique(pops)
   function() {
-    v <- stats::setNames(sample(tapply(y, pops, `[`, 1)), up)     # patch values shuffled
+    v <- stats::setNames({ .pv <- tapply(y, pops, `[`, 1); .pv[sample.int(length(.pv))] }, up)     # patch values shuffled
     as.numeric(stats::resid(stats::lm(as.numeric(v[as.character(pops)]) ~ y)))
   }
 }

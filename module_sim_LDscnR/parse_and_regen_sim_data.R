@@ -218,7 +218,11 @@ subsample_within_pop <- function(pops, frac, seed) {
 
   keep <- unlist(lapply(seq_along(idx_by_pop), function(i) {
     k <- min(base_n[i] + bump[i], n_by_pop[i])
-    if (k <= 0) integer(0) else sample(idx_by_pop[[i]], k)
+    ## NOT sample(v, k): if v has length 1, sample() draws from 1:v and returns
+    ## an arbitrary index. Latent here (every population has 2 individuals) but
+    ## fires on any data with a singleton population.
+    v <- idx_by_pop[[i]]
+    if (k <= 0) integer(0) else v[sample.int(length(v), k)]
   }), use.names = FALSE)
   sort(keep)
 }
