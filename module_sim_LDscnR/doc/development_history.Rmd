@@ -643,6 +643,125 @@ selectivity). And $ld_w$ was described as unable to separate the sparse and dens
 classes; that is true of the median $ld_w$ within them (0.0105 against 0.0099)
 but does not make $ld_w$ a poor selector overall, which it is not.
 
+# Three deferred analyses, reported {#sec:deferred}
+
+## Does the result survive the newer decay settings?
+
+The main results use `bgs5`, whose `LD_decay` was fitted with
+`n_win_decay = 10`; the newer pilot generation uses 50. Both settings were run
+through the **same** code path so the comparison isolates the parameter rather
+than confounding it with recomputation.
+
+```{r rec, results="asis"}
+cat("\\begin{tabular}{@{}lrr@{}}\n\\toprule\n")
+cat("Setting & fitted half-decay & units per panel \\\\\n\\midrule\n")
+cat("\\texttt{n\\_win\\_decay = 50} & 39.7 kb & 85,440 \\\\\n")
+cat("\\texttt{n\\_win\\_decay = 10} & 53.7 kb & 85,888 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+Paired over 80 panels at $k = 5{,}000$, 50 kb: $ld_w$ 10 W / 17 L / 13 T
+($p = 0.25$), cluster size 12 W / 14 L / 14 T ($p = 0.85$). **No difference**,
+so the untested exposure recorded earlier is closed.
+
+\begin{keybox}
+\textbf{But the manipulation is far weaker than claimed.} Through one code path
+the two settings give 39.7 against 53.7 kb --- a factor of \textbf{1.35}, not the
+4.2 measured between \texttt{bgs5} and the pilot tracks. Most of that original
+gap was therefore \emph{between generations} --- different simulations, different
+maps --- and not attributable to \texttt{n\_win\_decay}. The earlier claim that
+the two generations differ materially in clustering distance because of this
+parameter is withdrawn.
+\end{keybox}
+
+## Where does the $k$ curve turn?
+
+```{r extk, results="asis"}
+cat("\\begin{tabular}{@{}rrrr@{}}\n\\toprule\n")
+cat("$k$ & win \\% & non-tied panels & median gain \\\\\n\\midrule\n")
+cat("500 & 58 & 57 & 0 \\\\\n")
+cat("1,000 & 63 & 65 & +1 \\\\\n")
+cat("5,000 & 79 & 66 & +1 \\\\\n")
+cat("20,000 & 100 & 47 & +1 \\\\\n")
+cat("40,000 & 100 & 27 & 0 \\\\\n")
+cat("60,000 & 100 & 13 & 0 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+The win rate saturates at 100% from $k = 20{,}000$, but **the non-tied
+denominator collapses** from 47 panels to 13 and the median gain falls to zero.
+With about 86,600 units per panel, selecting 60,000 is barely filtering, so the
+two analyses converge and only a handful of panels differ at all.
+
+There is no useful interior optimum --- a plateau at $k = 5{,}000$ to $20{,}000$
+worth **one** discovery, then dissolution into ties. "100% at $k = 20{,}000$"
+must never be quoted without its denominator.
+
+## Do the surrogate nulls exercise structure?
+
+```{r subsp, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("Basis & PC1--3 & PC1--10 & PC1--20 & PC1--50 \\\\\n\\midrule\n")
+cat("\\texttt{env\\_orth} surrogates & 0.009 & 0.098 & 0.102 & 0.109 \\\\\n")
+cat("\\texttt{genetic} surrogates & 0.002 & 0.009 & 0.013 & 0.020 \\\\\n")
+cat("observed data & \\multicolumn{4}{c}{$\\approx$ 0.40} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent $R^2$ of the association signal on the leading GRM subspace. The 3sp
+panel session showed that a PC1--3 statistic is **blind to diffuse structure**,
+and that is confirmed here: `env_orth` rises eleven-fold from PC1--3 to PC1--10.
+An earlier version of this diagnostic used PC1--3 only and could not have seen
+it.
+
+The conclusion nonetheless survives the better measurement. At PC1--10 the
+observed data sits at 0.40 while `env_orth` reaches 0.098 and `genetic` 0.009.
+So `genetic` is a **no-structure** null --- its calibration shows the scan is
+well behaved when structure is absent, not that it is well behaved under
+structure --- and `env_orth` is a **mild** structured null at about a quarter of
+the observed level. The 83% protective effect of filtering reported in
+Section~\ref{sec:fdr} therefore stands as a weak-structure measurement, which is
+what was claimed, but the earlier reasoning rested on a statistic that could not
+have established it.
+
+# Withdrawn: the confounding mechanism relayed from the panel session
+
+An earlier version of this document and several reports to PK carried a
+hypothesis from the 3sp panel session: that their long-span false positives were
+long-range LD manufactured by allele-frequency covariance among structured
+populations, and that this failure mode was structurally absent from a lattice
+genome. **That session has withdrawn it** on their own measurement --- they had
+measured stage-2 groups and read a distance run's geometry as a demographic
+signal.
+
+Their follow-up hypothesis, that the long-and-dense and long-and-sparse classes
+are two different kinds of object (a coherent stage-1 block against a chained
+stage-2 distance run), was tested here and **does not transfer**:
+
+```{r coh, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("Class & median $n$ & median span & ends $r^2$ & ratio to adjacent \\\\\n\\midrule\n")
+cat("short & 4 & 24.4 kb & 0.760 & 0.87 \\\\\n")
+cat("long \\& sparse & 7 & 305.7 kb & 0.780 & 0.86 \\\\\n")
+cat("long \\& dense & 15 & 154.3 kb & 0.791 & 0.83 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Long-and-sparse units here are **coherent blocks**: their extreme
+markers sit at $r^2 = 0.78$, indistinguishable from long-and-dense, against the
+0.36 ratio the panel session measures for their chained runs. So in these
+simulations the split is genuinely marker density within coherent blocks, not
+object type.
+
+\begin{keybox}
+\textbf{Which leaves the enrichment difference unexplained.} Long-and-dense holds
+70\% of QTN at 30-fold enrichment; long-and-sparse holds 2.5\% at 0.7-fold. The
+classes differ in marker count only 15 to 7, which cannot produce a 43-fold ratio
+in enrichment. No account of this is offered here, and the two mechanisms
+proposed so far --- demographic long-range LD, and object type --- have both been
+withdrawn on measurement.
+\end{keybox}
+
 # Provenance
 
 ```{r gens, results="asis"}
