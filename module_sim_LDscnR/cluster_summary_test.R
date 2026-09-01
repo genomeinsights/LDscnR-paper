@@ -33,6 +33,12 @@ CELL <- Sys.getenv("CELL", "V0.5_c1"); TAG <- Sys.getenv("TAG", "nobgs")
 ENV  <- as.integer(Sys.getenv("ENV", "3"))
 FILES <- as.integer(strsplit(Sys.getenv("FILES", "1,2,3,4,5,6,7,8,9,10"), ",")[[1]])
 ALPHA <- as.numeric(Sys.getenv("ALPHA", "0.05"))
+## The cluster partition is built from GENOTYPES and never sees a p-value, so
+## swapping the association method changes exactly one column. The eMLG arm is
+## the exception -- it refits the association on consensus genotypes -- and is
+## skipped unless the engine is emmax.
+ENG   <- Sys.getenv("ENGINE", "emmax")
+PCOL  <- if (ENG == "emmax") "emx_p" else "lfmm_p"
 KS    <- as.integer(strsplit(Sys.getenv("KS", "1000,5000,20000,50000"), ",")[[1]])
 dir.create(OUT, showWarnings = FALSE, recursive = TRUE)
 
@@ -54,8 +60,8 @@ per_file <- function(i) {
 
   ## per-cluster summaries from the stored per-marker p-values
   su <- mm[, .(p_rep  = emx_p[marker %in% pr$pruned][1],
-               p_maxldw = emx_p[which.max(ld_w_095)],
-               p_best = min(emx_p, na.rm = TRUE),
+               p_maxldw = get(PCOL)[which.max(ld_w_095)],
+               p_best = min(get(PCOL), na.rm = TRUE),
                p_simes= simes(emx_p),
                n      = .N,
                ld_w   = median(ld_w_095, na.rm = TRUE),

@@ -44,6 +44,12 @@ TAGS  <- strsplit(Sys.getenv("TAGS", "nobgs,bgs"), ",")[[1]]
 ENVS  <- as.integer(strsplit(Sys.getenv("ENVS", "1,2,3,4,5,6,7,8,9,10"), ",")[[1]])
 FILES <- as.integer(strsplit(Sys.getenv("FILES", "1,2,3,4,5,6,7,8,9,10"), ",")[[1]])
 ALPHA <- as.numeric(Sys.getenv("ALPHA", "0.05"))
+## The cluster partition is built from GENOTYPES and never sees a p-value, so
+## swapping the association method changes exactly one column. The eMLG arm is
+## the exception -- it refits the association on consensus genotypes -- and is
+## skipped unless the engine is emmax.
+ENG   <- Sys.getenv("ENGINE", "emmax")
+PCOL  <- if (ENG == "emmax") "emx_p" else "lfmm_p"
 CORES <- as.integer(Sys.getenv("CORES", "1"))
 suppressMessages(library(parallel))
 dir.create(OUT, showWarnings = FALSE, recursive = TRUE)
@@ -79,9 +85,9 @@ for (i in FILES) {
     d[, .(r2 = max(r2)), by = CL][, qtn := paste0(i, "_", drv$marker[j])][]
   }))
   ## cluster-level summaries
-  su <- mm[, .(p_rep = emx_p[marker %in% pr$pruned][1], p_simes = simes(emx_p),
+  su <- mm[, .(p_rep = get(PCOL)[marker %in% pr$pruned][1], p_simes = simes(get(PCOL)),
                has_qtn = any(true_pos_QTN %in% TRUE)), by = CL]
-  E <- pr$eMLG
+  E <- if (ENG == "emmax") pr$eMLG else NULL
   if (!is.null(E) && ncol(E)) {
     pp <- tryCatch(emmax(Y = as.numeric(x$env$env), X = E, K = x$GRM, cores = 1)$pval,
                    error = function(e) NULL)
@@ -97,7 +103,7 @@ for (i in FILES) {
   su[n_loci == 1, dens := NA_real_]
   su[, long_sparse := span > 1e5 & (is.na(dens) | dens < 5)]
   clu[[length(clu)+1]] <- su
-  snp[[length(snp)+1]] <- mm[, .(CL, p = emx_p, n_loci = .N), by = CL][, .(CL, p, n_loci)]
+  snp[[length(snp)+1]] <- mm[, .(CL, p = get(PCOL), n_loci = .N), by = CL][, .(CL, p, n_loci)]
 }
 su  <- rbindlist(clu, fill = TRUE)
 sn  <- rbindlist(snp, fill = TRUE)
@@ -176,5 +182,5 @@ out <- if (CORES > 1) {
 }
 allr <- rbindlist(Filter(Negate(is.null), out), fill = TRUE)
 stopifnot(nrow(allr) > 0)
-fwrite(allr, file.path(OUT, "snp_vs_cluster_dedup_allpanels.csv"))
+fwrite(allr, file.path(OUT, sprintf("snp_vs_cluster_dedup_allpanels_%s.csv", ENG)))
 cat(sprintf("\n  written: %d rows from %d panels\n", nrow(allr), uniqueN(allr[, .(cell,tag,env)])))
