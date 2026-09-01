@@ -158,6 +158,67 @@ cat(sprintf("\\textbf{pooled} & %d & %d & %d & %s \\\\\n", s$w, s$l, s$t, fp(s$p
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
+# What this means for a call on real data {#sec:upshot}
+
+The practical upshot is one sentence, and it follows from the FDP argument rather
+than from any performance number: **a call from the clustered analysis is about
+twice as likely to be real as one from a single-SNP scan**, and it is more likely
+to be real *because the error rate is finally about the thing being counted*.
+
+```{r prec2, results="asis"}
+cat("\\begin{tabular}{@{}llrrr@{}}\n\\toprule\n")
+cat("Engine & Arm & single SNP & Simes & ratio \\\\\n\\midrule\n")
+cat("EMMAX & \\texttt{nobgs} & 0.101 & 0.254 & 2.5$\\times$ \\\\\n")
+cat("EMMAX & \\texttt{bgs} & 0.111 & 0.194 & 1.7$\\times$ \\\\\n")
+cat("LFMM & \\texttt{nobgs} & 0.079 & 0.164 & 2.1$\\times$ \\\\\n")
+cat("LFMM & \\texttt{bgs} & 0.121 & 0.252 & 2.1$\\times$ \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Precision of flagged clusters, medians over 40 panels per cell. The
+**ratio** is the transferable part; the absolute values are properties of this
+signal-to-noise regime.
+
+\begin{keybox}
+\textbf{This is not extra caution, and both analyses control FDR at 5\%.} What
+differs is what the guarantee is \emph{about}. A single-SNP scan controls the
+false discovery proportion among SNPs while being judged against a locus-level
+truth; clustering aligns the two. The higher precision is that alignment, not
+conservatism added on top.
+\end{keybox}
+
+Two limits on how far to take it.
+
+**It is comparative, not absolute.** Precision is about 0.25 here under the
+strict containment convention --- three calls in four still do not contain a QTN
+--- and 0.64 under tagging. A real dataset's value is not predicted by either.
+
+**And it is not free.** The same property costs recall, which is what
+Section~\ref{sec:metric} prices: below $\beta \approx 2$ the trade is worth
+making, above it is not. *"Fewer false positives"* and *"more missed loci"* are
+the same fact stated twice.
+
+## Replication with a second association method
+
+Everything above uses EMMAX. The cluster partition is built from genotypes and
+never sees a p-value, so any method supplying per-marker p-values substitutes by
+changing one column. Repeating the whole comparison with **LFMM**:
+
+```{r lfmm, results="asis"}
+cat("\\begin{tabular}{@{}llrrr@{}}\n\\toprule\n")
+cat("Engine & Analysis & flagged & contains a QTN & tags nothing \\\\\n\\midrule\n")
+cat("EMMAX & single SNP & 67.5 & 7.0 & 51.0 \\\\\n")
+cat("EMMAX & Simes & 10.5 & 3.0 & 7.0 \\\\\n")
+cat("LFMM & single SNP & 94.0 & 8.0 & 75.5 \\\\\n")
+cat("LFMM & Simes & 25.0 & 5.5 & 15.0 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent \texttt{nobgs} arm, medians. **80\% of the single-SNP scan's flags tag
+no QTN under LFMM**, against 60\% for Simes --- the same shape as EMMAX at larger
+magnitude. And the $\beta$ crossover sits at $\approx 2$ under both engines, so
+it is a property of the comparison rather than of EMMAX.
+
 # The metric is a claim, not a convention {#sec:metric}
 
 Clustering and the single-SNP scan sit at **different operating points**, so
