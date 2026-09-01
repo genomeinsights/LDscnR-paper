@@ -1,0 +1,176 @@
+---
+title: "Paper outline"
+subtitle: "Testing LD clusters instead of SNPs --- structure, evidence inventory, and gaps"
+author: "module_sim_LDscnR"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  pdf_document:
+    number_sections: true
+    toc: true
+    toc_depth: 2
+    latex_engine: pdflatex
+geometry: margin=2.4cm
+fontsize: 10pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage[table]{xcolor}
+  - \definecolor{shade}{HTML}{F2F5F6}
+  - \definecolor{gapc}{HTML}{FBF3EE}
+  - \usepackage{mdframed}
+  - \newmdenv[backgroundcolor=shade,linewidth=0pt,skipabove=8pt,skipbelow=8pt]{keybox}
+  - \newmdenv[backgroundcolor=gapc,linewidth=0pt,skipabove=8pt,skipbelow=8pt]{gapbox}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+suppressMessages({library(knitr)})
+```
+
+# The argument in one paragraph
+
+A genome scan tests SNPs; the object of interest is a locus. Benjamini--Hochberg
+controls the false discovery proportion **among the units tested**, so a
+single-SNP scan controls it among SNPs while being judged against a locus-level
+truth. On one simulated panel, 2,467 significant SNPs were **132 distinct LD
+clusters**, with the rejected set 6.3 times more redundant than the genome as a
+whole --- so "5% FDR over 2,467 discoveries" is a guarantee about a different
+object from the one being counted. Testing near-independent LD clusters aligns
+the two. The paper is that argument plus a pipeline that derives its units from
+the data's own LD decay rather than from chosen constants.
+
+\begin{keybox}
+\textbf{The central claim requires no simulation.} It follows from what BH
+controls. Everything measured below is supporting evidence for a claim that
+stands on its own, which is an unusual and exploitable position: the simulations
+show the size of the effect, not whether it exists.
+\end{keybox}
+
+# Why it is one paper and not four
+
+Each link is load-bearing rather than merely sequential. Remove any one and the
+argument fails at a specific point.
+
+```{r chain, results="asis"}
+cat("\\begin{tabular}{@{}p{3.4cm}p{10.8cm}@{}}\n\\toprule\n")
+cat("\\textbf{Link} & \\textbf{What fails without it} \\\\\n\\midrule\n")
+rows <- list(
+ c("LD-decay estimation","The clustering thresholds become chosen constants. The decay fit derives \\texttt{min\\_r2} and the merge distance \\emph{per chromosome}, so a threshold means the same thing on chromosomes with different recombination."),
+ c("$ld_w$","No units. $ld_w$ is what makes a cluster a cluster --- and, separately, is shown \\emph{not} to work as a filter within them, a negative that earns its place by ruling out the obvious alternative use."),
+ c("Two-stage reduction","The reported FDR is over SNPs. This is the claim."),
+ c("Association test","Nothing --- and that is the point. EMMAX and LFMM give the same conclusions, which is what shows the result is a property of the units rather than of any test."),
+ c("Consistency analysis","No guidance on which derived thresholds the answer depends on, so the pipeline is not usable by anyone else."))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+# Proposed structure
+
+## 1. Introduction
+
+The redundancy problem, stated as an FDR-target mismatch rather than as a
+multiple-testing complaint. Existing LD-aware scans mostly prune or clump *after*
+testing; this reverses the order and makes the correction match the unit.
+
+## 2. Methods
+
+2.1 Decay estimation and the derived thresholds. 2.2 $ld_w$. 2.3 Two-stage
+complexity reduction. 2.4 Cluster-level testing --- **Simes over members**, which
+beat every single-marker summary tested. 2.5 The consistency analysis.
+
+## 3. Results
+
+```{r res, results="asis"}
+cat("\\begin{tabular}{@{}p{4.4cm}p{6.4cm}p{3.2cm}@{}}\n\\toprule\n")
+cat("\\textbf{Section} & \\textbf{Headline} & \\textbf{Status} \\\\\n\\midrule\n")
+rows <- list(
+ c("3.1 The redundancy problem","2,467 significant SNPs are 132 clusters; small-$p$ tail 6.3$\\times$ more redundant than the genome","\\textbf{done}"),
+ c("3.2 What clustering buys","Precision 2$\\times$ higher (62 of 71 panels). A median 51 of 67 single-SNP flags tag no QTN, against 7 of 10","\\textbf{done}"),
+ c("3.3 How to summarise a cluster","Simes $>$ eMLG $>$ representative $>$ min-$p$ $>$ highest-$ld_w$","\\textbf{done}"),
+ c("3.4 The metric is a claim","$F_\\beta$ crossover at $\\beta \\approx 2$; below it clustering wins, above it does not","\\textbf{done}"),
+ c("3.5 Engine replication","EMMAX and LFMM: same composition result, same crossover","\\textbf{done}"),
+ c("3.6 Sensitivity","Two axes --- selection (27-cell grid) and test (engine) --- reported separately","\\textbf{not run}"),
+ c("3.7 Empirical demonstration","---","\\textbf{missing}"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+## 4. What does not work
+
+Short, and it earns its place by ruling out the obvious things a reader will
+propose. The C-score as a ranking statistic; four filters ($ld_w$ top-$k$, MAF,
+cluster size, geometric exclusion) all strongly enriched for QTN-bearing units
+and none improving precision-recall. **Enrichment predicts precision within a
+restriction, but no restriction beats using every cluster** --- the recall lost
+always exceeds the precision gained.
+
+## 5. Limitations
+
+# Evidence inventory: what would a referee ask for?
+
+\begin{gapbox}
+\textbf{Gap 1 --- no empirical demonstration.} Everything is simulated. The
+natural companion is the 3sp panel, but its support statistic currently measures
+the \emph{filter} rather than the test (units the filter selected but the test did
+not reject overlap peaks at 69.2\% against the discoveries' 78.2\%, $p = 0.18$),
+so it cannot carry a validation claim as it stands. \textbf{This is the largest
+gap.}
+\end{gapbox}
+
+\begin{gapbox}
+\textbf{Gap 2 --- the advantage is concentrated in one simulation cell.} Simes
+beats the single-SNP scan in 19 of 19 panels in \texttt{V0.5\_c1} and the paired
+tests in the other three cells are \textbf{null, not adverse} (26 W / 22 L, all
+$p > 0.4$) --- several panels are ties in which neither analysis recovers
+anything. Must be stated in the Results, not a supplement: \emph{decisive where
+there is signal, indistinguishable where there is not.}
+\end{gapbox}
+
+\begin{gapbox}
+\textbf{Gap 3 --- the sensitivity analysis is planned, not run.} It is also the
+link that makes the pipeline usable by someone else. Design is in
+\texttt{TODO\_sensitivity.md}: $3\times3\times3$ over \texttt{ld\_w\_threshold},
+\texttt{min\_r2\_rho} and minimum cluster size (9 re-clusterings, not 27, since
+the size floor is a post-filter), reported on two axes with no threshold
+recommended.
+\end{gapbox}
+
+\begin{gapbox}
+\textbf{Gap 4 --- one simulation generation.} Re-clustering at the newer decay
+settings changes nothing ($p = 0.25$ and $0.85$), so this is closed for the decay
+parameter --- but all results come from one simulator under one demographic
+model.
+\end{gapbox}
+
+# Claims the paper should not make
+
+- That clustering finds more loci. It finds **fewer** and is right more often.
+- That $ld_w$ filtering helps. Four variants, none did.
+- That any performance number transfers. The **ratios** are the transferable
+  part; absolute precision is a property of this signal-to-noise regime.
+- That a threshold is recommended for the consistency score. Every threshold
+  tried on a C-like quantity failed, including the one that looked principled.
+- That enrichment for containing a QTN is irrelevant to detection. It predicts
+  precision; it just cannot be exploited by restriction.
+
+# Two methodological findings that may be worth their own space
+
+\begin{keybox}
+\textbf{Name the axis a stability measure is on.} A consistency score computed
+over parameters that move only the selection measures how stable the
+\emph{selection} is. "Called under every setting" reads as a claim about the
+finding. The second association engine is the missing test-side axis, which makes
+the engine sweep and the sensitivity analysis one design rather than two.
+
+\textbf{Replicate specifically where nobody doubts the result.} The LFMM
+replication on the panel side surfaced two sampler defects that had been sitting
+in the original arm for a day with a manuscript being written around them. A
+replication that \emph{agrees} leaves such defects in place; the disagreement is
+the diagnostic.
+\end{keybox}
+
+# Provenance
+
+Result document: `ld_clustering_result.pdf`. Full record including everything
+withdrawn: `development_history.pdf`. Both build from committed CSVs. Branch
+`null-rework-two-basis`.
