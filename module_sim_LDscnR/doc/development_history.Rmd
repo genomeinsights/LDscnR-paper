@@ -566,6 +566,83 @@ to the largest $k$ tested, and since $k = n$ makes the two analyses identical th
 curve must return to ties somewhere above 20,000. Structured-null checks in the
 remaining cells and arms are not yet run.
 
+# Geometric exclusion of long-and-sparse clusters: a negative result {#sec:sparse}
+
+Stage-2 clusters were classified by span and by marker density, and the driving
+QTN counted in each class (184,004 clusters over both BGS arms, 40 QTN-bearing):
+
+```{r geom, results="asis"}
+cat("\\begin{tabular}{@{}lrrr@{}}\n\\toprule\n")
+cat("Class & \\% of units & \\% of QTN & fold enrichment \\\\\n\\midrule\n")
+cat("long \\& \\textbf{dense} ($\\ge$5 markers / 100 kb) & 2.30 & 70.0 & \\textbf{30.4} \\\\\n")
+cat("long \\& sparse & 3.36 & 2.5 & 0.7 \\\\\n")
+cat("short \\& dense & 39.06 & 27.5 & 0.7 \\\\\n")
+cat("short \\& sparse & 1.67 & 0.0 & 0.0 \\\\\n")
+cat("singleton & 53.61 & 0.0 & 0.0 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+Two rules are ruled out by this table before any test. **Density alone fails**:
+short-and-dense units are 39% of the genome and are *depleted* for QTN. **Span
+alone is destructive**: dropping every unit over 100 kb removes 29 of the 40
+QTN-bearing clusters, because that is where the real low-recombination blocks
+are. Only the conjunction discriminates.
+
+That suggested excluding **long-and-sparse** units --- 3.4% of the genome holding
+1 QTN of 40 --- as free power: fewer tests at almost no cost in signal, on a
+criterion that is phenotype-blind (span and marker count come from the map and
+the clustering, with nothing tuned on outcomes).
+
+```{r sparsearm, results="asis"}
+cat("\\begin{tabular}{@{}lrrr@{}}\n\\toprule\n")
+cat("Arm & QTN recovered & flagged & dedup PR (nobgs) \\\\\n\\midrule\n")
+cat("Simes, all clusters & 3.0 & 10 & 0.0491 \\\\\n")
+cat("Simes, long-and-sparse excluded & 1.0 & 6 & 0.0327 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{It does not work.} Excluding long-and-sparse clusters costs two thirds of
+the recovered QTN --- a median of 3 down to 1 --- and improves PR nowhere. Paired
+over 80 panels: \texttt{nobgs} 14 W / 12 L / 6 T, $p = 0.85$; \texttt{bgs}
+4 W / 14 L / 11 T, $p = 0.031$, i.e. significantly \emph{worse}.
+\end{keybox}
+
+## Why the inference was wrong
+
+The argument rested on a **census** --- the excluded class rarely *contains* a
+QTN --- and concluded it would rarely *find* one. Those are different claims, and
+only the second was relevant. A cluster can contribute a true detection by
+tagging a QTN it does not contain, which is precisely the satellite category
+separated out earlier in this work; the error was made anyway. Removing
+3.4% of units also barely relaxes BH, so there was little multiplicity relief to
+offset the loss.
+
+## What the accumulated negatives now show
+
+Four filters have been tested: $ld_w$ top-$k$, MAF, cluster size, and geometric
+exclusion. All show strong enrichment for QTN-bearing units --- the geometric
+class reaches 30-fold, and $ld_w$ top-5,000 captures 85% of QTN in 2.7% of units
+--- and **none converts into precision-recall**.
+
+\begin{keybox}
+Enrichment for \emph{containing} a QTN is not the quantity that predicts
+detection performance. Filters keep selecting units that hold causal variants
+while removing units that were producing the detections.
+
+This supports, by a second route, the conclusion the companion document reaches:
+complexity reduction helps because it changes \textbf{what is tested}, and hence
+what BH controls, not because it concentrates the search on QTN-rich territory.
+Every attempt to add the latter has failed, and this was the cleanest attempt.
+\end{keybox}
+
+Two claims made in passing during this work are also withdrawn. Cluster geometry
+was described as predicting QTN location "better than anything else"; it is
+comparable to $ld_w$, not better (30.4-fold against roughly 31-fold at matched
+selectivity). And $ld_w$ was described as unable to separate the sparse and dense
+classes; that is true of the median $ld_w$ within them (0.0105 against 0.0099)
+but does not make $ld_w$ a poor selector overall, which it is not.
+
 # Provenance
 
 ```{r gens, results="asis"}

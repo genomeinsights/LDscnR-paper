@@ -6,9 +6,26 @@
 ## treatment, so the ONLY difference is how significance is decided:
 ##
 ##   snp      BH over all SNPs; a cluster is flagged if any member is significant
+##   snp_n2   the same, but only SNPs in clusters of >= 2 members. Isolated
+##            markers are the most obvious false positives, and dropping them is
+##            a structural form of ld_w filtering that keeps SNP-level testing.
+##   snp_n5   the same at >= 5 members
 ##   rep      BH over the LD-central representative p-values
 ##   simes    BH over Simes-combined member p-values
 ##   emlg     BH over EMMAX on the consensus genotype
+##   simes_n2 Simes restricted to clusters of >= 2 members
+##   simes_ns Simes excluding LONG-AND-SPARSE clusters: span > 100 kb with fewer
+##            than 5 markers per 100 kb. That class is 3.4% of units and holds
+##            2.5% of QTN, while long-and-DENSE units are 2.3% of units and hold
+##            70% of QTN. Span alone would be destructive (dropping everything
+##            over 100 kb removes 29 of 40 QTN clusters); span conditioned on
+##            density is nearly free. The criterion is phenotype-blind -- span and
+##            marker count come from the map and the clustering.
+##
+## snp_n2 vs simes_n2 is the decisive contrast: SAME marker set, so the only
+## difference is whether member p-values are aggregated. It separates what
+## clustering gains by REMOVING isolated markers from what it gains by
+## COMBINING evidence within a block.
 ##
 ## SATELLITE REMOVAL. A flagged cluster that tags a QTN (r2 >= r2min within dmax)
 ## but is not the BEST tagger of it is a satellite of a locus already found. Two
@@ -74,8 +91,13 @@ for (i in FILES) {
     }
   }
   if (!"p_emlg" %in% names(su)) su[, p_emlg := NA_real_]
+  geo <- mm[, .(n_loci = .N, span = max(Pos) - min(Pos)), by = CL]
+  su <- merge(su, geo, by = "CL", all.x = TRUE)
+  su[, dens := n_loci / pmax(span/1e5, 1e-9)]
+  su[n_loci == 1, dens := NA_real_]
+  su[, long_sparse := span > 1e5 & (is.na(dens) | dens < 5)]
   clu[[length(clu)+1]] <- su
-  snp[[length(snp)+1]] <- mm[, .(CL, p = emx_p)]
+  snp[[length(snp)+1]] <- mm[, .(CL, p = emx_p, n_loci = .N), by = CL][, .(CL, p, n_loci)]
 }
 su  <- rbindlist(clu, fill = TRUE)
 sn  <- rbindlist(snp, fill = TRUE)
@@ -86,6 +108,20 @@ cat(sprintf("  %d clusters, %d contain a QTN, %d tag one\n", nrow(su), nq, uniqu
 ## flagged sets
 flag <- list()
 q_snp <- p.adjust(sn$p, "BH"); flag$snp <- unique(sn$CL[which(q_snp < ALPHA)])
+for (mn in c(2, 5)) {
+  ok <- sn$n_loci >= mn
+  q <- rep(NA_real_, nrow(sn)); q[ok] <- p.adjust(sn$p[ok], "BH")
+  flag[[paste0("snp_n", mn)]] <- unique(sn$CL[which(!is.na(q) & q < ALPHA)])
+}
+oknp <- !su$long_sparse & is.finite(su$p_simes)
+qnp <- rep(NA_real_, nrow(su)); qnp[oknp] <- p.adjust(su$p_simes[oknp], "BH")
+flag$simes_nosparse <- su$CL[which(!is.na(qnp) & qnp < ALPHA)]
+oknb <- !su$long_sparse & su$n_loci >= 2 & is.finite(su$p_simes)
+qnb <- rep(NA_real_, nrow(su)); qnb[oknb] <- p.adjust(su$p_simes[oknb], "BH")
+flag$simes_n2_nosparse <- su$CL[which(!is.na(qnb) & qnb < ALPHA)]
+ok2 <- su$n_loci >= 2
+qs2 <- rep(NA_real_, nrow(su)); qs2[ok2] <- p.adjust(su$p_simes[ok2], "BH")
+flag$simes_n2 <- su$CL[which(!is.na(qs2) & qs2 < ALPHA)]
 for (cl in c("p_rep","p_simes","p_emlg")) {
   v <- su[[cl]]; ok <- is.finite(v)
   q <- rep(NA_real_, length(v)); q[ok] <- p.adjust(v[ok], "BH")
