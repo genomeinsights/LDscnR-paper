@@ -366,47 +366,77 @@ member of the cluster's LD graph. Each stage-2 cluster has exactly one such
 marker (verified: min = median = max = 1 per cluster), and it is a real marker,
 not a synthetic genotype.
 
-## What the representative costs, measured
+## What the representative costs, measured at locus level
 
-Two measurements on one pooled panel (V0.5_c1 nobgs env3, 294,609 SNPs in 99,787
-stage-2 clusters), comparing the same EMMAX p-values at both resolutions.
+The natural comparison is SNP counts, and it is misleading. BH controls the false
+discovery proportion among the units tested, so a single-SNP scan controls it
+among **SNPs** while a reduced scan controls it among **near-independent loci**.
+Those are different currencies. Counted in loci --- one pooled panel, V0.5_c1
+nobgs env3:
 
-```{r reptab, results="asis"}
+```{r loci, results="asis"}
 cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
-cat("Tested & tests & BH cutoff $p$ & significant & driving QTN passing \\\\\n\\midrule\n")
-cat("every SNP & 294,609 & 4.2e-04 & 2,467 & 14 of 21 \\\\\n")
-cat("LD-central representatives & 99,787 & 1.2e-05 & 27 & --- \\\\\n")
+cat("Tested & tests & BH cutoff $p$ & clusters flagged & carrying a QTN \\\\\n\\midrule\n")
+cat("every SNP & 294,609 & 4.2e-04 & 132 & 14 \\\\\n")
+cat("LD-central representatives & 99,787 & 1.2e-05 & 27 & 10 \\\\\n")
+cat("\\midrule\n")
+cat("\\multicolumn{3}{@{}l}{precision (flagged clusters carrying a QTN)} & 0.106 & 0.370 \\\\\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
 \begin{keybox}
-\textbf{Fewer tests made the threshold harsher, not easier.} Three times fewer
-tests and a BH cutoff \textbf{35 times more severe}. BH is adaptive --- its
-cutoff is the largest $p$ with $p \le \alpha i/n$, so it depends on how many
-small p-values survive, not on $n$ alone. Restricting to representatives removed
-most of the signal along with most of the tests, and the step-up never climbs.
+\textbf{Reduction recovers 10 of the 14 QTN-bearing loci while calling a fifth as
+many regions} --- precision 0.37 against 0.11. And it is a strict subset: the
+representative analysis flagged \textbf{no} cluster the SNP scan missed, which is
+what the same signal with its redundancy removed should look like.
 
-This qualifies the rationale for filtering stated in Section~\ref{sec:fdr}:
-a lighter multiplicity correction follows only if the filter \emph{retains} the
-signal. Where it does not, reducing the number of tests makes the threshold
-stricter and the analysis weaker on both counts.
+Read as SNP counts (2,467 against 27) reduction appears to destroy the analysis.
+That comparison is in the wrong currency and an earlier draft made it.
 \end{keybox}
 
-**And no driving QTN is ever its cluster's representative --- 0 of 21.** That is
-not chance. QTN sit in unusually large clusters: the 21 QTN-bearing clusters have
-sizes 2, 4, 4, 5, 5, 8, 13, 21, 22, 31, 38, 55, 87, 100, 133, 141, 150, 248, 272,
-311 and 354, against a genome-wide **median cluster size of 1** (mean $\approx$ 3).
-That is the expected consequence of selection extending LD around a causal site
---- the QTN neighbourhood *is* a large linkage block, which is what $ld_w$
-responds to --- but it means the chance that any particular member is the
-LD-central one is about $1/\text{size}$, and for clusters of 100--350 that is
-negligible.
+## Why the single-SNP threshold is the looser one
 
-So testing representatives **never tests a QTN directly**. It relies entirely on
-the central marker tagging a variant that may sit at the block's periphery, and
-the loss is largest exactly in the big QTN-bearing clusters where it matters
-most. This is the mechanism behind the cluster-level power deficits reported
-above, which were previously described without one.
+Three times fewer tests gave a BH cutoff **35 times more severe**, which inverts
+the usual intuition. The cause is redundancy in the small-$p$ tail. BH is a
+step-up procedure --- its cutoff is the largest $p$ with $p \le \alpha i/n$ ---
+so it climbs when many small p-values are present, whether or not they are
+independent findings. On this panel the rejected SNPs are far more clustered than
+the panel as a whole:
+
+```{r redund, results="asis"}
+cat("\\begin{tabular}{@{}lr@{}}\n\\toprule\n")
+cat("SNPs per cluster, panel overall & 3.0 \\\\\n")
+cat("SNPs per cluster, among rejections & 18.7 \\\\\n")
+cat("\\midrule\n")
+cat("redundancy of the small-$p$ tail & \\textbf{6.3$\\times$} the panel average \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+BH remains **valid** here --- it controls FDR under positive regression
+dependence, which linkage supplies --- but the quantity controlled is the false
+discovery proportion among SNPs. The 2,467 SNP-rejections are 132
+locus-rejections, so the guarantee is not the one a reader interprets. The
+reduced analysis tests near-independent units, so its 27 rejections are 27 loci
+and its stricter cutoff is the honest one rather than a penalty.
+
+This qualifies the rationale for filtering in Section~\ref{sec:fdr} in a
+different way than an earlier draft claimed. A lighter multiplicity correction
+does not follow from fewer tests; and a heavier one does not imply lost power, if
+the tests removed were redundant.
+
+## The residual cost, and its mechanism
+
+Reduction does lose 4 of the 14 QTN-bearing loci, and that loss has a specific
+cause: **no driving QTN is ever its cluster's representative --- 0 of 21.** Not
+chance. QTN sit in unusually large clusters, sizes 2 to 354 with a median near
+55, against a genome-wide **median cluster size of 1** (mean $\approx$ 3). That
+is what selection extending LD around a causal site produces, and it is what
+$ld_w$ responds to, but it makes the chance that any particular member is the
+LD-central one about $1/\text{size}$.
+
+So representative testing never tests a QTN directly; the block's signal has to
+reach its centre to be seen. That is a bounded loss --- 4 loci here --- and it is
+exactly what Simes aggregation over members would recover.
 
 ## Relationship to the empirical panel analysis
 
@@ -443,7 +473,7 @@ rows <- list(
  c("``Indistinguishable at every window'' conflicted with $p = 0.030$","Replaced by the stratified interaction analysis"),
  c("\\texttt{79\\%\\%} rendering bug; cramped tables","Fixed; tables given explicit column widths"),
  c("The cluster representative was described as an arbitrary or lossy summary","Wrong. \\texttt{pick\\_representative()} returns the member with the highest median $r^2$ to the others --- the LD-central marker. Restated as single-representative vs Simes aggregation, and the cost of it is now measured"),
- c("``Fewer tests means a lighter multiplicity correction''","Only if the filter retains signal. Measured: 3x fewer tests gave a BH cutoff 35x MORE severe, because BH is adaptive"),
+
  c("The \\texttt{env\\_orth} null was dismissed as ``not a true null''","REINSTATED. Its surrogates are orthogonal to the causal environment, so rejections under them are false positives. Both nulls now reported side by side"),
  c("Confidence intervals were computed on 100 draws, not 1{,}000","A scalar named \\texttt{B} was masked by a COLUMN named \\texttt{B} in the input, so the grouping returned one row per input row. Intervals were ten times too wide"))
 for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
