@@ -56,12 +56,16 @@ cut_gw  <- bh_cut(u$p)
 cut_sel <- bh_cut(u$p[sel])
 u[, `:=`(sig_gw = p <= cut_gw, sig_sel = selected & p <= cut_sel, tp = d_qtn < WIN)]
 newly <- u[sig_sel & !sig_gw]
+lost  <- u[sig_gw & !sig_sel]          ## genome-wide hits OUTSIDE the selected set
 cat(sprintf("  genome-wide BH cutoff p = %.3g  -> %d discoveries (%d true)\n",
             cut_gw, sum(u$sig_gw), sum(u$sig_gw & u$tp)))
 cat(sprintf("  filtered   BH cutoff p = %.3g  -> %d discoveries (%d true)\n",
             cut_sel, sum(u$sig_sel), sum(u$sig_sel & u$tp)))
 cat(sprintf("  NEWLY found by filtering: %d, of which %d within %.0f kb of a driving QTN (%.0f%%)\n",
             nrow(newly), sum(newly$tp), WIN/1000, 100*mean(newly$tp)))
+cat(sprintf("  LOST by filtering (significant genome-wide, not in the selected set): %d, of which %d QTN-proximal\n",
+            nrow(lost), sum(lost$tp)))
+cat(sprintf("  accounting: %d - %d + %d = %d\n", sum(u$sig_gw), nrow(lost), nrow(newly), sum(u$sig_sel)))
 
 u[, cls := fifelse(sig_sel & !sig_gw, "gained by filtering",
             fifelse(sig_gw, "found by genome-wide BH",

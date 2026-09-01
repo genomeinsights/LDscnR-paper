@@ -1,6 +1,6 @@
 ---
 title: "Filtering before testing"
-subtitle: "Using $ld_w$ to choose test units rather than to rank them"
+subtitle: "Pre-selecting LD clusters as test units, and what it does and does not buy"
 author: "module_sim_LDscnR"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
@@ -10,7 +10,7 @@ output:
     toc_depth: 2
     fig_caption: true
     latex_engine: pdflatex
-geometry: margin=2.6cm
+geometry: margin=2.4cm
 fontsize: 10pt
 header-includes:
   - \usepackage{booktabs}
@@ -26,343 +26,345 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.pos = "H", out.width = "100%")
 suppressMessages({library(data.table); library(knitr)})
 R   <- "../results/filter_then_test"
-FIG <- "../figures"
 clu <- fread(file.path(R, "filter_then_test_clusters_emx.csv"))
-mk  <- fread(file.path(R, "filter_then_test_emx.csv"))
 fdr <- fread(file.path(R, "filter_fdr_check_emmax.csv"))
 key <- c("cell","tag","env","window_kb")
-gw  <- clu[method=="genome_wide", c(key,"n_tp"), with=FALSE]; setnames(gw, "n_tp", "gw_tp")
+gw  <- clu[method=="genome_wide", c(key,"n_tp","n_sig"), with=FALSE]
+setnames(gw, c("n_tp","n_sig"), c("gw_tp","gw_sig"))
 f   <- merge(clu[method!="genome_wide"], gw, by=key)
-winrate <- function(x) { nz <- x[x != 0]; if (!length(nz)) return(NA_real_); 100*sum(nz>0)/length(nz) }
-signp   <- function(x) { nz <- x[x != 0]; if (!length(nz)) return(NA_real_); binom.test(sum(nz>0), length(nz))$p.value }
-fmtp    <- function(p) ifelse(is.na(p), "--", ifelse(p < 1e-3, sprintf("%.1e", p), sprintf("%.3f", p)))
+f[, `:=`(dtp = n_tp - gw_tp, dsig = n_sig - gw_sig)]
+
+## paired summary: ties explicit, magnitude alongside direction
+pr <- function(x) {
+  x <- x[is.finite(x)]; w <- sum(x>0); l <- sum(x<0); t <- sum(x==0); nz <- w+l
+  data.table(n=length(x), wins=w, losses=l, ties=t,
+             pct_nt = if (nz) 100*w/nz else NA_real_,
+             med = median(x), q25 = quantile(x,.25), q75 = quantile(x,.75),
+             p = if (nz) binom.test(w, nz)$p.value else NA_real_)
+}
+fp <- function(p) ifelse(is.na(p), "--", ifelse(p < 1e-3, sprintf("%.0e", p), sprintf("%.3f", p)))
+esc <- function(s) gsub("_", "\\\\_", s)
 ```
 
-# What this document is
+# Scope, and what changed after review
 
-This describes a **different analysis from the C-score work**, resting on the
-same premise. It is written separately because the machinery, the unit of
-analysis, the truth definition and the comparison are all different, and reading
-the two as variants of one thing has already caused confusion.
+This describes a **selection** analysis: choosing which units to test before the
+phenotype is seen. It shares a premise with the abandoned C-score work --- $ld_w$
+is phenotype-blind and may carry information about where causal variation sits ---
+but differs in unit, truth, comparison and conclusion.
+
+An earlier draft was reviewed externally. That review found two factual errors, an
+ambiguous denominator, and --- most consequentially --- that pooling 80 panels
+across four parameter cells concealed the main structure in the data. **This
+version is stratified, and the conclusion changed as a result.** All corrections
+are recorded in Section~\ref{sec:corrections} rather than silently applied.
 
 \begin{keybox}
-\textbf{The shared premise.} $ld_w$ is computed from genotypes alone. It never
-sees the phenotype. If it carries information about \emph{where} causal variation
-sits, that information is available before any association test is run.
-
-\textbf{What changed.} The C-score used that information to \textbf{rank}
-markers. This uses it to \textbf{choose which units to test}. Ranking failed.
-Selection works --- with one substantial qualification developed in
-Section~\ref{sec:size}.
+\textbf{The finding, as the evidence now supports it.} Pre-filtering LD clusters
+increases QTN-proximal discoveries at moderate-to-large filter sizes --- by a
+median of about \textbf{one} such discovery per panel, against four to five extra
+total calls. Which filter is better \textbf{depends on the regime}: local-LD
+weight outperforms cluster size where background LD is low, and fails where it is
+high. Neither filter is established as generally preferable.
 \end{keybox}
+
+## Terminology
+
+The endpoint is **not** a true discovery. Truth here is bp proximity to a driving
+QTN with the causal variants themselves excluded, so a cluster at 49 kb counts and
+one at 51 kb does not, regardless of actual LD. Throughout this document such
+discoveries are called **QTN-proximal**. "True discovery" is reserved for a rule
+tied to the simulated causal architecture, which this is not.
 
 # Why the ranking approach was abandoned
 
-Recorded so this document is self-contained, and so the same ground is not
-re-covered. All comparisons are paired within run, with a sign test; never a
-difference of means.
+Recorded for self-containment. All paired within run with a sign test.
 
 | Test | Result |
 |:-----|:-------|
-| $\tau_C = 0.05$ vs $\alpha = 0.05$ | C better in 79/151 (52%), $p = 0.63$ |
+| $\tau_C = 0.05$ vs $\alpha = 0.05$ | C better in 79/151 non-tied (52%), $p = 0.63$ |
 | PR-AUC at the operative distance cap | C better in 120/313 (38%), $p = 4.4\times10^{-5}$ |
 | Stage-2 clusters as fixed units | $\alpha$ ahead by 0.07 PR, flat at every size floor |
-| Restricting $\rho \geq 0.5$ | C worse by 0.002--0.009 |
 
-Two external results agree. The 3sp panel session finds C *ties* an oracle
-best-single-grid-cell rather than beating it, so the consistency layer buys
-robustness to parameter choice, not power. The simulation-parsing session
-measured the mechanism directly: reweighting a p-value by $ld_w$ moves a median
-32% of the top-$k$ and nets **about one marker in 1,400** at 50--100 kb, and
-exactly zero at 10 kb, which is tagging scale. A reweighting that small cannot
-produce a detectable ranking gain, so the null result and the mechanism agree.
+Two external results agree: the 3sp panel session finds C *ties* an oracle
+best-single-cell, and the simulation-parsing session measured the mechanism ---
+reweighting a p-value by $ld_w$ nets about **one marker in 1,400** at 50--100 kb
+and nothing at 10 kb.
 
-# The selection framing
+# Design
 
-## Independent filtering
-
-Selecting $k$ units and applying BH within that set is **independent filtering**
-in the sense of Bourgon, Gentleman and Huber (2010). The multiplicity correction
-is applied over $k$ tests rather than all of them, so the threshold is less
-severe. This is arithmetic --- it would work for *any* filter --- which is
-exactly why the informative comparisons are not against the unfiltered scan but
-against **other filters of the same size**.
-
-Filtering is valid provided the filter statistic is independent of the test
-statistic under the null. $ld_w$ is phenotype-blind, which is necessary but not
-sufficient: $ld_w$ correlates with allele frequency, and frequency drives power.
-Section~\ref{sec:fdr} tests this empirically rather than assuming it.
-
-## The machinery
+## What is compared
 
 ```{r machinery, results="asis"}
-cat("\\begin{tabular}{@{}p{1.7cm}p{5.4cm}p{7.3cm}@{}}\n\\toprule\n")
+cat("\\begin{tabular}{@{}p{1.7cm}p{5.2cm}p{7.4cm}@{}}\n\\toprule\n")
 cat("\\textbf{Component} & \\textbf{Choice} & \\textbf{Why} \\\\\n\\midrule\n")
 rows <- list(
- c("Unit","Stage-2 LD cluster, represented by its pruned marker","Membership is recomputed per bundle and required to reproduce the stored GRM marker set exactly"),
- c("Filter","Top $k$ units by median $ld_w$ of members, computed before any phenotype","Median rather than max: robust to a single extreme member"),
+ c("Unit","Stage-2 LD cluster, one pruned representative marker","Membership recomputed per bundle and required to reproduce the stored GRM marker set exactly"),
+ c("Filter","Top $k$ units by median $ld_w$; computed before any phenotype","Compared against MAF, cluster size and random at identical $k$"),
  c("Test","BH at 0.05 within the selected set only","Identical to the conventional analysis, applied to fewer tests"),
- c("Truth","bp distance to nearest driving QTN, causal variants excluded","Shares no machinery with $ld_w$; an $r^2$-tagging truth would flatter it by construction"),
- c("Controls","MAF, cluster size, random --- all at identical $k$","Isolates enrichment from mere size reduction, and $ld_w$ from frequency"),
- c("Null","Surrogate environments (genetic basis), 100 draws","Preserves spatial and genetic structure; a naive shuffle destroys what $ld_w$ keys on"))
+ c("Endpoint","QTN-proximal: within 10 / 50 / 100 kb of a driving QTN, causal variants excluded","Shares no machinery with $ld_w$; an $r^2$-tagging truth would flatter it by construction"),
+ c("Baseline","BH at 0.05 over all units","This IS the conventional $\\alpha$ analysis, so the comparison is built in"))
 for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
-The genome-wide scan --- BH at 0.05 over all units --- **is** the conventional
-$\alpha$ analysis. It is the baseline in every comparison below, so no separate
-benchmark is needed.
+## Composition of the panels
 
-# Results
-
-## Power
-
-```{r power-tab}
-tab <- f[, .(ldw = winrate(n_tp[method=="ld_w"] - gw_tp[method=="ld_w"])), by = .(k, window_kb)]
-w <- dcast(f[, .(win = winrate(n_tp - gw_tp)), by = .(method, k, window_kb)],
-           method + k ~ window_kb, value.var = "win")
-setnames(w, c("method","k","10 kb","50 kb","100 kb"))
-w <- w[order(factor(method, levels=c("ld_w","size","MAF","random")), k)]
-kable(w, digits = 0, booktabs = TRUE, longtable = TRUE,
-      caption = "Percent of 80 panels in which each filter yields MORE true discoveries than the genome-wide alpha analysis. 50 = no better.")
+```{r composition, results="asis"}
+comp <- clu[method=="genome_wide" & window_kb==50, .N, by=.(cell, tag)]
+cat(sprintf("The %d panels are %d parameter cells $\\times$ %d background-selection arms $\\times$ %d environments, each pooling %d map sets into a genome-wide panel of about %s stage-2 clusters. Cells and arms are \\textbf{not} interchangeable and are stratified throughout Section~\\ref{sec:strat}.\n\n",
+  uniqueN(clu[, .(cell,tag,env)]), uniqueN(clu$cell), uniqueN(clu$tag),
+  uniqueN(clu$env), 10, format(round(median(clu$n_units), -3), big.mark=",")))
 ```
 
-Two things follow. $ld_w$ and cluster size both rise well above 50% and keep
-rising with $k$; **MAF and random selection sit far below 50%**, meaning they are
-worse than not filtering. Filtering normally *costs* real signal, and only a
-filter enriched for causal neighbourhoods repays that cost.
-
-The gain also scales with the multiplicity burden, as the mechanism predicts:
-on 30k-marker tracks $ld_w$ reached
-`r sprintf("%.0f%%", winrate(merge(mk[method!="genome_wide"], {g <- mk[method=="genome_wide", .(file, window_kb, g=n_tp)]; g}, by=c("file","window_kb"))[method=="ld_w" & k==5000 & window_kb==50, n_tp - g]))`
-at $k = 5{,}000$, against
-`r sprintf("%.0f%%", w[method=="ld_w" & k==5000][["50 kb"]])`% on these ~86k-unit panels.
-
-![Filter-then-test against the conventional alpha analysis. Panel A: true discoveries. Panel B: paired win rate, the primary result. Panel C: the size control.](../figures/filter_then_test_summary.png)
-
-## The mechanism
+## The multiplicity mechanism, and its cost
 
 Filtering changes no p-value. It changes the BH threshold, because BH over
-`r format(99786, big.mark=",")` units is far more severe than BH over 5,000.
+`r format(99786, big.mark=",")` units is far more severe than BH over 5,000. On
+the illustrative panel below the accounting is **27 discoveries $-$ 1 lost $+$ 28
+gained $=$ 54**: filtering can and does *remove* an already-significant result
+when it falls outside the selected set. Of the 28 gained, **6 (21%) are
+QTN-proximal**, so precision on gained units is low by construction.
 
-![No p-value moves; the threshold does. Navy points clear the genome-wide cutoff, orange points lie between the two cutoffs and are gained by filtering alone.](../figures/filter_manhattan_V0.5_c1_nobgs_env3.png)
+![The mechanism. Navy: cleared the genome-wide cutoff. Orange: lie between the two cutoffs, gained by filtering alone. Grey dashed verticals mark driving QTN. One navy unit outside the selected set is lost and is not shown separately.](../figures/filter_manhattan_V0.5_c1_nobgs_env3.png)
 
-On that panel the count goes from 27 discoveries (16 true) to 54 (22 true).
-**Of the 28 gained units, 6 (21%) lie within 50 kb of a driving QTN**, so four in
-five gained discoveries are not near one. Precision falls as recall rises; that
-is the trade, and it is why Section~\ref{sec:fdr} is not optional.
+![Units coloured by $r^2$ with the nearest driving QTN; triangles are the 25 clusters carrying a causal variant, which are excluded from testing. Only 459 of 99,786 clusters reach $r^2 \geq 0.2$ with any QTN, and several QTN-carrying clusters sit at $p \approx 1$.](../figures/filter_manhattan_ldQTN_V0.5_c1_nobgs_env3.png)
 
-## What the target actually looks like
+# Results, pooled --- with ties and magnitudes
 
-![Clusters coloured by $r^2$ with the nearest driving QTN; triangles carry a causal variant.](../figures/filter_manhattan_ldQTN_V0.5_c1_nobgs_env3.png)
+```{r pooled, results="asis"}
+a <- f[window_kb==50, pr(dtp), by=.(method,k)]
+a <- a[method %in% c("ld_w","size","MAF","random")]
+cat("\\begin{tabular}{@{}llrrrrrrl@{}}\n\\toprule\n")
+cat("Filter & $k$ & wins & losses & ties & \\% non-tied & median & IQR & $p$ \\\\\n\\midrule\n")
+for (m in c("ld_w","size","MAF","random")) for (kk in sort(unique(a$k))) {
+  z <- a[method==m & k==kk]; if (!nrow(z)) next
+  cat(sprintf("%s & %s & %d & %d & %d & %.0f & %+.1f & [%.0f, %.0f] & %s \\\\\n",
+      esc(m), format(kk, big.mark=","), z$wins, z$losses, z$ties, z$pct_nt, z$med, z$q25, z$q75, fp(z$p)))
+}
+cat("\\bottomrule\n\\end{tabular}\n")
+```
 
-Only **459 of 99,786 clusters** reach $r^2 \geq 0.2$ with any driving QTN --- under
-0.5%. The strongest signals are the QTN-carrying clusters themselves, while the
-surrounding neighbourhood at $r^2 = 0.3$--$0.6$ mostly sits below
-$-\log_{10}(p) = 2$: recovering the *neighbourhood* is much harder than
-recovering the variant. Several clusters that **carry** a causal variant sit at
-$p \approx 1$, so carrying one is no guarantee of detection.
+\noindent Read the denominator carefully. At $k = 20{,}000$, $ld_w$ has
+`r a[method=="ld_w" & k==20000]$wins` wins and
+`r a[method=="ld_w" & k==20000]$losses` losses --- 100% of non-tied panels --- but
+`r a[method=="ld_w" & k==20000]$ties` of 80 panels are **ties**, so the win is on
+`r a[method=="ld_w" & k==20000]$wins + a[method=="ld_w" & k==20000]$losses` panels,
+not 80. The median gain is
+`r sprintf("%+.0f", a[method=="ld_w" & k==20000]$med)` QTN-proximal discovery.
 
-## FDR validity {#sec:fdr}
+```{r totals}
+b <- f[window_kb==50, .(`QTN-proximal` = median(dtp), `all discoveries` = median(dsig)),
+       by=.(method,k)]
+kable(dcast(b, k ~ method, value.var = c("QTN-proximal","all discoveries")),
+      booktabs = TRUE, digits = 1,
+      caption = "Median paired change against the alpha analysis: QTN-proximal discoveries, and total discoveries. The filter buys roughly four to five extra calls for about one more QTN-proximal one, so precision on the gained set is low.")
+```
 
-```{r fdr-tab}
+MAF and random selection are **worse than not filtering** in every stratum
+examined --- median change $-1$ to $-2$ QTN-proximal discoveries. Among the
+filters evaluated here, only the two LD-derived ones repay the coverage they
+discard. Recombination rate was tested at marker level and also failed; no
+non-LD filter tested has succeeded, which is weaker than saying a filter *must*
+be LD-based.
+
+![Filter-then-test against the conventional alpha analysis. Points are medians over panels; ribbons are the interquartile range across panels. The dashed line in panel A is the median genome-wide result; the dashed line in panel B is 50 percent of non-tied panels.](../figures/filter_then_test_summary.png)
+
+# Stratified results {#sec:strat}
+
+Pooling concealed the main structure. Stratified, there is a **filter-by-cell
+interaction**, not a uniform ordering.
+
+```{r headtohead, results="asis"}
+h <- merge(f[method=="ld_w", c(key,"k","n_tp"), with=FALSE],
+           f[method=="size", c(key,"k","n_tp"), with=FALSE],
+           by=c(key,"k"), suffixes=c("_l","_s"))
+hh <- h[window_kb==50 & k==5000, pr(n_tp_l - n_tp_s), by=cell]
+cat("\\begin{tabular}{@{}lrrrrrl l@{}}\n\\toprule\n")
+cat("Cell & wins & losses & ties & \\% non-tied & median & $p$ & Reading \\\\\n\\midrule\n")
+rd <- c(V0.5_c1="$ld_w$ much better", V2_c1="$ld_w$ better",
+        V1_c1.5="no difference", V0.5_c2="cluster size much better")
+for (cl in c("V0.5_c1","V2_c1","V1_c1.5","V0.5_c2")) {
+  z <- hh[cell==cl]; if (!nrow(z)) next
+  cat(sprintf("\\texttt{%s} & %d & %d & %d & %.0f & %+.1f & %s & %s \\\\\n",
+      esc(cl), z$wins, z$losses, z$ties, z$pct_nt, z$med, fp(z$p), rd[[cl]]))
+}
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+$ld_w$ beats cluster size decisively in two cells, ties in one, and loses
+decisively in one. Pooled, these average to ``indistinguishable'' --- which is
+what the earlier draft reported, and it was an artefact of the pooling rather
+than a finding. \texttt{V0.5\_c2} is the high-background-LD cell ($b = 0.42$); a
+plausible but untested reading is that $ld_w$ is a \emph{local}-LD statistic and
+loses discrimination when everything is correlated, whereas large clusters still
+mark real linkage blocks.
+\end{keybox}
+
+```{r bycellarm, results="asis"}
+dd <- f[window_kb==50 & method=="ld_w" & k==5000, pr(dtp), by=.(cell,tag)]
+ee <- f[window_kb==50 & method=="size"  & k==5000, pr(dtp), by=.(cell,tag)]
+cat("\\begin{tabular}{@{}llrrrrl@{}}\n\\toprule\n")
+cat("\\multicolumn{7}{@{}l}{\\textbf{Against the alpha analysis, $k=5{,}000$, 50 kb, by cell and BGS arm}}\\\\\n")
+cat("Filter & Cell / arm & wins & losses & ties & median & $p$ \\\\\n\\midrule\n")
+for (nm in c("ld_w","size")) {
+  z0 <- if (nm=="ld_w") dd else ee
+  for (i in seq_len(nrow(z0))) {
+    z <- z0[i]
+    cat(sprintf("%s & \\texttt{%s} %s & %d & %d & %d & %+.1f & %s \\\\\n",
+        if (i==1) esc(nm) else "", esc(z$cell), z$tag, z$wins, z$losses, z$ties, z$med, fp(z$p)))
+  }
+  cat("\\midrule\n")
+}
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+```{r byarm}
+cc <- f[window_kb==50 & method=="ld_w", pr(dtp), by=.(tag,k)]
+kable(cc[, .(arm=tag, k, wins, losses, ties, `% non-tied`=round(pct_nt), median=med, p=fp(p))],
+      booktabs = TRUE, longtable = TRUE,
+      caption = "Background selection reduces the gain: the nobgs arm shows larger and more consistent improvement than the bgs arm at every k. Consistent with BGS costing recall rather than enrichment.")
+```
+
+# Null behaviour {#sec:fdr}
+
+```{r fdrtab, results="asis"}
 g <- fdr[basis=="genetic"]
-b <- g[method=="genome_wide", .(env, gwr = reject_rate)]
-t2 <- merge(g[method!="genome_wide"], b, by="env")[
-  , .(rate = mean(reject_rate), below_gw = sum(reject_rate < gwr), n = .N), by=.(method,k)]
-t2 <- dcast(t2, k ~ method, value.var = "rate")
-kable(t2, digits = 3, booktabs = TRUE,
-      caption = sprintf("Fraction of 100 surrogate environments producing at least one rejection, averaged over 10 environments. Genome-wide baseline %.3f; alpha = 0.05. Genetic basis.",
-                        mean(b$gwr)))
+B <- 100; nenv <- uniqueN(g$env)
+agg <- g[, .(rej = round(sum(reject_rate)*B), draws = .N*B), by=.(method,k)]
+agg[, `:=`(rate = rej/draws)]
+agg[, `:=`(lo = mapply(function(x,n) binom.test(x,n)$conf.int[1], rej, draws),
+           hi = mapply(function(x,n) binom.test(x,n)$conf.int[2], rej, draws))]
+gwr <- agg[method=="genome_wide"]
+cat("\\begin{tabular}{@{}lrrl@{}}\n\\toprule\n")
+cat("Selection & $k$ & rejection rate & 95\\% CI \\\\\n\\midrule\n")
+for (m in c("ld_w","MAF","random")) for (kk in sort(unique(agg[method!="genome_wide"]$k))) {
+  z <- agg[method==m & k==kk]; if (!nrow(z)) next
+  cat(sprintf("%s & %s & %.3f & [%.3f, %.3f] \\\\\n", esc(m), format(kk, big.mark=","), z$rate, z$lo, z$hi))
+}
+cat("\\midrule\n")
+cat(sprintf("genome-wide & all & %.3f & [%.3f, %.3f] \\\\\n", gwr$rate[1], gwr$lo[1], gwr$hi[1]))
+cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
-Every filtered rate sits at or below $\alpha$ and at or below the genome-wide
-baseline. The baseline is honest rather than deflated: $\lambda_{\text{surr}}$
-runs `r sprintf("%.3f--%.3f", min(g$lambda_surr), max(g$lambda_surr))` despite
-these inputs being generated with `gc_mode = "none"`.
-
-**This result is what licenses choosing $k$ at all.** Without it, any $k$ is a
-fitted parameter and the power result would be worth little --- the same defect
-that sank the C-score, whose advantage appeared only at a fitted $\tau$.
+\noindent Under surrogate **environments** (genetic basis, which is the
+calibrated one; $\lambda_{\text{surr}}$
+`r sprintf("%.3f--%.3f", min(g$lambda_surr), max(g$lambda_surr))`), local-LD
+filtered rates were
+`r sprintf("%.3f--%.3f", min(agg[method=="ld_w"]$rate), max(agg[method=="ld_w"]$rate))`
+and **showed no detectable excess over $\alpha = 0.05$**. Random selection reached
+`r sprintf("%.3f", max(agg[method=="random"]$rate))` at one $k$, above 0.05 in
+point estimate; the confidence intervals overlap 0.05 throughout, so no filter is
+shown to be anticonservative and none is shown to be conservative either.
 
 \begin{keybox}
-\textbf{Two cautions.} False positives are heavy-tailed under $ld_w$: the same
-rejection \emph{rate} as MAF but roughly twelve times the mean rejection
-\emph{count}, so about 96\% of surrogates give nothing and the remainder give
-tens to hundreds. Expected when selecting correlated high-LD regions, but it
-means an occasional wholly spurious region \emph{set} rather than stray markers.
+\textbf{What this does and does not establish.} Every hypothesis is null here, so
+FDR equals the probability of at least one rejection and the table is a valid
+\emph{global-null} check. It does \textbf{not} demonstrate FDR control under
+mixtures of null and alternative hypotheses, and it does not establish the
+Bourgon et al. independence condition in general.
 
-The \texttt{env\_orth} surrogate basis is \textbf{not} usable here: it rejects
-genome-wide in 16--57\% of surrogates while $\lambda \approx 0.99$, so it is a
+\textbf{It also does not license choosing $k$.} It licenses evaluating a fixed,
+prespecified $k$ under the tested null. Choosing $k$ after inspecting discovery
+counts or comparison curves is outcome-tuned model selection, and testing several
+fixed $k$ values under the null does not remove that. For any application, $k$
+must be prespecified on genotype-only criteria, or the whole $k$-curve reported
+as the result, or $k$ chosen by nested validation.
+
+\textbf{Coverage.} The null check uses \texttt{V2\_c1}, nobgs only. The power
+experiment spans four cells and both arms. Dependence between $ld_w$, MAF,
+cluster size and null p-values may change with background LD and BGS, so this
+single-cell check cannot license filtering across the whole experiment.
+\end{keybox}
+
+The false-positive count is heavy-tailed: at $k = 500$ the $ld_w$ set has the
+same rejection *rate* as MAF but roughly twelve times the mean rejection *count*,
+so about 96% of surrogates give nothing and the remainder give tens to hundreds.
+The `env_orth` basis is not usable for this purpose --- it rejects genome-wide in
+16--57% of surrogates while $\lambda \approx 0.99$, making it a
 different-environment null rather than a no-signal null.
-\end{keybox}
 
-
-# The result is not uniform across simulation cells {#sec:cells}
-
-The pooled numbers above average over four cells that differ in selection
-strength and in background LD. They do not behave alike, and one of them
-reverses the conclusion.
-
-```{r cell-baseline}
-gws <- clu[method=="genome_wide" & window_kb==50,
-           .(panels = .N, `median true` = median(n_tp), `mean true` = round(mean(n_tp),2),
-             `% panels with zero` = round(100*mean(n_tp==0))), by = cell][order(cell)]
-kable(gws, booktabs = TRUE,
-      caption = "Signal available to the conventional alpha analysis, per cell (50 kb window). Where the baseline is zero, beating it requires only one discovery.")
-```
-
-```{r cell-winrate}
-byc <- f[window_kb==50 & method %in% c("ld_w","size"),
-         .(win = winrate(n_tp - gw_tp), p = signp(n_tp - gw_tp),
-           med_gain = median(n_tp - gw_tp)), by = .(cell, method, k)]
-tw <- dcast(byc, cell + method ~ k, value.var = "win")
-setnames(tw, c("cell","filter", paste0("k=", sort(unique(byc$k)))))
-kable(tw[order(cell, filter)], digits = 0, booktabs = TRUE,
-      caption = "Percent of 20 panels per cell in which the filter beats the genome-wide alpha analysis (50 kb window). Below 50 means the filter is WORSE than not filtering.")
-```
-
-\begin{keybox}
-\textbf{$ld_w$ fails in \texttt{V0.5\_c2}, and cluster size does not.} $ld_w$ wins
-in 28\% of panels there --- worse than no filtering --- flat across $k$ until the
-selection is so large it has stopped being a filter. Cluster size wins in
-\textbf{100\% of panels at every $k$} in the same cell. This is the widest
-separation between the two filters anywhere in the data.
-\end{keybox}
-
-`V0.5_c2` is the high-background-LD cell ($b = 0.42$; it is the cell where the
-old fixed $r^2 \geq 0.27$ cut sat *below* background LD). A plausible reading is
-that $ld_w$ is a **local**-LD statistic, and where everything is correlated with
-everything there is no local structure left for it to key on, whereas large
-clusters still mark real linkage blocks. That is an interpretation of one cell,
-not a tested mechanism.
-
-Two consequences. First, the pooled claim in Section~\ref{sec:size} understates
-the case against $ld_w$: the two filters are not merely indistinguishable on
-average, $ld_w$ is **less robust across regimes**. Second, any application should
-establish which regime it is in before choosing a filter.
-
-```{r cell-gain}
-tg <- dcast(byc[method=="ld_w"], cell ~ k, value.var = "med_gain")
-setnames(tg, c("cell", paste0("k=", sort(unique(byc$k)))))
-kable(tg, booktabs = TRUE,
-      caption = "Median gain in true discoveries over the genome-wide analysis, ld_w filter, 50 kb. Read alongside the win rates: a high win rate on a zero baseline can rest on a gain of one.")
-```
-
-# The size control, and what it costs the claim {#sec:size}
-
-```{r size-tab}
-cc <- merge(f[method=="ld_w",   c(key,"k","n_tp"), with=FALSE],
-            f[method=="size", c(key,"k","n_tp"), with=FALSE],
-            by=c(key,"k"), suffixes=c("_l","_s"))
-cs <- cc[, .(win = winrate(n_tp_l - n_tp_s), p = signp(n_tp_l - n_tp_s)), by=.(k, window_kb)]
-cs[, cell_txt := sprintf("%.0f%%  (p %s)", win, fmtp(p))]
-out <- dcast(cs, k ~ window_kb, value.var = "cell_txt")
-setnames(out, c("k selected", "10 kb", "50 kb", "100 kb"))
-kable(out, booktabs = TRUE, align = c("r","c","c","c"),
-      caption = "$ld_w$ against cluster size at identical $k$: percent of the 80 panels in which $ld_w$ yields more true discoveries, with the sign-test p-value. Values near 50 percent mean the two filters are indistinguishable.")
-```
-
-Selecting the $k$ **largest** clusters performs as well as selecting on $ld_w$.
-Up to $k = 10{,}000$ the two are statistically indistinguishable at every window
---- win rates of 41--65% with sign-test $p$ from 0.03 to 1.0, straddling the
-50% line. This was a pre-specified control and it lands against the $ld_w$ story
-across the range where filtering is most useful.
-
-$ld_w$ does separate at the largest selection, $k = 20{,}000$ (82% at 50 kb,
-87% at 100 kb, $p \leq 4\times10^{-6}$). That is a real difference and is
-reported as such, but it is one corner of the grid, it is the regime where the
-filter is least selective, and the C-score failed in exactly this way --- an
-advantage visible only at a fitted corner. It should not be promoted to the
-headline without a pre-specified reason to operate there.
-
-One qualification keeps it from being fatal, and it cuts both ways. Cluster size
-is **not an independent rival**: the clusters exist because $ld_w$-based
-clustering built them, so size is downstream of $ld_w$. What the result shows is
-that once the clusters exist, consulting $ld_w$ again to choose among them adds
-little. The information has already been spent.
-
-# What is established, and what is not
+# Status of each claim
 
 ```{r status, results="asis"}
-cat("\\begin{tabular}{@{}p{6.0cm}p{2.2cm}p{6.2cm}@{}}\n\\toprule\n")
+cat("\\begin{tabular}{@{}p{5.6cm}p{2.4cm}p{6.4cm}@{}}\n\\toprule\n")
 cat("\\textbf{Claim} & \\textbf{Status} & \\textbf{Basis} \\\\\n\\midrule\n")
 rows <- list(
- c("Independent filtering of LD clusters beats a genome-wide scan","Established","80 panels, 56--97\\% win rate, rising with $k$"),
- c("The filter must be LD-structure-based","Established","MAF and random are significantly WORSE than no filtering"),
- c("Filtered BH controls FDR under a structure-preserving null","Established","Rates 0.027--0.039 vs $\\alpha$ 0.05, at or below genome-wide"),
- c("The gain grows with the multiplicity burden","Supported","Marker tracks (30k) weaker than pooled panels (86k); one comparison, not a designed sweep"),
- c("$ld_w$ specifically is needed at selection time","\\textbf{Not supported}","Cluster size matches it at every $k$, and beats it outright in \\texttt{V0.5\\_c2}"),
- c("The filters behave alike across regimes","\\textbf{Contradicted}","$ld_w$ wins 28\\% of panels in \\texttt{V0.5\\_c2} where cluster size wins 100\\%"),
- c("This transfers to empirical data","Untested here","Simulations only; the 3sp panel session reports a much larger effect"))
+ c("Filtering LD clusters increases QTN-proximal discoveries at moderate-to-large $k$","Supported","Pooled and in 3 of 4 cells; median gain $+1$, IQR [0, 3]"),
+ c("Among filters evaluated, only LD-derived ones repay the lost coverage","Supported","MAF, random and recombination all worse than no filtering"),
+ c("Which LD filter is better depends on regime","\\textbf{Established}","Filter-by-cell interaction; $ld_w$ wins 2 cells, loses 1 decisively"),
+ c("$ld_w$ is generally preferable to cluster size","\\textbf{Not supported}","Fails in \\texttt{V0.5\\_c2} by a median of $-8.5$"),
+ c("Global-null rejection rate is controlled","Supported","One cell, one arm; CIs overlap $\\alpha$"),
+ c("FDR is controlled under mixtures","\\textbf{Not tested}","Complete-null design only"),
+ c("A usable rule for choosing $k$ exists","\\textbf{Not established}","$k$ remains a free, outcome-facing parameter"),
+ c("This transfers to empirical data","Untested here","Simulations only"))
 for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
-## What would falsify the main claim
+# Relationship to the empirical panel analysis
 
-A filter of the same size, not derived from LD structure, that matches $ld_w$ and
-cluster size. MAF and recombination rate were tried and both fail badly. A
-positive result there would reduce the finding to arithmetic.
+This does **not** address the representative-marker problem. Every stage-2 cluster
+is tested through a single pruned representative, so filtering improves the
+multiplicity correction applied to those representative tests; it does not recover
+information discarded within a cluster. The stickleback analysis uses Simes
+aggregation over cluster members and therefore implements different testing
+machinery. The two support the same general filter-then-test principle and should
+not be presented as the same method.
 
-## Known limits
+# Corrections applied after review {#sec:corrections}
 
-The truth is bp proximity, so a discovery 49 kb from a QTN counts and one at
-51 kb does not; results are reported at three windows because of this. Signal
-varies enormously between panels --- a median of 20 significant markers per
-bundle, IQR 1--90, with **23% having none at all** --- so single-panel figures
-illustrate mechanism and are not evidence. Cluster-level $p$-values come from one
-representative marker per cluster, not a within-cluster combination. Only the
-EMMAX engine is analysed here.
+```{r corrections, results="asis"}
+cat("\\begin{tabular}{@{}p{6.2cm}p{8.2cm}@{}}\n\\toprule\n")
+cat("\\textbf{Defect} & \\textbf{Resolution} \\\\\n\\midrule\n")
+rows <- list(
+ c("``Every filtered rate sits at or below $\\alpha$'' was false --- random reached 0.053","Restated with binomial CIs as no detectable excess over $\\alpha$"),
+ c("Mechanism example: 27 to 54 with 28 gained did not reconcile","Confirmed: one genome-wide discovery is LOST. Accounting $27-1+28=54$ now reported by the script"),
+ c("Win-rate denominator ambiguous with ties","Wins, losses and ties reported everywhere; percentages stated as non-tied"),
+ c("Direction reported without magnitude","Median paired change with IQR alongside every sign test; total discoveries too"),
+ c("80 panels pooled across heterogeneous cells and arms","Stratified by cell, arm and $k$; the conclusion changed"),
+ c("``Licenses choosing $k$ at all''","Withdrawn. It licenses a prespecified $k$ only"),
+ c("``True discovery''","Renamed QTN-proximal throughout"),
+ c("``The filter must be LD-structure-based''","Weakened to the filters evaluated"),
+ c("``Indistinguishable at every window'' conflicted with $p = 0.030$","Replaced by the stratified interaction analysis"),
+ c("\\texttt{79\\%\\%} rendering bug; cramped tables","Fixed; tables given explicit column widths"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+## Open, and in progress
+
+Re-clustering at the pilot decay settings ($n_{\text{win}} = 50$, half-decay
+26 kb against the bundles' 56 kb) is running, with $n_{\text{win}} = 10$ through
+the identical code path as its control. The $k$ sweep is being extended to 40,000
+and 60,000 to locate the turning point --- the win rate is currently monotone up
+to the largest $k$ tested, and since $k = n$ makes the two analyses identical the
+curve must return to ties somewhere above 20,000. Structured-null checks in the
+remaining cells and arms are not yet run.
 
 # Provenance
 
-## Which simulation generation each result uses
-
-These results do **not** all come from the same simulations, and the main
-cluster-level result does not come from the newest.
-
 ```{r gens, results="asis"}
-cat("\\begin{tabular}{@{}p{2.5cm}p{3.5cm}p{2.8cm}p{5.6cm}@{}}\n\\toprule\n")
-cat("\\textbf{Generation} & \\textbf{Maps} & \\textbf{Fitted half-decay} & \\textbf{Used for} \\\\\n\\midrule\n")
+cat("\\begin{tabular}{@{}p{2.4cm}p{3.4cm}p{2.7cm}p{5.7cm}@{}}\n\\toprule\n")
+cat("\\textbf{Generation} & \\textbf{Maps} & \\textbf{Half-decay} & \\textbf{Used for} \\\\\n\\midrule\n")
 rows <- list(
-  c("\\texttt{bgs5}", "MAP\\_RES 3.3e-5; 31.5\\% of markers share a position",
-    "55.8 kb (18 win/chr, $\\sim$3 Mb spans)",
-    "\\textbf{cluster-level power (the main result) and both manhattans}"),
-  c("\\texttt{pilot\\_v2\\_v05c1}", "MAP\\_RES 3.3e-6; no shared positions",
-    "13.3 kb (95 win/chr, $\\sim$0.56 Mb spans)",
-    "marker-level power only; \\texttt{V0.5\\_c1} only"),
-  c("\\texttt{analysis\\_inputs}", "pre-bgs5", "not compared",
-    "FDR validity only; \\texttt{V2\\_c1}, nobgs, \\texttt{gc\\_mode = none}"))
-for (r in rows) cat(paste(r, collapse = " & "), "\\\\\n")
+ c("\\texttt{bgs5}","MAP\\_RES 3.3e-5; 31.5\\% of markers share a position","55.8 kb (18 win/chr)","\\textbf{all cluster-level results and both manhattans}"),
+ c("\\texttt{pilot\\_v2\\_v05c1}","MAP\\_RES 3.3e-6; no shared positions","13.3 kb (95 win/chr)","marker-level power only; \\texttt{V0.5\\_c1} only"),
+ c("\\texttt{analysis\\_inputs}","pre-bgs5","not compared","null behaviour only; \\texttt{V2\\_c1}, nobgs, \\texttt{gc\\_mode = none}"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
-The two generations differ 4.2$\times$ in fitted half-decay, and at $\rho = 0.5$
-the half-decay **is** the stage-2 clustering distance --- so the test units
-themselves would differ on the newer maps. The difference traces to the decay
-fitting scale rather than to the maps: same-position marker pairs show $r^2$ of
-0.023 against 0.022 for pairs 1 bp--10 kb apart, so the collapsed positions do
-not inflate LD. Whether the main result survives re-clustering at the newer
-decay settings is **untested**.
+\noindent At $\rho = 0.5$ the half-decay **is** the stage-2 clustering distance,
+so the units themselves would differ on the newer maps. The difference traces to
+decay fitting scale, not the maps: same-position marker pairs show $r^2$ of 0.023
+against 0.022 for pairs 1 bp--10 kb apart.
 
-```{r prov}
-kable(data.frame(
-  Item = c("Power, cluster level", "Power, marker level", "FDR validity",
-           "Figures", "Bundles", "Surrogate p-values", "Tracks", "Parameters", "Commits"),
-  Detail = c("`filter_then_test_clusters.R`, 80 panels x ~86k units, run on mini1 (8 cores)",
-             "`filter_then_test.R`, 63 runs of `pilot_v2_v05c1` tracks",
-             "`filter_fdr_check.R`, 10 environments x 100 surrogates x 2 bases",
-             "`plot_filter_then_test.R`, `plot_filter_manhattan.R`, `plot_filter_manhattan_ld.R`",
-             "`regen_sim_data_bgs5` (older generation, see above), 800 files",
-             "`analysis_inputs`, V2_c1, B = 100, `gc_mode = none`",
-             "`pilot_v2_v05c1/tracks`, V0.5_c1, 8 environments",
-             "alpha 0.05; stage-2 `min_r2_rho` 0.5, `distance_threshold` 1e5; scoring `dmax_cap` 1e5",
-             "`60c8134` cap harmonisation, `88797ff` this machinery"),
-  check.names = FALSE), booktabs = TRUE, longtable = TRUE)
-```
+Scripts: `filter_then_test_clusters.R`, `filter_then_test.R`, `filter_fdr_check.R`,
+`stratified_paired_table.R`, `recluster_filter_test.R`, and the three `plot_*` scripts.
+Parameters: $\alpha$ 0.05; stage-2 `min_r2_rho` 0.5, `distance_threshold` 1e5;
+scoring `dmax_cap` 1e5. Commits `60c8134`, `88797ff`, `7e595b5`.
 
-All comparisons in this document are **paired within panel with a sign test**.
-Differences of means and medians are not used anywhere: three claims in this
-project were withdrawn after a positive mean turned out to sit on a sign count at
-chance.
+Every comparison is **paired within panel**, reported with wins, losses, ties, a
+median with IQR, and a sign-test p-value. Differences of means are not used.
