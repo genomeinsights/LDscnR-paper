@@ -27,10 +27,18 @@ per_file <- function(i) {
           score_threshold = 0.80, min_r2_rho = 0.5, distance_threshold = 1e5,
           compute_unflagged_eMLG = FALSE, cores = 1)
   stopifnot(identical(sort(pr$pruned), sort(x$grm_markers)))
+  g  <- as.data.table(pr$groups)
+  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
+          data.table(marker = g$members[[k]], CL = paste0(i, "_", g$group_id[k]))))
+  m <- merge(m, ms, by = "marker", all.x = TRUE)
   m[, `:=`(is_rep = marker %in% pr$pruned, set = i,
            chr_lab = paste0("s", i, "_", Chr),
            driving = true_QTN %in% TRUE & MAF > 0.1 & p_Va > 0.05)]
-  m[, .(marker, Chr, Pos, p = emx_p, is_rep, set, chr_lab, driving)]
+  ## a cluster CONTAINS a QTN -- not the same as its representative BEING one,
+  ## which never happens (QTN sit in large clusters and are never LD-central)
+  qcl <- unique(m[driving == TRUE & !is.na(CL)]$CL)
+  m[, has_qtn := !is.na(CL) & CL %in% qcl]
+  m[!is.na(CL), .(marker, Chr, Pos, p = emx_p, is_rep, set, chr_lab, driving, has_qtn, CL)]
 }
 m <- rbindlist(lapply(FILES, per_file), fill = TRUE)[is.finite(p)]
 setorder(m, set, Chr, Pos)
@@ -50,12 +58,15 @@ cat(sprintf("  representatives : %s tests, BH cutoff p = %.3g, %s significant, %
     sum(r[driving == TRUE]$p <= cut_rep), sum(m$driving & m$is_rep)))
 cat(sprintf("  driving QTN that ARE their cluster's representative: %d of %d\n",
     sum(m$driving & m$is_rep), nrow(qtn_all)))
+qrep <- r[has_qtn == TRUE]
+cat(sprintf("  clusters CONTAINING a driving QTN: %d ; of those, representative significant: %d\n",
+    nrow(qrep), sum(qrep$p <= cut_rep)))
 
-mk <- function(d, cutoff, ttl, sub) {
+mk <- function(d, cutoff, ttl, sub, mark) {
   ggplot(d, aes(gpos, -log10(p))) +
     geom_point(colour = "grey78", size = .33, alpha = .75, shape = 16) +
     geom_hline(yintercept = -log10(cutoff), colour = "#1F3F51", linewidth = .42) +
-    geom_point(data = d[driving == TRUE], aes(gpos, -log10(p)),
+    geom_point(data = d[get(mark) == TRUE], aes(gpos, -log10(p)),
                shape = 24, size = 2.5, fill = "#C1622F", colour = "black", stroke = .4) +
     annotate("text", x = max(m$gpos)*.995, y = -log10(cutoff) + .4, hjust = 1, size = 2.5,
              colour = "#1F3F51", label = sprintf("BH 0.05 (p = %.2g)", cutoff)) +
@@ -68,12 +79,12 @@ mk <- function(d, cutoff, ttl, sub) {
 pA <- mk(m, cut_all, "A  Every SNP tested",
          sprintf("%s tests. %s significant; %d of %d driving QTN pass.",
                  format(nrow(m), big.mark=","), format(sum(m$p <= cut_all), big.mark=","),
-                 sum(qtn_all$p <= cut_all), nrow(qtn_all)))
+                 sum(qtn_all$p <= cut_all), nrow(qtn_all)), mark = "driving")
 pB <- mk(r, cut_rep, "B  One LD-central representative per stage-2 cluster",
-         sprintf("%s tests (%.1fx fewer), so the BH cutoff is %.1fx less severe. %s significant; %d of %d driving QTN are themselves representatives.",
-                 format(nrow(r), big.mark=","), nrow(m)/nrow(r), cut_rep/cut_all,
-                 format(sum(r$p <= cut_rep), big.mark=","),
-                 sum(m$driving & m$is_rep), nrow(qtn_all))) +
+         sprintf(paste0("%s tests. Triangles mark the %d clusters that CONTAIN a driving QTN, plotted at their representative's p-value; ",
+                        "%d of them clear the line. %s clusters significant in total."),
+                 format(nrow(r), big.mark=","), nrow(qrep), sum(qrep$p <= cut_rep),
+                 format(sum(r$p <= cut_rep), big.mark=",")), mark = "has_qtn") +
       labs(x = "genome position (Mb, 20 chromosome arms concatenated)")
 ggsave(file.path(OUT, sprintf("snp_vs_reduced_%s_%s_env%d.png", CELL, TAG, ENV)),
        pA / pB, width = 11, height = 7, dpi = 190)
