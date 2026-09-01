@@ -1,6 +1,6 @@
 ---
-title: "Filtering before testing"
-subtitle: "Pre-selecting LD clusters as test units, and what it does and does not buy"
+title: "Development history: filtering, the C-score, and LD clustering"
+subtitle: "The full record, including what was tried and withdrawn"
 author: "module_sim_LDscnR"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
@@ -45,6 +45,34 @@ pr <- function(x) {
 fp <- function(p) ifelse(is.na(p), "--", ifelse(p < 1e-3, sprintf("%.0e", p), sprintf("%.3f", p)))
 esc <- function(s) gsub("_", "\\\\_", s)
 ```
+
+# Purpose of this document
+
+This is the **working record**. It keeps every line of enquiry, including those
+that failed, every claim that was withdrawn, and the reason each correction was
+made. It exists so that a result cannot quietly revert to a superseded version
+and so that the reasoning behind the final method is auditable.
+
+A companion document, `ld_clustering_result.pdf`, states only what survived and
+is written for a reader who does not need this history.
+
+\begin{keybox}
+\textbf{Where this ended up.} Two things were tried on the same premise --- that
+$ld_w$, being phenotype-blind, carries information about where causal variation
+sits.
+
+\textbf{Using $ld_w$ to rank markers (the C-score): abandoned.} It does not beat
+BH at any deployable threshold.
+
+\textbf{Using $ld_w$ to select which units to test ($k$-filtering): abandoned.}
+It buys recall at a steep precision cost, requires a free parameter $k$ with no
+principled value, and was outperformed by doing nothing.
+
+\textbf{Using $ld_w$ to define the units (LD clustering): kept.} This is the
+result in the companion document. It has no free parameter, and its central
+argument --- that BH over near-independent clusters controls FDR over loci rather
+than over SNPs --- requires no knowledge of causal positions.
+\end{keybox}
 
 # Scope, and what changed after review
 

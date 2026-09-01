@@ -99,14 +99,18 @@ score <- function(fl) {
   best <- if (nrow(sub)) sub[order(-r2)][, .SD[1], by = qtn] else sub
   sats <- setdiff(sub$CL, best$CL)
   kept <- setdiff(fl, sats)
-  tp   <- if (nrow(best)) uniqueN(best$qtn) else 0L
+  ## A region can be the best tagger of MORE THAN ONE QTN. Precision must count
+  ## REGIONS that are a best tagger; recall must count QTN recovered. An earlier
+  ## version used the QTN count for both and produced precision above 1.
+  tp_reg <- if (nrow(best)) uniqueN(best$CL)  else 0L
+  tp_qtn <- if (nrow(best)) uniqueN(best$qtn) else 0L
   data.table(flagged = length(fl), contain = contain,
              tag_not_contain = uniqueN(setdiff(sub$CL, su[has_qtn == TRUE]$CL)),
              neither = length(setdiff(fl, unique(c(sub$CL, su[has_qtn == TRUE]$CL)))),
              satellites = length(sats),
              raw_prec = contain/length(fl), raw_rec = contain/nq,
-             dedup_regions = length(kept), dedup_tp = tp,
-             dedup_prec = tp/max(length(kept),1), dedup_rec = tp/nq)
+             dedup_regions = length(kept), dedup_tp = tp_reg, dedup_qtn = tp_qtn,
+             dedup_prec = tp_reg/max(length(kept),1), dedup_rec = tp_qtn/nq)
 }
 res <- rbindlist(lapply(names(flag), function(n) cbind(analysis = n, score(flag[[n]]))))
 res[, `:=`(cell = CELL, tag = TAG, env = ENV, n_qtn = nq, n_clusters = nrow(su))]
