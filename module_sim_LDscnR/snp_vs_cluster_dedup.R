@@ -113,6 +113,18 @@ for (mn in c(2, 5)) {
   q <- rep(NA_real_, nrow(sn)); q[ok] <- p.adjust(sn$p[ok], "BH")
   flag[[paste0("snp_n", mn)]] <- unique(sn$CL[which(!is.na(q) & q < ALPHA)])
 }
+## INVERSE ARM: keep ONLY long-and-sparse, the class that holds 1 QTN of 40.
+## This is a falsification test. The claim drawn from the other filters is that
+## enrichment for CONTAINING a QTN does not predict detection performance. If
+## that is right, restricting to a QTN-poor class should not be catastrophic.
+## If it is catastrophic, enrichment does predict detection and the claim fails.
+okls <- su$long_sparse & is.finite(su$p_simes)
+qls <- rep(NA_real_, nrow(su)); qls[okls] <- p.adjust(su$p_simes[okls], "BH")
+flag$simes_only_sparse <- su$CL[which(!is.na(qls) & qls < ALPHA)]
+## and the dense counterpart, for symmetry
+okld <- (su$span > 1e5) & !su$long_sparse & is.finite(su$p_simes)
+qld <- rep(NA_real_, nrow(su)); qld[okld] <- p.adjust(su$p_simes[okld], "BH")
+flag$simes_only_longdense <- su$CL[which(!is.na(qld) & qld < ALPHA)]
 oknp <- !su$long_sparse & is.finite(su$p_simes)
 qnp <- rep(NA_real_, nrow(su)); qnp[oknp] <- p.adjust(su$p_simes[oknp], "BH")
 flag$simes_nosparse <- su$CL[which(!is.na(qnp) & qnp < ALPHA)]

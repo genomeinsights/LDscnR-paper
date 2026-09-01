@@ -618,30 +618,66 @@ separated out earlier in this work; the error was made anyway. Removing
 3.4% of units also barely relaxes BH, so there was little multiplicity relief to
 offset the loss.
 
-## What the accumulated negatives now show
+## The falsification test, and the conclusion it corrects
 
-Four filters have been tested: $ld_w$ top-$k$, MAF, cluster size, and geometric
-exclusion. All show strong enrichment for QTN-bearing units --- the geometric
-class reaches 30-fold, and $ld_w$ top-5,000 captures 85% of QTN in 2.7% of units
---- and **none converts into precision-recall**.
+Four filters were tested --- $ld_w$ top-$k$, MAF, cluster size, and geometric
+exclusion --- all strongly enriched for QTN-bearing units, and none improved
+precision-recall. That was recorded here as *"enrichment for containing a QTN is
+not the quantity that predicts detection performance"*.
+
+**That claim was too strong, and a direct test refutes it.** Two restrictions of
+matched size were run: keep **only** the 30-fold-enriched class (long-and-dense),
+and keep **only** the 0.7-fold class (long-and-sparse).
+
+```{r inv, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrr@{}}\n\\toprule\n")
+cat("Restriction & flagged & contains QTN & TP & precision & PR \\\\\n\\midrule\n")
+cat("only long-and-\\textbf{dense} (30$\\times$) & 4.5 & 1.0 & 1 & \\textbf{0.333} & 0.0359 \\\\\n")
+cat("only long-and-sparse (0.7$\\times$) & 5.0 & 1.0 & 1 & 0.082 & 0.0147 \\\\\n")
+cat("\\midrule\n")
+cat("Simes, all clusters & 10.0 & 3.0 & 3 & 0.229 & \\textbf{0.0464} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
 
 \begin{keybox}
-Enrichment for \emph{containing} a QTN is not the quantity that predicts
-detection performance. Filters keep selecting units that hold causal variants
-while removing units that were producing the detections.
+\textbf{Enrichment does predict precision.} At matched size the QTN-rich class
+beats the QTN-poor one in 34 of 50 non-tied panels ($p = 0.015$) with four times
+the precision, 0.333 against 0.082. The earlier claim is withdrawn.
 
-This supports, by a second route, the conclusion the companion document reaches:
-complexity reduction helps because it changes \textbf{what is tested}, and hence
-what BH controls, not because it concentrates the search on QTN-rich territory.
-Every attempt to add the latter has failed, and this was the cleanest attempt.
+\textbf{But no restriction beats using every cluster} --- long-sparse-only
+13 W / 42 L ($p = 1\times10^{-4}$), long-dense-only 17 W / 37 L ($p = 0.009$).
+Each throws away about two thirds of the recoverable QTN, and the recall lost
+always exceeds the precision gained.
+
+The corrected statement is narrower and accounts for all four failures without
+the stronger claim: \emph{enrichment predicts precision within a restriction, but
+no restriction beats using all clusters.} That is also why the geometric
+exclusion actively hurt.
 \end{keybox}
 
-Two claims made in passing during this work are also withdrawn. Cluster geometry
-was described as predicting QTN location "better than anything else"; it is
-comparable to $ld_w$, not better (30.4-fold against roughly 31-fold at matched
-selectivity). And $ld_w$ was described as unable to separate the sparse and dense
-classes; that is true of the median $ld_w$ within them (0.0105 against 0.0099)
-but does not make $ld_w$ a poor selector overall, which it is not.
+The test also **measures** the census-versus-detection gap that was previously
+only argued. Long-and-sparse contains 1 QTN of 40, yet reaches a median dedup TP
+of 1 and recall 0.080 --- so it recovers loci by **tagging variants it does not
+contain**. A class can be nearly empty of causal positions and still make true
+detections, which is exactly the step that invalidated the exclusion arm's
+rationale.
+
+The companion document's conclusion is unaffected: complexity reduction helps by
+changing what is tested, and hence what BH controls. What is now withdrawn is the
+supporting argument that enrichment is irrelevant to detection --- it is not,
+it simply cannot be exploited by restriction.
+
+One arm-level observation, untested: long-and-dense-only scores 0.0489 in the
+`nobgs` arm against **0.0059** in `bgs`, an eightfold difference far larger than
+any other arm's. Consistent with background selection breaking the extended-LD
+blocks that define the class, but not established.
+
+Two claims made in passing are also withdrawn. Cluster geometry was described as
+predicting QTN location "better than anything else"; it is comparable to $ld_w$,
+not better (30.4-fold against roughly 31-fold at matched selectivity). And $ld_w$
+was described as unable to separate the sparse and dense classes; that is true of
+the median $ld_w$ within them (0.0105 against 0.0099) but does not make $ld_w$ a
+poor selector overall, which it is not.
 
 # Three deferred analyses, reported {#sec:deferred}
 
