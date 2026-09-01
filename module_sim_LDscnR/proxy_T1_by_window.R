@@ -76,3 +76,18 @@ fwrite(S, file.path(OUT, "proxy_T1_by_window_summary.csv"))
 print(S)
 cat("\ncovered chromosomes per window count (a drop would break the comparison):\n")
 print(W[, .(n_chr = uniqueN(paste0(file, Chr))), by = w][order(w)])
+
+## DECOMPOSITION. The headline correlation is a composite of two capabilities:
+## DETECTING cold blocks (a == 0, where the true rate is exactly 0.000 at w >= 20)
+## and TRACKING the rate continuously elsewhere. Only the second is available in
+## the uncapped range, because the a == 0 windows are precisely the ones a cap
+## overrides -- so the continuous figure is the one T2 will live on. Scoring it
+## separately reverses the plateau: the all-windows number is flat from 20 to 50
+## only because cold-block detection improves with resolution while continuous
+## tracking degrades, the two cancelling.
+N <- W[a > 0, .(rho = suppressWarnings(stats::cor(a, cMMb, method = "spearman"))),
+       by = .(w, file, Chr)][is.finite(rho)][, .(rho_nonzero = median(rho)), by = w]
+S2 <- merge(S[, .(w, rho_all = rho_med, pct_a_zero)], N, by = "w")[order(w)]
+fwrite(S2, file.path(OUT, "proxy_T1_by_window_decomposed.csv"))
+cat("\ncold-block detection versus continuous tracking:\n")
+print(S2)
