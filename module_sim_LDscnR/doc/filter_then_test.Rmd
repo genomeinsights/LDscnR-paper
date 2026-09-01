@@ -424,6 +424,54 @@ different way than an earlier draft claimed. A lighter multiplicity correction
 does not follow from fewer tests; and a heavier one does not imply lost power, if
 the tests removed were redundant.
 
+![Same EMMAX p-values at two resolutions, with **no ld_w filtering** in either panel. A: all 294,609 SNPs; triangles are the 21 driving QTN. B: the 99,787 LD-central representatives, one per stage-2 cluster; triangles mark the clusters that **contain** a driving QTN, plotted at their representative's p-value. Complexity reduction alone recovers 10 of the 21 while flagging 27 clusters against the SNP scan's 132.](../figures/snp_vs_reduced_V0.5_c1_nobgs_env3.png)
+
+\noindent Note that neither panel involves filtering. `ld_w` enters only *inside*
+the clustering (`ld_w_threshold = 0.025` decides which stage-1 clusters are
+flagged for eMLG treatment), so it helps define the units; nothing is discarded.
+What the figure shows is the effect of **complexity reduction alone**.
+
+## How a cluster should be summarised {#sec:summary}
+
+The module used the LD-central representative throughout. Four alternatives were
+compared on **identical clusters, identical GRM and identical BH treatment**, so
+the only thing that varies is how member p-values become one number. One pooled
+panel, 99,787 clusters, 21 containing a driving QTN.
+
+```{r summ, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrr@{}}\n\\toprule\n")
+cat("Cluster summary & flagged & with QTN & precision & recall & PR \\\\\n\\midrule\n")
+cat("Simes over members & 28 & 12 & 0.429 & 0.571 & \\textbf{0.245} \\\\\n")
+cat("eMLG (consensus genotype) & 36 & 13 & 0.361 & \\textbf{0.619} & 0.224 \\\\\n")
+cat("LD-central representative & 27 & 10 & 0.370 & 0.476 & 0.176 \\\\\n")
+cat("best SNP (min $p$, uncorrected) & 39 & 12 & 0.308 & 0.571 & 0.176 \\\\\n")
+cat("highest $ld_w$ member & 28 & 9 & 0.321 & 0.429 & 0.138 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{Aggregation beats any single marker.} Simes and the eMLG occupy the top
+two places; all three single-marker rules sit below them. Simes gains two
+QTN-bearing loci over the representative while flagging \emph{one more} region,
+so its precision rises to 0.43 --- a straight improvement rather than a trade.
+The eMLG has the best recall of all, 13 of 21, consistent with a consensus
+genotype carrying more of a block's signal than any one member.
+
+\textbf{Two informative negatives.} ``Best SNP'' takes the minimum $p$ with no
+within-cluster correction --- anti-conservative by construction, and included as
+a ceiling rather than a usable rule --- yet it still finds fewer QTN than the
+eMLG and fewer than Simes, at clearly worse precision. And selecting the member
+with the \textbf{highest $ld_w$} is the worst of the five. $ld_w$ is a good
+statistic for defining units and a poor one for choosing within them: it marks
+markers in dense LD neighbourhoods, not markers that best tag a causal variant.
+\end{keybox}
+
+This sharpens the cost of the representative. Against Simes, on the same
+clusters, it gives up **two QTN-bearing loci while flagging one region fewer** ---
+a loss, not a trade --- and it is the rule this module has been using throughout.
+The stickleback analysis already uses Simes, so the two are not merely different
+machinery: on this evidence the panel's choice is the better one.
+
 ## The residual cost, and its mechanism
 
 Reduction does lose 4 of the 14 QTN-bearing loci, and that loss has a specific
