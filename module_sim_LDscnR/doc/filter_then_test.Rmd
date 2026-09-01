@@ -99,7 +99,7 @@ and nothing at 10 kb.
 cat("\\begin{tabular}{@{}p{1.7cm}p{5.2cm}p{7.4cm}@{}}\n\\toprule\n")
 cat("\\textbf{Component} & \\textbf{Choice} & \\textbf{Why} \\\\\n\\midrule\n")
 rows <- list(
- c("Unit","Stage-2 LD cluster, one pruned representative marker","Membership recomputed per bundle and required to reproduce the stored GRM marker set exactly"),
+ c("Unit","Stage-2 LD cluster, tested through its LD-central pruned representative","Representative = highest median $r^2$ to the other members. Membership recomputed per bundle and required to reproduce the stored GRM marker set exactly"),
  c("Filter","Top $k$ units by median $ld_w$; computed before any phenotype","Compared against MAF, cluster size and random at identical $k$"),
  c("Test","BH at 0.05 within the selected set only","Identical to the conventional analysis, applied to fewer tests"),
  c("Endpoint","QTN-proximal: within 10 / 50 / 100 kb of a driving QTN, causal variants excluded","Shares no machinery with $ld_w$; an $r^2$-tagging truth would flatter it by construction"),
@@ -349,12 +349,81 @@ cat("\\bottomrule\n\\end{tabular}\n")
 
 # Relationship to the empirical panel analysis
 
-This does **not** address the representative-marker problem. Every stage-2 cluster
-is tested through a single pruned representative, so filtering improves the
-multiplicity correction applied to those representative tests; it does not recover
-information discarded within a cluster. The stickleback analysis uses Simes
-aggregation over cluster members and therefore implements different testing
-machinery. The two support the same general filter-then-test principle and should
+## What EMMAX is actually run on
+
+Worth stating precisely, because it is easy to misread in either direction.
+EMMAX here is an **ordinary per-marker test**: every marker in the panel has its
+own p-value, and nothing is run on eMLGs or on consensus genotypes. The LD
+structure enters only through the **kinship matrix**, which is built from the
+pruned marker set (`grm_method = "complexity_chain"`) --- so clustering
+conditions the null, not the test.
+
+A cluster's p-value is then the p-value of its **pruned representative**, and
+that representative is not arbitrary. `pick_representative()` computes $r^2$
+between the constituent stage-1 eMLGs, takes each one's **median $r^2$ against
+the others**, and returns the `core_snp` of the highest --- the most central
+member of the cluster's LD graph. Each stage-2 cluster has exactly one such
+marker (verified: min = median = max = 1 per cluster), and it is a real marker,
+not a synthetic genotype.
+
+## What the representative costs, measured
+
+Two measurements on one pooled panel (V0.5_c1 nobgs env3, 294,609 SNPs in 99,787
+stage-2 clusters), comparing the same EMMAX p-values at both resolutions.
+
+```{r reptab, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("Tested & tests & BH cutoff $p$ & significant & driving QTN passing \\\\\n\\midrule\n")
+cat("every SNP & 294,609 & 4.2e-04 & 2,467 & 14 of 21 \\\\\n")
+cat("LD-central representatives & 99,787 & 1.2e-05 & 27 & --- \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{Fewer tests made the threshold harsher, not easier.} Three times fewer
+tests and a BH cutoff \textbf{35 times more severe}. BH is adaptive --- its
+cutoff is the largest $p$ with $p \le \alpha i/n$, so it depends on how many
+small p-values survive, not on $n$ alone. Restricting to representatives removed
+most of the signal along with most of the tests, and the step-up never climbs.
+
+This qualifies the rationale for filtering stated in Section~\ref{sec:fdr}:
+a lighter multiplicity correction follows only if the filter \emph{retains} the
+signal. Where it does not, reducing the number of tests makes the threshold
+stricter and the analysis weaker on both counts.
+\end{keybox}
+
+**And no driving QTN is ever its cluster's representative --- 0 of 21.** That is
+not chance. QTN sit in unusually large clusters: the 21 QTN-bearing clusters have
+sizes 2, 4, 4, 5, 5, 8, 13, 21, 22, 31, 38, 55, 87, 100, 133, 141, 150, 248, 272,
+311 and 354, against a genome-wide **median cluster size of 1** (mean $\approx$ 3).
+That is the expected consequence of selection extending LD around a causal site
+--- the QTN neighbourhood *is* a large linkage block, which is what $ld_w$
+responds to --- but it means the chance that any particular member is the
+LD-central one is about $1/\text{size}$, and for clusters of 100--350 that is
+negligible.
+
+So testing representatives **never tests a QTN directly**. It relies entirely on
+the central marker tagging a variant that may sit at the block's periphery, and
+the loss is largest exactly in the big QTN-bearing clusters where it matters
+most. This is the mechanism behind the cluster-level power deficits reported
+above, which were previously described without one.
+
+## Relationship to the empirical panel analysis
+
+Given that, the difference from the stickleback analysis should be stated as
+**a single LD-central representative versus aggregation over members**, not as an
+arbitrary or lossy summary. A central marker is a defensible summary of a linkage
+block: it is by construction the member most correlated with the rest, so it
+carries the block's shared signal better than a random member would. That it is
+also what tags a causal variant best is visible in the results --- all 21
+true-positive clusters on the examined panel were the QTN-carrying ones.
+
+What remains true is narrower. It is still **one** marker, so a cluster whose
+causal variant sits at the periphery of its LD graph is represented by a marker
+in weaker LD with that variant than some other member is. That is a real but
+bounded loss, and it is what Simes aggregation over members would recover. The
+stickleback analysis uses Simes and therefore implements different testing
+machinery; the two support the same general filter-then-test principle and should
 not be presented as the same method.
 
 # Corrections applied after review {#sec:corrections}
@@ -373,6 +442,8 @@ rows <- list(
  c("``The filter must be LD-structure-based''","Weakened to the filters evaluated"),
  c("``Indistinguishable at every window'' conflicted with $p = 0.030$","Replaced by the stratified interaction analysis"),
  c("\\texttt{79\\%\\%} rendering bug; cramped tables","Fixed; tables given explicit column widths"),
+ c("The cluster representative was described as an arbitrary or lossy summary","Wrong. \\texttt{pick\\_representative()} returns the member with the highest median $r^2$ to the others --- the LD-central marker. Restated as single-representative vs Simes aggregation, and the cost of it is now measured"),
+ c("``Fewer tests means a lighter multiplicity correction''","Only if the filter retains signal. Measured: 3x fewer tests gave a BH cutoff 35x MORE severe, because BH is adaptive"),
  c("The \\texttt{env\\_orth} null was dismissed as ``not a true null''","REINSTATED. Its surrogates are orthogonal to the causal environment, so rejections under them are false positives. Both nulls now reported side by side"),
  c("Confidence intervals were computed on 100 draws, not 1{,}000","A scalar named \\texttt{B} was masked by a COLUMN named \\texttt{B} in the input, so the grouping returned one row per input row. Intervals were ten times too wide"))
 for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
