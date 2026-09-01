@@ -1,0 +1,695 @@
+<title>C-score Benchmark Status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#F7F9F9;
+    --surface:#FFFFFF;
+    --surface-sunk:#F0F4F4;
+    --ink:#182126;
+    --ink-mid:#465861;
+    --ink-soft:#6B7C84;
+    --rule:#DBE3E4;
+    --rule-strong:#C2CDCF;
+    --accent:#1F6F8B;
+    --accent-soft:#E4EEF2;
+    --pos:#2E7156;
+    --pos-soft:#E3EFE9;
+    --neg:#9E4630;
+    --neg-soft:#F5E7E2;
+    --measure:68ch;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#10161A;
+      --surface:#171F24;
+      --surface-sunk:#1C262C;
+      --ink:#E3EAEC;
+      --ink-mid:#A6B5BC;
+      --ink-soft:#7F8F97;
+      --rule:#26333A;
+      --rule-strong:#38474F;
+      --accent:#6FB6D2;
+      --accent-soft:#1B2E38;
+      --pos:#7CC1A1;
+      --pos-soft:#16281F;
+      --neg:#D99274;
+      --neg-soft:#2C1C16;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#10161A;
+    --surface:#171F24;
+    --surface-sunk:#1C262C;
+    --ink:#E3EAEC;
+    --ink-mid:#A6B5BC;
+    --ink-soft:#7F8F97;
+    --rule:#26333A;
+    --rule-strong:#38474F;
+    --accent:#6FB6D2;
+    --accent-soft:#1B2E38;
+    --pos:#7CC1A1;
+    --pos-soft:#16281F;
+    --neg:#D99274;
+    --neg-soft:#2C1C16;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:16px;
+    line-height:1.62;
+    margin:0;
+    padding:0 1.25rem 6rem;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--measure);margin:0 auto}
+  .wide{max-width:82ch;margin:0 auto}
+
+  /* ---------- masthead ---------- */
+  header.masthead{
+    max-width:82ch;margin:0 auto;
+    padding:4.5rem 0 2rem;
+    border-bottom:2px solid var(--ink);
+  }
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 1.1rem;
+  }
+  h1{
+    font-family:Spectral,Georgia,serif;
+    font-weight:600;font-size:clamp(2rem,4.6vw,3.05rem);
+    line-height:1.08;letter-spacing:-.015em;
+    text-wrap:balance;margin:0 0 .9rem;
+  }
+  .standfirst{
+    font-family:Spectral,Georgia,serif;
+    font-size:1.14rem;line-height:1.55;color:var(--ink-mid);
+    max-width:60ch;margin:0 0 1.8rem;
+  }
+  .meta{
+    display:flex;flex-wrap:wrap;gap:.45rem 1.5rem;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.735rem;color:var(--ink-soft);
+  }
+  .meta b{color:var(--ink-mid);font-weight:500}
+
+  /* ---------- sections ---------- */
+  section{max-width:82ch;margin:0 auto;padding-top:3.4rem}
+  h2{
+    font-family:Spectral,Georgia,serif;
+    font-weight:600;font-size:1.62rem;line-height:1.2;
+    letter-spacing:-.01em;text-wrap:balance;
+    margin:0 0 .35rem;
+  }
+  .sec-note{
+    font-size:.85rem;color:var(--ink-soft);
+    margin:0 0 1.5rem;max-width:62ch;
+  }
+  h3{
+    font-family:"IBM Plex Sans",sans-serif;
+    font-weight:600;font-size:1rem;letter-spacing:-.005em;
+    margin:2rem 0 .5rem;
+  }
+  p{margin:0 0 1.05rem;max-width:var(--measure)}
+  strong{font-weight:600}
+  em{font-style:italic}
+  a{color:var(--accent)}
+  code,.mono{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.86em;font-variant-numeric:tabular-nums;
+  }
+  p code{
+    background:var(--surface-sunk);
+    padding:.08em .34em;border-radius:3px;
+  }
+
+  /* ---------- data table ---------- */
+  .scroll{overflow-x:auto;margin:0 0 1.1rem;-webkit-overflow-scrolling:touch}
+  table{
+    border-collapse:collapse;width:100%;min-width:34rem;
+    font-variant-numeric:tabular-nums;
+  }
+  caption{
+    text-align:left;font-size:.78rem;color:var(--ink-soft);
+    padding-bottom:.6rem;
+  }
+  th,td{
+    text-align:right;padding:.52rem .7rem;
+    border-bottom:1px solid var(--rule);
+    font-size:.87rem;
+  }
+  th:first-child,td:first-child{text-align:left}
+  thead th{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.685rem;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ink-soft);font-weight:500;
+    border-bottom:1px solid var(--rule-strong);
+    white-space:nowrap;
+  }
+  tbody td.num{font-family:"IBM Plex Mono",ui-monospace,monospace}
+  tbody tr:last-child td{border-bottom:none}
+  td.cell-name{font-weight:500;white-space:nowrap}
+  .chip{
+    display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.75rem;padding:.1rem .45rem;border-radius:3px;
+    white-space:nowrap;
+  }
+  .chip.pos{background:var(--pos-soft);color:var(--pos)}
+  .chip.neg{background:var(--neg-soft);color:var(--neg)}
+
+  /* ---------- pull statement ---------- */
+  .twin{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
+    gap:1px;background:var(--rule);
+    border:1px solid var(--rule);border-radius:5px;overflow:hidden;
+    margin:1.6rem 0;
+  }
+  .twin > div{background:var(--surface);padding:1.15rem 1.25rem}
+  .twin h4{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 .5rem;font-weight:500;
+  }
+  .twin p{margin:0;font-size:.93rem;line-height:1.55}
+
+  /* ---------- corrections ---------- */
+  .corr{
+    border-left:2px solid var(--rule-strong);
+    padding:.1rem 0 .1rem 1.15rem;
+    margin:0 0 1.5rem;
+  }
+  .corr.changed{border-left-color:var(--neg)}
+  .corr h3{margin:0 0 .3rem;font-size:.97rem}
+  .corr p{margin:0;font-size:.92rem;color:var(--ink-mid)}
+  .corr .tag{
+    display:block;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-soft);margin-bottom:.25rem;
+  }
+  .corr.changed .tag{color:var(--neg)}
+
+  /* ---------- open items ---------- */
+  ul.open{list-style:none;padding:0;margin:0}
+  ul.open li{
+    display:grid;grid-template-columns:auto 1fr;gap:.85rem;
+    padding:.85rem 0;border-bottom:1px solid var(--rule);
+    font-size:.93rem;
+  }
+  ul.open li:last-child{border-bottom:none}
+  ul.open .mark{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.7rem;color:var(--accent);
+    padding-top:.28rem;letter-spacing:.06em;
+  }
+  ul.open b{font-weight:600;display:block;margin-bottom:.1rem}
+  ul.open span.d{color:var(--ink-mid)}
+
+  /* ---------- provenance ---------- */
+  .prov{
+    background:var(--surface-sunk);
+    border:1px solid var(--rule);border-radius:5px;
+    padding:1.25rem 1.4rem;margin-top:1rem;
+  }
+  .prov dl{
+    display:grid;grid-template-columns:auto 1fr;
+    gap:.42rem 1.15rem;margin:0;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.78rem;
+  }
+  .prov dt{color:var(--ink-soft);white-space:nowrap}
+  .prov dd{margin:0;color:var(--ink-mid);word-break:break-word}
+
+  footer{
+    max-width:82ch;margin:0 auto;padding-top:3rem;
+    border-top:1px solid var(--rule);margin-top:3.5rem;
+    font-size:.8rem;color:var(--ink-soft);
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<header class="masthead">
+  <p class="eyebrow">Simulation benchmark · status</p>
+  <h1>Where the C-score benchmark stands</h1>
+  <p class="standfirst">Four selection regimes, forty genomes, and six corrections — three of which reversed a conclusion I had already reported.</p>
+  <div class="meta">
+    <span><b>Data</b> bgs5, 4 cells × 10 env × 2 arms</span>
+    <span><b>Rows</b> 318 / 80 genomes</span>
+    <span><b>Updated</b> 31 Aug 2026</span>
+    <span><b>Also covers</b> pilots, 796-bundle enrichment, permutation runs</span>
+  </div>
+</header>
+
+<section>
+  <h2>What is actually being compared</h2>
+  <p class="sec-note">This framing was nearly overstated once, so it leads.</p>
+  <p>Both arms are <strong>region-based</strong>. They call the same scoring function: <code>ld_regions()</code> to cluster the selected markers, the same <code>l_min</code> filter, the same <code>evaluate_ors()</code> against the same truth table. The only thing that differs is <em>which markers get selected</em> — <code>C ≥ tau</code> versus <code>q &lt; alpha</code>, computed on identical p-values.</p>
+  <p>There is no single-SNP arm, by design. So the result speaks to the <strong>selection statistic</strong>, not to whether LD-aggregation beats marker-wise testing. That second question would need a separate arm and has not been run.</p>
+</section>
+
+<section>
+  <h2>The result</h2>
+  <p class="sec-note">Common-support AUCs, genome level, engines and l_min averaged within genome.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Gap is C-score minus BH alpha. Power is the cell's own alpha PR-AUC.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Cell</th>
+          <th scope="col">Power</th>
+          <th scope="col">Absolute gap</th>
+          <th scope="col">t</th>
+          <th scope="col">Relative (median)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cell-name">V0.5_c1</td>
+          <td class="num">0.535</td>
+          <td class="num">−0.036 ± 0.022</td>
+          <td class="num">−1.6</td>
+          <td><span class="chip neg">−7.6%</span></td>
+        </tr>
+        <tr>
+          <td class="cell-name">V2_c1</td>
+          <td class="num">0.341</td>
+          <td class="num">+0.055 ± 0.018</td>
+          <td class="num">+3.0</td>
+          <td><span class="chip pos">+9.6%</span></td>
+        </tr>
+        <tr>
+          <td class="cell-name">V1_c1.5</td>
+          <td class="num">0.096</td>
+          <td class="num">+0.034 ± 0.010</td>
+          <td class="num">+3.3</td>
+          <td><span class="chip pos">+40.3%</span></td>
+        </tr>
+        <tr>
+          <td class="cell-name">V0.5_c2</td>
+          <td class="num">0.028</td>
+          <td class="num">+0.009 ± 0.003</td>
+          <td class="num">+2.7</td>
+          <td><span class="chip pos">+33.3%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Two statements are true and they answer different questions. Neither is the other's correction.</p>
+
+  <div class="twin">
+    <div>
+      <h4>In absolute PR-AUC</h4>
+      <p>The advantage peaks at <em>intermediate</em> power and vanishes where detection becomes impossible — an inverted U. Spearman ρ = −0.19, not significant.</p>
+    </div>
+    <div>
+      <h4>As a proportion of achievable</h4>
+      <p>It rises as power falls, then plateaus. Baselines differ 17-fold across cells, so absolute differences are comparable within a cell and not across it.</p>
+    </div>
+  </div>
+
+  <h3>Reported at two levels, not as one p-value</h3>
+  <p>Power varies <strong>77% between cells and 23% within</strong> (sums-of-squares split), so pooling would treat a four-point comparison as 79 independent observations and return <code>p = 3e−06</code>. That is the same pseudo-replication as the row-versus-genome problem, one level up.</p>
+  <div class="scroll">
+    <table>
+      <caption>The two components, kept apart.</caption>
+      <thead>
+        <tr><th scope="col">Level</th><th scope="col">Statistic</th><th scope="col">Honest n</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cell-name">Between cells</td><td class="num">ρ = −0.80, ordering perfect</td><td class="num">4</td></tr>
+        <tr><td class="cell-name">Within cells</td><td class="num">−0.31 / −0.53 / −0.59 / −0.50 — 4 of 4 negative, 3 significant</td><td class="num">20 each</td></tr>
+        <tr><td class="cell-name">Within-cell permutation</td><td class="num">ρ = −0.503, p &lt; 0.0005</td><td class="num">79</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The permutation shuffles the ratio <em>inside</em> each cell, so the between-cell ordering survives under the null and only the within-cell component is tested. That is the defensible single number.</p>
+
+  <h3>The one clean causal contrast</h3>
+  <p><strong>V0.5_c1 versus V2_c1.</strong> Matched at <code>c = 1</code>, so background LD is held fixed (b ≈ 0.03 in both), <em>and</em> identical on genomic-control heterogeneity (27% bgs, 13% nobgs; median gif 1.050 against 1.053). Across that pair the gap moves <span class="mono">−0.036 → +0.055</span> with only selection intensity differing. Everything else in the table is a four-cell trend that carries a confound.</p>
+</section>
+
+<section>
+  <h2>Corrections that changed a conclusion</h2>
+  <p class="sec-note">Marked entries reversed or removed something already reported. The rest tightened a claim without overturning it.</p>
+
+  <div class="corr changed">
+    <span class="tag">Reversed a reported result</span>
+    <h3>Pseudo-replication in the standard errors</h3>
+    <p>Pooling 2 engines × 2 l_min × 10 environments quadrupled n, but those four rows are one genome measured four ways. At genome level V0.5_c1 went from t = −3.2 to −1.7 — from result to non-result. It had been reported as a result.</p>
+  </div>
+
+  <div class="corr changed">
+    <span class="tag">Reversed my prediction</span>
+    <h3>Common support ran against the C-score</h3>
+    <p><code>pr_auc()</code> integrates to whatever recall a sweep reached. I predicted this favoured C, since C sweeps a 1.6–2.7× larger candidate set. Measured, BH alpha attains higher maximum recall in nearly every row: a larger candidate set does not buy recall when the extra markers form no scorable region. Correcting it moved every cell in C's favour.</p>
+  </div>
+
+  <div class="corr changed">
+    <span class="tag">Removed a stated finding</span>
+    <h3>"BGS halves PR-AUC" did not survive replication</h3>
+    <p>That came from a single environment on two cells. On ten environments the ratio is ≈1.5×, not ≈2.5×. The old bundles were fine — they reproduce to within 0.01 — so it was env1 being unrepresentative, not a convention problem.</p>
+  </div>
+
+  <div class="corr">
+    <span class="tag">Mislabelled axis</span>
+    <h3>Power is governed by c, not V</h3>
+    <p>V is selection variance, so larger V is weaker selection — but alpha AUC spans 17-fold at identical V, and V2_c1 is the second <em>easiest</em> cell, not the low-power one I called it. Panels now order by measured difficulty and carry the value.</p>
+  </div>
+
+  <div class="corr">
+    <span class="tag">Wrong quantity named</span>
+    <h3>Focal QTN, not nearest</h3>
+    <p><code>max_LD_with_QTN</code> is the maximum r² over a chromosome's QTN, and the focal QTN differs from the nearest for <strong>56.2%</strong> of markers. The pruning manuscript's Figure 2 caption carries the same error and still needs fixing.</p>
+  </div>
+
+  <div class="corr">
+    <span class="tag">Stale settings</span>
+    <h3>min_r2 and distance_threshold</h3>
+    <p>The sim scripts were pinned at a fixed <code>min_r2 = 0.2</code> and <code>5e5</code> while the bundles used the derived ρ = 0.5 floor and <code>1e5</code>. Both now match, and both are pinned by measurement — <code>1e5</code> reproduces the stored <code>grm_markers</code> exactly (12,242).</p>
+  </div>
+</section>
+
+<section>
+  <h2>What ld_w actually tracks</h2>
+  <p class="sec-note">From the pooled 20-chromosome genome, V0.5_c1_env1.</p>
+  <p><code>ld_w</code> is substantially a <strong>low-recombination detector</strong> rather than a signal detector: in V0.5_c1, Spearman ρ = −0.46 per marker against recombination rate, rising to <strong>−0.78</strong> at 500 kb windows. The aggregation gap is the point — per-marker rate is noisy relative to the LD it produces, so the marker-level number understates the dependence.</p>
+  <p>Those figures are <strong>stable across environments but not across cells</strong>. Over all ten environments of V0.5_c1 the window-scale ρ spans just −0.772 to −0.803 (median −0.780, and the published env1 value of −0.778 is essentially the median). Between cells it moves far more: V1_c1.5 env2 gives −0.36 (nobgs) and −0.62 (bgs). So the strength of the relationship is a property of the regime, and the number above should be read as V0.5_c1's, not as the method's.</p>
+  <p>It is also <strong>not an artefact of bgs5's coarse recombination map</strong>. The map-rebuild pilots carry 1.5–2.1% of loci at zero recombination against bgs5's 36–42%, and on the matched cell and environment their window-scale correlations are as strong or stronger — −0.19 to −0.53 (nobgs) and −0.66 to −0.81 (bgs), against bgs5's −0.36 and −0.62. Twenty-fold fewer cold spots, same relationship.</p>
+  <p>Markers in strong LD with a causal variant (r² &gt; 0.8) sit at a median <code>log1p(rec)</code> of <strong>0.00</strong>, against 0.63 genome-wide. They are not merely enriched in low-recombination regions; they are concentrated at the floor.</p>
+  <div class="corr" style="margin-top:1.35rem">
+    <span class="tag">Checked 31 Aug — the cold spots are real</span>
+    <h3>A third of the map sits at identical genetic positions, and that is not a bug</h3>
+    <p>Adjacent loci frequently share a truncated map position — 701 blocks covering 33.8% of markers here — which briefly looked like a discretisation artefact manufacturing zero-recombination blocks. It is not. Within a block the genetic span is <strong>exactly zero for 46.1%</strong> and a median of 2.2 × 10⁻⁵ cM for the rest; the largest span observed is 1.96 truncation bins, so the truncation is barely binding. <code>rec_rate</code> is exactly zero at 92.3% of these markers against 0.2% elsewhere. Recombination genuinely does not happen between them.</p>
+    <p style="margin-top:.7rem">Dropping them as a robustness check moves the correlation from −0.46 to −0.33 per marker and −0.78 to −0.61 at window scale — but that is removing the cold spots themselves, which is where local LD lives and where <code>ld_w</code> is supposed to fire. It bounds how much of the relationship comes from cold spots specifically; it is not a de-biased estimate, and the un-dropped figures are the ones to quote.</p>
+  </div>
+  <p>But several causal variants sit at background <code>ld_w</code> — real, locally unlinked, and unreachable at any C threshold. That is the blind spot, and it is the mechanism by which C loses in the one cell where it does: where power is high enough that BH finds those loci anyway, discarding them costs more than the LD weighting gains.</p>
+</section>
+
+<section>
+  <h2>Does it transfer to a corrected map?</h2>
+  <p class="sec-note">From the map-rebuild pilots: four map variants, two burn-in replicates, one environment, matched against the same bgs5 cell.</p>
+
+  <div class="corr changed">
+    <span class="tag">Corrected 31 Aug — wrong baseline cell</span>
+    <h3>An earlier version of this table compared the pilots against the wrong bgs5 cell</h3>
+    <p>The bgs5 row was drawn by matching on arm only, across all 400 bundle files, then taking the first four rows — which sorted to <code>V0.5_c1</code>, not the <code>V1_c1.5</code> the pilots were actually run at. It made background LD look 4× lower on bgs5 and the C-score's thresholds look like they shifted substantially. Against the matching cell both claims dissolve. Table below is corrected; the cold-spot and decay-rate differences survive, the "different architecture" reading does not.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <caption>nobgs arm, V1_c1.5 env2 throughout. bgs5 over all 10 files (20 chromosomes); pilots have 2 files (4 chromosomes).</caption>
+      <thead>
+        <tr><th scope="col">Map</th><th scope="col">Half-decay 1/a</th><th scope="col">Background LD b</th><th scope="col">Loci at zero rec.</th><th scope="col">min_r2 (ρ=0.5)</th><th scope="col">r2_link (ρ=0.75)</th><th scope="col">ld_w window</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cell-name">bgs5</td><td class="num">72 kb (28–332)</td><td class="num">0.123</td><td class="num">41.7%</td><td class="num">0.561</td><td class="num">0.342</td><td class="num">899 kb</td></tr>
+        <tr><td class="cell-name">pilot_26</td><td class="num">39 kb (28–51)</td><td class="num">0.129</td><td class="num">1.5%</td><td class="num">0.563</td><td class="num">0.346</td><td class="num">697 kb</td></tr>
+        <tr><td class="cell-name">pilotC_26</td><td class="num">29 kb (18–43)</td><td class="num">0.127</td><td class="num">1.6%</td><td class="num">0.560</td><td class="num">0.343</td><td class="num">498 kb</td></tr>
+        <tr><td class="cell-name">pilot_53</td><td class="num">14 kb (9–19)</td><td class="num">0.125</td><td class="num">1.7%</td><td class="num">0.561</td><td class="num">0.343</td><td class="num">256 kb</td></tr>
+        <tr><td class="cell-name">pilotC_53</td><td class="num">16 kb (15–19)</td><td class="num">0.125</td><td class="num">1.6%</td><td class="num">0.556</td><td class="num">0.341</td><td class="num">309 kb</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>The background LD floor is the same</strong> — b of 0.123 on bgs5 against 0.125–0.129 on the pilots. What differs is how fast LD decays to it (72 kb against 14–39 kb), the fraction of loci in cold spots (<strong>41.7% against 1.5–1.7%</strong>), and the <code>ld_w</code> window that follows from the decay rate (899 kb against 256–697 kb).</p>
+  <p>Read the half-decay figures with their spread, not as point values. Per-chromosome <code>1/a</code> on bgs5 runs <strong>28 to 332 kb</strong> — more than tenfold within one cell — so any half-decay quoted from a couple of files could land almost anywhere in that range. Note also that <code>a_pred</code> is a pooled prediction, identical across chromosomes within a file, so averaging it over two files averages two numbers rather than four.</p>
+
+  <h3>The C-score's thresholds transfer essentially unchanged</h3>
+  <p>Because they are decay-relative, and because the floor <em>b</em> that sets them is the same: <code>min_r2</code> at ρ=0.5 is 0.561 on bgs5 against 0.556–0.563 on the pilots, and <code>r2_link</code> at ρ=0.75 is 0.342 against 0.341–0.346. Differences under 1%. The selection advantage holds too — at matched budget, C's own <em>k</em> against the top <em>k</em> by p-value, paired within dataset, C is more precise in <strong>11 of 12</strong> non-tied pilot datasets, mean gain <strong>+0.061</strong>, Wilcoxon p = 0.0015.</p>
+
+  <h3>The enrichment is not geometry</h3>
+  <p>Selecting markers by <code>ld_w</code> alone — a genotype-only statistic that never sees the phenotype — enriches 1.4–6.2× <em>(not MAF-matched &mdash; roughly halved when it is; see the corrected table below)</em> for markers tagging a causal variant at the top 10%. Against a rotation null that preserves <code>ld_w</code>'s autocorrelation and the tagging pattern while breaking their alignment, <strong>18 of 18 datasets are significant</strong> (null mean 1.00, observed 1.40–6.23). Checked rather than assumed, because a containment-style statistic over <em>clusters</em> elsewhere in the project does collapse against size-matched controls; a per-marker statistic cannot fail that way.</p>
+  <p>At equal budget the three rules separate by regime: the C-score is best at small <em>k</em> and then stops — it is exactly zero for &gt;98% of markers, so beyond its support it has no ranking to offer — while <code>ld_w</code> alone holds its enrichment furthest, out-performing the p-value at large budgets in three of four pilot maps.</p>
+
+    <div class="corr changed">
+      <span class="tag">Qualified &mdash; the truth definition flatters ld_w</span>
+      <h3>The enrichment is real, but it is not a detection claim</h3>
+      <p>The enrichment above is scored against the truth <em>&ldquo;this marker is in LD (r&sup2; above threshold) with a QTN&rdquo;</em>. <code>ld_w</code> is itself an LD statistic, so that truth shares machinery with the statistic being scored: high-<code>ld_w</code> markers are in strong LD with many things, causal variants included, partly by construction. The rotation null does not remove this &mdash; it breaks the <em>alignment</em> between <code>ld_w</code> and the tagging pattern, not the definitional overlap between them.</p>
+      <p>Scored instead against a truth that shares nothing with either statistic &mdash; <strong>bp distance to the nearest driving QTN, causal variants excluded</strong> &mdash; the ordering changes. In the sim-parsing session&rsquo;s arbitration, <code>ld_w</code> alone reaches fold 2.35 and recall 23%, against the association statistic&rsquo;s 4.14 / 41%: <code>ld_w</code> is the <em>weakest</em> of the candidates at recovering the QTN neighbourhood on its own.</p>
+      <p>Both results can hold. The enrichment numbers are not wrong, and tagging is the operationally relevant truth for a scan whose unit is &ldquo;markers that tag a QTN&rdquo;. But the numbers should not be quoted as evidence that <code>ld_w</code> <em>detects</em> causal variation, and the &ldquo;out-performs the p-value at large budgets&rdquo; comparison above inherits the same favourable truth and has not been re-tested against a distance-based one.</p>
+      <p>One property of <code>ld_w</code> does survive independent testing and is worth keeping: <strong>it is not a frequency proxy</strong>. Substituting MAF for <code>ld_w</code> as a multiplier makes the association statistic strictly worse (p &lt; 1e&minus;4 across both datasets, rank-normalised too), while <code>F &times; ld_w</code> beats <code>F &times; MAF</code> decisively. Whatever <code>ld_w</code> carries is confounded with frequency but not reducible to it.</p>
+    </div>
+
+  <div class="corr" style="margin-top:1.5rem">
+    <span class="tag">Method trap, recorded</span>
+    <h3>The C-score cannot be scored as a ranker</h3>
+    <p>Testing it with a genome-wide AUC shows it losing badly to the raw p-value, 0.527 against 0.675. That test is invalid: with C zero across &gt;98% of the genome, the AUC is pinned near 0.5 by ties whatever the selection quality — the tell was <code>auc_C</code> sitting at 0.50–0.57 in <em>every</em> dataset. At matched budget the sign reverses. C is a selector, not a ranker, and anything evaluating it as the latter will reproduce this.</p>
+  </div>
+</section>
+
+<section>
+  <h2>A related result that points the other way</h2>
+  <p class="sec-note">Marker-level enrichment across the full bgs5 design — 796 bundles, from the pipeline session. Reported here because it is easy to mistake for confirmation of the result above, and it is not.</p>
+
+  <p>Filtering markers on <code>ld_w</code> alone — genotype-only, never sees the phenotype — enriches for markers tagging a causal variant, and the enrichment scales inversely with the tagging <em>base rate</em>: 7.56× where 1.2% of markers tag a QTN, 1.37× where 45% do. Measured over ~100 bundles per cell and arm, so far better replicated than anything in the sections above.</p>
+
+  <div class="scroll">
+    <table>
+      <caption><strong>Superseded &mdash; fixed cut, not MAF-matched.</strong> nobgs arm; fold = median enrichment at the top 10% by <code>ld_w</code>, scored at a fixed r&sup2; &ge; 0.27. See the correction below the table before quoting any figure in it. Power and relative C-gain are this document's own figures for the same cells.</caption>
+      <thead>
+        <tr><th scope="col">Cell</th><th scope="col">Tagging base rate</th><th scope="col">Fold enrichment</th><th scope="col">Power</th><th scope="col">Relative C-gain</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cell-name">V2_c1</td><td class="num">1.2%</td><td class="num">7.56</td><td class="num">0.341</td><td><span class="chip pos">+9.6%</span></td></tr>
+        <tr><td class="cell-name">V0.5_c1</td><td class="num">2.7%</td><td class="num">6.93</td><td class="num">0.535</td><td><span class="chip neg">−7.6%</span></td></tr>
+        <tr><td class="cell-name">V1_c1.5</td><td class="num">13.9%</td><td class="num">2.60</td><td class="num">0.096</td><td><span class="chip pos">+40.3%</span></td></tr>
+        <tr><td class="cell-name">V0.5_c2</td><td class="num">45.1%</td><td class="num">1.37</td><td class="num">0.028</td><td><span class="chip pos">+33.3%</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="corr changed">
+    <span class="tag">Not a convergence</span>
+    <h3>The two results point different ways across these four cells</h3>
+    <p>It is tempting to read "enrichment rises as the base rate falls" as the marker-level version of "the C-score's relative gain rises as power falls". Across the four cells they run opposite: enrichment is ρ = +0.80 against power and ρ = −0.60 against the relative C-gain, and <code>V0.5_c1</code> is both the second-best cell for enrichment and the only one where the C-score loses.</p>
+    <p style="margin-top:.7rem">Neither result is wrong. One measures how much purer <code>ld_w</code> makes a marker set, the other whether C beats BH at region-level detection, and both can hold at once. They are simply not two independent statistics agreeing, and should not be cited together as though they were.</p>
+  </div>
+
+  <div class="corr changed">
+    <span class="tag">Mechanism withdrawn</span>
+    <h3>My explanation for the divergence did not survive testing</h3>
+    <p>I attributed it to the tagging base rate running against power — ρ = −0.80, so "rises as base rate falls" would mean "rises as power rises". That correlation is four cell means and nothing more. Joined at genome level and tested <em>within</em> cells, where the between-cell structure cannot contribute, base rate against power is <strong>ρ = −0.016 pooled over 80 genomes</strong> and 4 of 8 within-cell correlations are negative. There is no such axis. The divergence stands; the reason I gave for it does not.</p>
+  </div>
+
+  <h3>A candidate that does survive: background LD, not power</h3>
+  <p>Background LD <em>b</em> tracks the tagging base rate, and unlike the power story it holds beneath the cell means. Over 235 bundles: ρ = +1.00 across the four cell means, <strong>7 of 8 within-cell correlations positive</strong> (median +0.39), and ρ = +0.32 pooled after removing cell and arm means. <code>ld_w</code> is a local-LD statistic, so where background LD is high everything is correlated with everything — local LD carries less information, and the tagging label becomes easier to earn at the same time. One quantity plausibly drives both sides without power entering at all.</p>
+  <p><strong>But the base rates it is measured against need a decay-relative threshold.</strong> The 796-bundle figures use a fixed cut of r² ≥ 0.27, and in <code>V0.5_c2</code> background LD is <em>b</em> = 0.42 — above the cut. An unlinked marker there earns the tagging label from background alone, so part of the b-to-base-rate relationship is definitional rather than biological. Scored at each cell's own <code>score_thresholds()</code> value instead, the same cell reads 6.0% rather than 21.7%, and the spread across cells is 1.0–6.3% rather than 1.2–45.1%. The relationship survives the change; its reported magnitudes do not.</p>
+
+    <div class="corr changed">
+      <span class="tag">Corrected figures &mdash; supersede the table above</span>
+      <h3>Base rates and folds, decay-relative and MAF-matched</h3>
+      <p>The prose above states the problem with the fixed cut, but the table is the headline and a reader will take the table. Recomputed on the decay-relative threshold in the sim-parsing session (nobgs arm), the two low-background cells barely move and the two high-background cells change a great deal &mdash; which is the expected signature, since the fixed cut sat <em>below</em> background LD in <code>V0.5_c2</code>:</p>
+      <div class="scroll"><table>
+        <caption>Recomputed by the sim-parsing session; not independently reproduced here.</caption>
+        <thead><tr><th scope="col">Cell</th><th scope="col">Base rate, fixed cut</th><th scope="col">Base rate, decay-relative</th><th scope="col">Fold, fixed</th><th scope="col">Fold, decay-relative</th></tr></thead>
+        <tbody>
+          <tr><td class="cell-name">V2_c1</td><td class="num">1.2%</td><td class="num">1.2%</td><td class="num">7.56</td><td class="num">7.56</td></tr>
+          <tr><td class="cell-name">V0.5_c1</td><td class="num">2.7%</td><td class="num">2.7%</td><td class="num">6.93</td><td class="num">6.97</td></tr>
+          <tr><td class="cell-name">V1_c1.5</td><td class="num">13.9%</td><td class="num">9.2%</td><td class="num">2.60</td><td class="num">3.05</td></tr>
+          <tr><td class="cell-name">V0.5_c2</td><td class="num">45.1%</td><td class="num">12.7%</td><td class="num">1.37</td><td class="num">2.32</td></tr>
+        </tbody>
+      </table></div>
+      <p><strong>Neither column is MAF-matched, and that halves the folds.</strong> Matched on allele frequency the whole column falls to roughly <strong>2.1&ndash;3.4</strong> &mdash; <code>V0.5_c1</code> nobgs 6.85 &rarr; 2.15, <code>V2_c1</code> nobgs 7.27 &rarr; 2.29. So about half of every fold reported in this section is allele frequency rather than linkage. This does not make <code>ld_w</code> a frequency proxy &mdash; substituting MAF for it is actively harmful (see above) &mdash; but the unqualified folds overstate what <code>ld_w</code> contributes by roughly a factor of two, and the headline &ldquo;enriches 1.4&ndash;6.2&times;&rdquo; earlier in this document inherits the same inflation.</p>
+      <p>Better evidence than the 796-bundle table now exists for the same question: a 128-bundle <code>V0.5_c1</code> run with a decay-relative threshold, MAF matching, a rotation null calibrated at 0.998, 8 environments, 4 map variants, and Chr2 as a clean negative control (0 tagged markers in all 128). MAF-matched fold ~2.6, recall 68% against a 10% null, no environment outlier (max/median 1.22). Bundles at <code>/Volumes/Nemo/Nemo_sim/regen_sim_data_v05c1_*</code>. Not reproduced in this session; recorded with its provenance.</p>
+    </div>
+
+  <h3>Two things it does establish</h3>
+  <p><strong>The degenerate-estimator regime is generic, not a quirk of small samples.</strong> At the top 1%, <code>V0.5_c1</code> bgs has a median fold of exactly 0.00 across 100 bundles and <code>V2_c1</code> nobgs an IQR of 0–16.3: at a 0.7–2.7% base rate the top 1% contains no tagging marker in most bundles. That is the at-scale version of the same failure that produced a fold of 0.00 from a single pilot dataset, and it is the reason fixed-small-budget statistics are unusable on this data.</p>
+  <div class="corr changed">
+      <span class="tag">Withdrawn &mdash; retracted at source</span>
+      <p>This paragraph previously read <em>&ldquo;BGS bites at marker level but not at region level &mdash; in <code>V2_c1</code> the enrichment collapses 7.56 &rarr; 2.75 under background selection, with recall 73% &rarr; 27%.&rdquo;</em> That number has been <strong>retracted by the session that produced it</strong> and should not have survived here; I was told of the retraction and corrected it in conversation but left the document unchanged. It is one cell and one arm pair, and the two arms share <em>zero</em> QTN positions, so it confounds background selection with an independent draw.</p>
+      <p>A 128-bundle test in <code>V0.5_c1</code> finds <strong>no BGS effect on enrichment fold</strong> (2.63 vs 2.51, Wilcoxon p = 0.634), with the sign flipping across all four map variants. What does survive from the same bundles is a different and better-supported claim: the arms carry the <em>same</em> driving QTN (1.75 vs 1.75, p = 0.97) but recall differs, <strong>57% vs 79% (p = 0.0023)</strong>. <em>BGS costs recall, not enrichment.</em> Roughly 40% of recall variance tracks how many tagging markers exist, which accounts for part of that gap but not all of it; the residual is arm-associated and deliberately unnamed.</p>
+      <p>The original paragraph&rsquo;s <em>conclusion</em> is unaffected and stands: whatever BGS does here does not propagate to the C-vs-BH comparison. The shift in the C-gap from nobgs to bgs is at most 0.027 (<code>V1_c1.5</code>) and only &minus;0.010 in <code>V2_c1</code> &mdash; consistent with both arms reading the same p-values, so most of the effect is common-mode and cancels.</p>
+    </div>
+</section>
+
+<section>
+  <h2>With permutations: does a fixed rule beat alpha = 0.05?</h2>
+  <p class="sec-note">Two datasets: the permutation runs on V2_c1 (ten environments, pre-bgs5 generation, nobgs only), and the head-to-head re-run on bgs5 itself — four cells, both arms, 79 genomes — which needs no surrogates and therefore composes with the benchmark above.</p>
+
+  <div class="corr changed">
+    <span class="tag">Result withdrawn — my scoring, not a finding</span>
+    <h3>"alpha never wins" was an artefact of counting every QTN-containing region as a discovery</h3>
+    <p>This section previously reported that <code>alpha = 0.05</code> never beat <code>tau_C = 0.05</code> across 80 paired comparisons, and later 787 of 790 on bgs5. Both used <em>containment</em> scoring — a locus split across three regions counted three true positives. Under the manuscript's OR rule (one focal QTN per region, dedup, <code>PR = precision × recall</code>) the direction reverses at the operating points that matter. The numbers below are the corrected ones.</p>
+  </div>
+
+  <p>Scored properly, on bgs5 — 79 genomes, four cells, both arms, both engines:</p>
+  <div class="scroll">
+    <table>
+      <caption>PR = precision × recall, per the manuscript. l_min held identical between arms.</caption>
+      <thead>
+        <tr><th scope="col">l_min</th><th scope="col">alpha PR</th><th scope="col">C PR</th><th scope="col">dPR</th><th scope="col">C wins / ties / alpha wins</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cell-name">2</td><td class="num">0.126</td><td class="num">0.104</td><td><span class="chip neg">−0.019</span></td><td class="num">64 / 2 / 85</td></tr>
+        <tr><td class="cell-name">3</td><td class="num">0.143</td><td class="num">0.121</td><td><span class="chip neg">−0.018</span></td><td class="num">60 / 2 / 88</td></tr>
+        <tr><td class="cell-name">5</td><td class="num">0.152</td><td class="num">0.144</td><td class="num">−0.002</td><td class="num">71 / 2 / 75</td></tr>
+        <tr><td class="cell-name">10</td><td class="num">0.155</td><td class="num">0.163</td><td><span class="chip pos">+0.016</span></td><td class="num">82 / 3 / 59</td></tr>
+        <tr><td class="cell-name">20</td><td class="num">0.130</td><td class="num">0.155</td><td><span class="chip pos">+0.029</span></td><td class="num">84 / 10 / 47</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="corr changed">
+      <span class="tag">Withdrawn &mdash; superseded by paired tests</span>
+      <h3>The C-score does not win in three of four cells</h3>
+      <p>This section previously read &ldquo;the C-score wins in <em>three of four cells at every <code>rho_ld</code></em>&rdquo;, on per-cell mean differences of +0.002, +0.016 and +0.013. Those means are real but they are not wins. Paired sign tests on the same rows, at <code>rho_ld = 0.75</code>, <code>l_min = 2</code>:</p>
+      <div class="scroll"><table>
+        <caption>Paired per-arm differences, C &minus; alpha. Sign test on non-tied pairs.</caption>
+        <thead><tr><th scope="col">Cell</th><th scope="col">C &gt; alpha</th><th scope="col">mean d</th><th scope="col">median d</th><th scope="col">sign p</th><th scope="col">Verdict</th></tr></thead>
+        <tbody>
+          <tr><td class="cell-name">V0.5_c1</td><td class="num">3 / 40 (8%)</td><td class="num">&minus;0.073</td><td class="num">&minus;0.067</td><td class="num">2.0e&minus;08</td><td>C decisively worse</td></tr>
+          <tr><td class="cell-name">V0.5_c2</td><td class="num">24 / 40 (60%)</td><td class="num">+0.001</td><td class="num">+0.001</td><td class="num">0.27</td><td>null</td></tr>
+          <tr><td class="cell-name">V1_c1.5</td><td class="num">24 / 37 (65%)</td><td class="num">+0.009</td><td class="num">+0.004</td><td class="num">0.099</td><td>null</td></tr>
+          <tr><td class="cell-name">V2_c1</td><td class="num">17 / 36 (47%)</td><td class="num">&minus;0.010</td><td class="num">&minus;0.002</td><td class="num">0.87</td><td>null</td></tr>
+        </tbody>
+      </table></div>
+      <p>The correct statement is that <strong>C loses decisively in one cell and is statistically indistinguishable in the other three</strong>. The original claim ordered the cells on means of paired differences without checking how many arms actually favoured each method &mdash; a mean can be carried by a minority of arms while the sign count sits at chance, which is what happens here. The error inflated the statistic the section was arguing for.</p>
+    </div>
+
+  <h3>Is any of it usable? In two cells of four</h3>
+  <div class="scroll">
+    <table>
+      <caption>nobgs arm, rho_ld 0.75, l_min 5. Regions you would examine, and PR.</caption>
+      <thead>
+        <tr><th scope="col">Cell</th><th scope="col">QTN</th><th scope="col">alpha regions</th><th scope="col">alpha PR</th><th scope="col">C regions</th><th scope="col">C PR</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cell-name">V0.5_c1</td><td class="num">19.2</td><td class="num">17.6</td><td class="num">0.321</td><td class="num">29.5</td><td class="num">0.262</td></tr>
+        <tr><td class="cell-name">V2_c1</td><td class="num">12.9</td><td class="num">8.6</td><td class="num">0.213</td><td class="num">16.1</td><td class="num">0.222</td></tr>
+        <tr><td class="cell-name">V1_c1.5</td><td class="num">24.4</td><td class="num">17.0</td><td class="num">0.042</td><td class="num">29.1</td><td class="num">0.055</td></tr>
+        <tr><td class="cell-name">V0.5_c2</td><td class="num">34.5</td><td class="num">88.0</td><td class="num">0.014</td><td class="num">132.2</td><td class="num">0.018</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><code>V0.5_c1</code> and <code>V2_c1</code> give a usable candidate list. <code>V1_c1.5</code> and <code>V0.5_c2</code> do not — 88 to 132 regions to examine for a PR of 0.014–0.055. Note that the two weak cells are exactly where the C-score is <em>relatively</em> better, so a relative comparison alone would have recommended it hardest where neither rule works.</p>
+
+  <h3>Over-splitting is not the cause, and rho_ld 0.75 is not the optimum</h3>
+  <p>Sweeping the clustering threshold <code>rho_ld</code> from 0.50 to 0.99 — looser linking, more merging — shrinks the low-<code>l_min</code> deficit by about a quarter and never closes it. The C/alpha region-count ratio is flat at 1.57 → 1.45 across the whole sweep: if the surplus regions were satellites fragmenting loci BH finds whole, looser linking would merge them preferentially and the ratio would fall toward 1. They are separate loci BH does not call at all.</p>
+  <p>Incidentally PR peaks at <code>rho_ld</code> 0.90–0.95 for <em>both</em> arms rather than the default 0.75. Small (0.121 → 0.124) but consistent across every <code>l_min</code> and both arms, with no sign of over-merging up to 0.99.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Regions called and how many contain a detectable QTN, mean over ten environments. 13.4 QTN available per genome.</caption>
+      <thead>
+        <tr><th scope="col">Engine</th><th scope="col">l_min</th><th scope="col">alpha regions</th><th scope="col">alpha TP</th><th scope="col">C regions</th><th scope="col">C TP</th><th scope="col">diff</th><th scope="col">W / T</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cell-name">emmax</td><td class="num">5</td><td class="num">8.2</td><td class="num">3.75</td><td class="num">15.4</td><td class="num">5.25</td><td class="num">+1.50</td><td class="num">6 / 2</td></tr>
+        <tr><td class="cell-name">emmax</td><td class="num">20</td><td class="num">3.4</td><td class="num">2.12</td><td class="num">5.6</td><td class="num">4.12</td><td class="num">+2.00</td><td class="num">6 / 2</td></tr>
+        <tr><td class="cell-name">lfmm</td><td class="num">5</td><td class="num">7.6</td><td class="num">3.38</td><td class="num">9.5</td><td class="num">4.25</td><td class="num">+0.88</td><td class="num">6 / 2</td></tr>
+        <tr><td class="cell-name">lfmm</td><td class="num">20</td><td class="num">2.9</td><td class="num">2.00</td><td class="num">4.6</td><td class="num">3.00</td><td class="num">+1.00</td><td class="num">4 / 4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>EMMAX gains more than LFMM, and its advantage <em>grows</em> as <code>l_min</code> tightens while LFMM's stays flat. At <code>l_min = 20</code> EMMAX nearly doubles the discoveries for 1.6× the regions.</p>
+
+  <h3>tau_C = 0.05 is principled, and that matters more than the win</h3>
+  <p><code>C</code> is the fraction of (<code>rho</code>, <code>q*</code>, <code>alpha</code>) cells in which a marker cleared BH at 0.05 — so <code>tau_C = 0.05</code> means <strong>significant at the conventional threshold in at least 5% of the analyses</strong>. Both <code>rho</code> and <code>q*</code> are bounded on [0,1], so that fraction is a canonical quantity rather than a tuned constant. The integration is genuinely broad: all 400 EMMAX grid cells yield regions and 399 contain a QTN, so <code>C</code> is averaging rather than being set by a corner.</p>
+  <p>That property is exactly what C² lacks. Its grid runs over <code>tau</code> and <code>l_min</code>, and <code>l_min</code> has no natural upper bound — a C² computed over <code>l_min</code> 2–10 is not comparable with one over 40–100, so a cut like <code>c2 >= 0.9</code> means nothing fixed.</p>
+
+  <div class="corr changed">
+      <span class="tag">Measured &mdash; the principle holds, the benefit does not</span>
+      <h3>tau_C = 0.05 does not beat alpha = 0.05</h3>
+      <p>The argument above for <code>tau_C = 0.05</code> being canonical rather than tuned still stands. What does not stand is any implication that adopting it helps. Paired over 160 arms at <code>l_min = 5</code>:</p>
+      <p class="mono">mean d = +0.0027 &nbsp; median d = +0.0000 &nbsp; C &gt; alpha in 79/151 (52%) &nbsp; sign p = 0.63 &nbsp; wilcoxon p = 0.65</p>
+      <p>A coin flip, with a median difference of exactly zero. The C-score&rsquo;s advantage over alpha becomes real only at <code>tau &ge; 0.5</code> (73% of arms, p = 3e&minus;7) and <code>tau = 0.7</code> (86%, p = 2e&minus;17) &mdash; that is, only where the threshold is <em>fitted</em> rather than derived. The head-to-head at <code>l_min = 5</code> pooled agrees: 76/151 (50%), p = 1.0.</p>
+      <p><strong>What survives is narrow and both clauses matter equally:</strong> integrated across thresholds the C-score ranks modestly better (pooled PR-AUC, C &gt; alpha in 179/313 arms, sign p = 0.013), <em>and it beats alpha at no threshold you would deploy</em>. Stated without the second clause the first reads as a win; it is not one.</p>
+      <p>Mechanism, from a paired swap test run independently in the sim-parsing session: reweighting a p-value by <code>ld_w</code> reshuffles a median 32% of the top-k and nets <strong>~1 marker</strong> nearer a driving QTN out of a top-k of ~1,400 at 50&ndash;100 kb, and <strong>exactly zero at 10 kb</strong>, which is tagging scale. A reweighting of that size predicts mean PR-AUC differences of the +0.001 to +0.009 magnitude measured here and a sign test at chance. The two results agree from opposite directions.</p>
+    </div>
+
+    <h3>What the null side can and cannot do</h3>
+  <p>The gate is decisive — 17 observed regions against a surrogate median of 0, with 4–8% of surrogates producing any region at all. But <strong><code>q_R</code> cannot rank, and raising B will not fix it</strong>: every observed region has <code>n_null_ge = 0</code>, so all sit at the p-floor <code>1/(1+B)</code>, and B = 1000 merely lowers the floor and leaves them tied. It is a screening test, not a ranking one.</p>
+
+  <div class="corr changed">
+    <span class="tag">Recommendation withdrawn</span>
+    <h3>Ranking by s_R is ranking by size</h3>
+    <p>I suggested ranking surviving regions by <code>s_R</code> rather than C². That was wrong in a way worth recording: <code>s_R</code> sums C over member markers, so it is size-inflated by construction. Spearman(<code>s_R</code>, size) = +0.84, and residualising <code>log(s_R)</code> on <code>log(size)</code> drops the ranking AUC from 0.923 to <strong>0.582</strong> — near chance. At matched budget <code>s_R</code> and size are identical in 60 of 64 comparisons. <code>s_R</code>, C² and size are three routes to one ordering; size is the simplest, and the rule should be described as "report the largest LD blocks" rather than dressed up.</p>
+  </div>
+
+  <h3>The two rules share a noise floor and differ in signal</h3>
+  <p>Unfiltered — no <code>l_min</code> — the cluster size distributions say something the operating point hides:</p>
+  <div class="scroll">
+    <table>
+      <caption>All clusters, both rules, same clustering and same truth rule. 18 datasets.</caption>
+      <thead>
+        <tr><th scope="col">Rule</th><th scope="col">Contains QTN</th><th scope="col">Clusters</th><th scope="col">Singletons</th><th scope="col">Median size</th><th scope="col">Max</th><th scope="col">≥50 SNPs</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cell-name">BH alpha 0.05</td><td>yes</td><td class="num">90</td><td class="num">20%</td><td class="num">12</td><td class="num">1859</td><td class="num">22%</td></tr>
+        <tr><td class="cell-name">BH alpha 0.05</td><td>no</td><td class="num">766</td><td class="num">62%</td><td class="num">1</td><td class="num">107</td><td class="num">1%</td></tr>
+        <tr><td class="cell-name">C-score tau 0.05</td><td>yes</td><td class="num">110</td><td class="num">11%</td><td class="num">35</td><td class="num">1938</td><td class="num">40%</td></tr>
+        <tr><td class="cell-name">C-score tau 0.05</td><td>no</td><td class="num">1,628</td><td class="num">62%</td><td class="num">1</td><td class="num">143</td><td class="num">1%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The <em>QTN-free</em> distributions are near-identical — same 62% singletons, same median of 1, similar maximum. So the C-score does not produce a different kind of junk; it produces more of the same junk alongside more signal. The whole difference sits in the QTN-containing clusters, which are both more numerous and substantially larger.</p>
+  <p><strong>That is why <code>l_min</code> works better for the C-score.</strong> Signal and noise are further apart under C — 40% of its true clusters exceed 50 markers against BH's 22%, while the false ones sit at 1% for both — so a size filter discriminates better there. It is the mechanism behind the head-to-head result that C's advantage grows as <code>l_min</code> tightens.</p>
+
+  <div class="corr changed">
+    <span class="tag">Reframes the threshold</span>
+    <h3>tau_C is not the operative cut; l_min is</h3>
+    <p>On its own <code>tau_C = 0.05</code> admits a great deal of noise: the modal C-score cluster is <strong>a single isolated marker</strong>, 59% are singletons, and essentially none of those contain a QTN. The <code>l_min = 3</code> operating point removes three quarters of all clusters (1738 → 458) at a cost of 0.1 QTN. So the working rule is <code>tau_C</code> <em>and</em> an <code>l_min</code>, and the second does more of the work than the first — worth stating plainly rather than presenting <code>tau_C</code> as the threshold that matters.</p>
+  </div>
+
+  <h3>l_min = 3 is dominated</h3>
+  <p>At <code>tau = 0.05</code>, averaged over environments: going <code>l_min</code> 3 → 5 cuts regions from 22.9 to 13.3 while losing 0.1 QTN (4.6 → 4.5) and lifts precision 0.24 → 0.39. <code>l_min = 10</code> keeps 4.2 of 4.6 in a third of the regions. The benchmark default is a poor operating point for <em>both</em> arms.</p>
+</section>
+
+<section>
+  <h2>Open</h2>
+  <ul class="open">
+    <li>
+      <span class="mark">SIM</span>
+      <span><b>V1_c1</b><span class="d">The selection-intensity claim rests on a single matched pair; this cell would make the c = 1 row a three-point series. It was never simulated in the bgs5 generation — it exists only in older sets that differ in Nemo version, MAF trim at output and burn-in, so parsing one of those would produce a third point that is a confound rather than a series. It needs a run, not a parse. The full 3×3 design (V × c) exists in the old generations, so a rebuild under one generation would buy a factorial rather than one cell. The map-rebuild pilots are <em>not</em> a substitute: four chromosomes per genome against bgs5's twenty, one environment each. Both this session and the pipeline session decline to run PR-AUC on them.</span></span>
+    </li>
+    <li>
+      <span class="mark">DEC</span>
+      <span><b>DCAP mismatch</b><span class="d">5e5 in the scorer against 1e5 in the bundles. Different code path, so not automatically wrong, but scoring geometry and partition geometry now disagree. Best landed alongside the same change in LD-pruning-paper rather than discovered twice.</span></span>
+    </li>
+    <li>
+      <span class="mark">CAV</span>
+      <span><b>Genomic-control heterogeneity</b><span class="d">13% to 73% of files controlled across cells, tracking the difficulty gradient. It confounds the four-cell trend. It does not touch the matched pair, which is identical on it.</span></span>
+    </li>
+    <li>
+      <span class="mark">DOC</span>
+      <span><b>Figure 2 caption</b><span class="d">Says "nearest causal variant" where the quantity is the focal, highest-r² one.</span></span>
+    </li>
+    <li>
+      <span class="mark">CAV</span>
+      <span><b>Simulated LD is 45–111× the empirical panel</b><span class="d">From the map-rebuild pilots: half-decay is 34.7 kb (bgs5) or 14–30 kb (pilots) against 0.313 kb in the three-spined data — implied Ne ~700 against ~27,000. The rebuilt maps roughly halve simulated LD and matching cM/Mb exactly moves it at most ~1.6×, so this is an Ne gap the map cannot close. It bounds how far any of these simulation results can be read as quantitative statements about real panels.</span></span>
+    </li>
+    <li>
+      <span class="mark">CAV</span>
+      <span><b>Bundles are unseeded</b><span class="d">The decay fit carries ~0.7% run-to-run jitter on partition-derived quantities. Enough to matter for A/B comparisons at that scale; not enough to move a gap of 0.036. Only bites when an arm re-parses.</span></span>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <h2>Provenance</h2>
+  <div class="prov">
+    <dl>
+      <dt>Bundles</dt><dd>regen_sim_data_bgs5 — 4 cells × 10 env × 2 arms × 10 chromosome files, pooled to 20-chromosome genomes</dd>
+      <dt>min_r2</dt><dd>derived per chromosome, min_r2_rho = 0.5</dd>
+      <dt>distance_threshold</dt><dd>1e5</dd>
+      <dt>Scoring</dt><dd>rho_ld = 0.75, <strong>dcap = 5e5 as run</strong> — the scorer's cap moved to 1e5 on 31 Aug (b4b4509) to match the bundles, after these numbers were computed. Expected inert here: linkage is single, so a region breaks only on a GAP exceeding the cap, and gaps are ~1 kb median with 2 of 15,993 above 1e5 and none above 5e5. Not yet re-run. Also alpha_C = 0.05, qstar 0–0.95, l_min 1 and 3</dd>
+      <dt>LDscnR</dt><dd>pinned a64356f for the bundles; analysis on origin/pvalue-api 49cad3b (R CMD check 0/0/0)</dd>
+      <dt>Paper repo</dt><dd>origin/null-rework-two-basis at bfb3992</dd>
+      <dt>Coverage</dt><dd>318 of 320 rows; 1 arm logged as skipped (V1_c1.5_env9/bgs/emmax, no candidate markers), 2 rows with no scorable C region</dd>
+    </dl>
+  </div>
+</section>
+
+<footer>
+  <p>Superseded raw-AUC results retained under <span class="mono">results/_superseded_raw_only/</span>. Raw AUCs from the re-run reproduce them to 0.00e+00 across all 318 matched rows, confirming only the added columns changed.</p>
+</footer>
