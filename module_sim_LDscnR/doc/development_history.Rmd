@@ -924,10 +924,18 @@ fold toward 1. Their matching used a caliper of 0.05 in $\log_{10}$ markers with
 \end{keybox}
 
 **Status of the question.** Largely resolved: most of the 43-fold was opportunity.
-What remains is a threefold per-marker concentration in long dense blocks and a
-fourfold depletion in long sparse ones, neither of which has a mechanism, and
-both of which are small enough that "clusters with more markers contain more
-QTN" is close to a complete account.
+
+The residual is better described as a **spread than as an enrichment**. Under
+pure opportunity every class should sit at 1.0 per marker. The two long classes
+read **3.33 and 0.22** --- so long-and-dense is enriched 3.3-fold *and*
+long-and-sparse is depleted 4.5-fold, a 15-fold spread in which the depletion is
+as large as the enrichment. A mechanism that only enriches dense units would not
+account for it, which makes the **depleted** arm the more diagnostic half should
+the residual ever matter.
+
+No account is offered. Four mechanisms have been proposed for a quantity that
+turned out to be nine tenths arithmetic, and "clusters with more markers contain
+more QTN, plus a residual spread" is where this closes.
 
 # Provenance
 
