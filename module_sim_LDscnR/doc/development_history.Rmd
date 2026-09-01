@@ -798,6 +798,60 @@ proposed so far --- demographic long-range LD, and object type --- have both bee
 withdrawn on measurement.
 \end{keybox}
 
+# A third account of the enrichment, refuted {#sec:centrality}
+
+The 43-fold difference between long-and-dense and long-and-sparse clusters has
+now had three proposed mechanisms, and all three have failed on measurement.
+
+The third was mine: **selection extends LD around a causal site, so a QTN
+manufactures the long dense block around itself** rather than dense blocks being
+where QTN happen to sit. It fits the observation that QTN-bearing clusters carry
+a median of about 55 markers against a genome-wide median of 1.
+
+It makes a prediction that needs no matching and no assumptions about
+recombination --- suggested by the 3sp panel session --- **the block should be
+centred on the QTN**. A low-recombination block has no reason to be centred on
+anything.
+
+```{r centr, results="asis"}
+cat("\\begin{tabular}{@{}lrr@{}}\n\\toprule\n")
+cat("Statistic & observed & expected if not centred \\\\\n\\midrule\n")
+cat("relative position, mean & 0.492 & 0.500 \\\\\n")
+cat("$|{\\rm rel} - 0.5|$, mean & 0.269 & 0.250 \\\\\n")
+cat("in the central third & 33\\% & 33\\% \\\\\n")
+cat("in the outer fifth & 27\\% & 20\\% \\\\\n")
+cat("\\midrule\n")
+cat("$t$-test vs 0.25 & \\multicolumn{2}{r}{$p = 0.13$} \\\\\n")
+cat("KS vs Uniform & \\multicolumn{2}{r}{$D = 0.073$, $p = 0.34$} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent 165 QTN-bearing clusters with at least 5 markers, both BGS arms, five
+environments. Median cluster size 36 markers (nobgs) and 28 (bgs), median span
+about 235 kb in both.
+
+\begin{keybox}
+\textbf{QTN are uniformly placed within their clusters.} The distribution is
+indistinguishable from uniform and if anything slightly \emph{edge}-biased ---
+27\% in the outer fifth against 20\% expected. The selection account is refuted.
+
+What survives is a constraint on any future explanation: whatever makes
+long-and-dense clusters QTN-rich operates \textbf{independently of where in the
+block the QTN sits}. That favours a passive account --- dense blocks form for
+their own reasons and QTN inside them are grouped that way --- over anything
+causal radiating outward from the variant.
+\end{keybox}
+
+Caveats: the test uses clusters of at least 5 markers, so it says nothing about
+smaller ones, and edge effects are conceivable if clustering tends to terminate
+at markers with unusual LD. Neither seems able to hide a centring signal of the
+size the account requires, but the test is not airtight.
+
+**The enrichment therefore remains unexplained**, and three mechanisms are on the
+record as refuted rather than deleted: demographically manufactured long-range LD
+and an object-type distinction, both from the panel session and both withdrawn on
+their own measurements; and selection-manufactured blocks, withdrawn here.
+
 # Provenance
 
 ```{r gens, results="asis"}
