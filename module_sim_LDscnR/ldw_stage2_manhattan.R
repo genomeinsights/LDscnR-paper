@@ -35,8 +35,7 @@ build <- function(tag, env, i) {
   if (!identical(sort(pr$pruned), sort(x$grm_markers)))
     stop(sprintf("stage-2 recomputation does not reproduce grm_markers for %s", basename(f)))
   g  <- as.data.table(pr$groups)
-  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-          data.table(marker = g$members[[k]], CL_id = g$group_id[k], n_loci = g$n_loci[k])))
+  ms <- data.table(marker = unlist(g$members, use.names = FALSE), CL_id = rep.int(g$group_id, lengths(g$members)), n_loci = rep.int(g$n_loci, lengths(g$members)))
   m  <- merge(m, ms, by = "marker", all.x = TRUE)[!is.na(CL_id)]
   m[, ld_w := x$ld_ws[marker, "rho_0.95"]]
   ## BH across BOTH chromosomes pooled, matching clusters_as_test_units.R

@@ -93,8 +93,7 @@ one_env <- function(CELL, ENV) {
           score_threshold = 0.80, min_r2_rho = 0.5, distance_threshold = 1e5,
           compute_unflagged_eMLG = TRUE, cores = 1)
     g  <- as.data.table(pr$groups)
-    s2 <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-            data.table(marker = g$members[[k]], CL2 = paste0(i, "_", g$group_id[k]))))
+    s2 <- ld_group_map(g, prefix = i)[, .(marker, CL2 = group_id)]
     mm <- merge(merge(m, s1, by = "marker", all.x = TRUE), s2, by = "marker", all.x = TRUE)
     mm <- mm[!is.na(CL1) & !is.na(CL2)][, CL1 := paste0(i, "_", CL1)]
     th  <- score_thresholds(as.data.table(x$LD_decay$decay_sum),
@@ -130,7 +129,7 @@ one_env <- function(CELL, ENV) {
     tp   <- if (nrow(best)) uniqueN(best$CL2) else 0L
     ntr  <- unique(D[CL2 %in% regions, .(CL2, chr_type)])[chr_type == "ntrl", .N]
     fn   <- unique(D[, .(CL2, chr_type)])[, mean(chr_type == "ntrl")]
-    data.table(arm = lab, cell = CELL, env = ENV, n_test = n_test, regions = length(kept), tp = tp,
+    data.table(arm = lab, cell = CELL, tag = TAG, env = ENV, n_test = n_test, regions = length(kept), tp = tp,
                precision = tp / max(length(kept), 1),
                recall = (if (nrow(best)) uniqueN(best$qtn) else 0L) / nq,
                on_ntrl = ntr,
@@ -154,7 +153,9 @@ one_env <- function(CELL, ENV) {
 G <- CJ(cell = CELLS, env = ENVS, sorted = FALSE)
 R <- rbindlist(Filter(Negate(is.null),
        lapply(seq_len(nrow(G)), function(k) one_env(G$cell[k], G$env[k]))))
-fwrite(R, "module_sim_LDscnR/results/test_then_cluster.csv")
+OUT <- Sys.getenv("OUT", "module_sim_LDscnR/results/test_then_cluster.csv")
+dir.create(dirname(OUT), recursive = TRUE, showWarnings = FALSE)
+fwrite(R, OUT)
 cat(sprintf("%s %s | %d envs\n\n", paste(CELLS, collapse=","), TAG, uniqueN(R$env)))
 print(R[, .(envs = .N, n_test = round(mean(n_test)), regions = round(mean(regions), 1),
             tp = round(mean(tp), 1), precision = round(mean(precision), 3),

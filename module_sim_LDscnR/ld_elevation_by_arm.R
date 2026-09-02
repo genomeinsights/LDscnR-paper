@@ -25,8 +25,8 @@ for (tg in c("nobgs","bgs")) for (ev in ENVS) for (i in 1:10) {
         ld_w_col="ld_w_095", ld_w_threshold=0.025, score_threshold=0.80, min_r2_rho=0.5,
         distance_threshold=1e5, compute_unflagged_eMLG=FALSE, cores=1)
   g <- as.data.table(pr$groups)
-  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-        data.table(marker=g$members[[k]], CL=paste0(tg,ev,i,"_",g$group_id[k]))))
+  ms <- data.table(marker = unlist(g$members, use.names = FALSE),
+            CL = paste0(tg,ev,i,"_",rep.int(g$group_id, lengths(g$members))))
   mm <- merge(m, ms, by="marker", all.x=TRUE)[!is.na(CL)]
   acc[[length(acc)+1]] <- mm[, .(n=.N, span=max(Pos)-min(Pos),
       ldw=median(ld_w_095,na.rm=TRUE), has_qtn=any(true_pos_QTN %in% TRUE)), by=CL][, arm := tg]

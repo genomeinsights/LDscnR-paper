@@ -54,8 +54,7 @@ units_for <- function(cell, tag, env, i) {
   if (!identical(sort(pr$pruned), sort(x$grm_markers)))
     stop(sprintf("stage-2 does not reproduce grm_markers: %s", basename(f)))
   g  <- as.data.table(pr$groups)
-  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-          data.table(marker = g$members[[k]], CL_id = g$group_id[k])))
+  ms <- data.table(marker = unlist(g$members, use.names = FALSE), CL_id = rep.int(g$group_id, lengths(g$members)))
   m <- merge(m, ms, by = "marker", all.x = TRUE)[!is.na(CL_id)]
 
   ## driving QTN, then distance from every marker to the nearest one

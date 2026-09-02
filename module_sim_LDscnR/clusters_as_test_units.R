@@ -71,8 +71,7 @@ one <- function(cell, tag, env, i) {
       return(data.table(cell, tag, env, file = i, min_loci = NA_integer_,
                         mismatch = TRUE))
     g <- as.data.table(pr$groups)
-    ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-      data.table(marker = g$members[[k]], CL_id = g$group_id[k], n_loci = g$n_loci[k])))
+    ms <- data.table(marker = unlist(g$members, use.names = FALSE), CL_id = rep.int(g$group_id, lengths(g$members)), n_loci = rep.int(g$n_loci, lengths(g$members)))
   } else {
     ms <- as.data.table(x$complexity_reduction$stage1$map_snp)[, .(marker, CL_id, n_loci)]
   }

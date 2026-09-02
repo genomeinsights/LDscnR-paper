@@ -71,8 +71,7 @@ for (i in FILES) {
         score_threshold = 0.80, min_r2_rho = 0.5, distance_threshold = 1e5,
         compute_unflagged_eMLG = TRUE, cores = 1)
   g  <- as.data.table(pr$groups)
-  s2 <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-          data.table(marker = g$members[[k]], CL2 = paste0(i, "_", g$group_id[k]))))
+  s2 <- ld_group_map(g, prefix = i)[, .(marker, CL2 = group_id)]
   mm <- merge(merge(m, s1, by = "marker", all.x = TRUE), s2, by = "marker", all.x = TRUE)
   mm <- mm[!is.na(CL1) & !is.na(CL2)]
   mm[, CL1 := paste0(i, "_", CL1)]

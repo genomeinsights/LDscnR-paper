@@ -20,8 +20,7 @@ units_for <- function(i) {
           compute_unflagged_eMLG = FALSE, cores = 1)
   stopifnot(identical(sort(pr$pruned), sort(x$grm_markers)))
   g  <- as.data.table(pr$groups)
-  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-          data.table(marker = g$members[[k]], CL_id = g$group_id[k])))
+  ms <- data.table(marker = unlist(g$members, use.names = FALSE), CL_id = rep.int(g$group_id, lengths(g$members)))
   m <- merge(m, ms, by = "marker", all.x = TRUE)[!is.na(CL_id)]
   drv <- m[true_QTN %in% TRUE & MAF > 0.1 & p_Va > 0.05]
   m[, d_qtn := Inf]

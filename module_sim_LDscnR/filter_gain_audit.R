@@ -20,8 +20,7 @@ per_file <- function(i) {
           compute_unflagged_eMLG = FALSE, cores = 1)
   stopifnot(identical(sort(pr$pruned), sort(x$grm_markers)))
   g <- as.data.table(pr$groups)
-  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-          data.table(marker = g$members[[k]], CL = paste0(i, "_", g$group_id[k]))))
+  ms <- ld_group_map(g, prefix = i)[, .(marker, CL = group_id)]
   m <- merge(m, ms, by = "marker", all.x = TRUE)
   m[, driving := true_QTN %in% TRUE & MAF > 0.1 & p_Va > 0.05]
   m[, .(marker, p = emx_p, ld_w = ld_w_095, CL, driving)]

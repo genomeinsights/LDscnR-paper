@@ -24,8 +24,7 @@ per_file <- function(i) {
           compute_unflagged_eMLG = FALSE, cores = 1)
   stopifnot(identical(sort(pr$pruned), sort(x$grm_markers)))
   g  <- as.data.table(pr$groups)
-  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-          data.table(marker = g$members[[k]], CL = paste0(i, "_", g$group_id[k]))))
+  ms <- ld_group_map(g, prefix = i)[, .(marker, CL = group_id)]
   m <- merge(m, ms, by = "marker", all.x = TRUE)[!is.na(CL)]
   th  <- score_thresholds(as.data.table(x$LD_decay$decay_sum),
                           rho_r2 = 0.75, rho_d = 0.95, dmax_cap = 1e5)

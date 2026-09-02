@@ -73,8 +73,7 @@ one_panel <- function(CELL, TAG, ENV) {
               score_threshold = 0.80, min_r2_rho = rr, distance_threshold = 1e5,
               compute_unflagged_eMLG = TRUE, cores = 1)
       g  <- as.data.table(pr$groups)
-      ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-              data.table(marker = g$members[[k]], CL = paste0(i, "_", g$group_id[k]))))
+      ms <- ld_group_map(g, prefix = i)[, .(marker, CL = group_id)]
       mm <- merge(m, ms, by = "marker", all.x = TRUE)[!is.na(CL)]
       su <- mm[, .(emx = simes(emx_p), lfm = simes(lfmm_p), n_loci = .N,
                    Chr = as.character(Chr)[1], pmin = min(Pos), pmax = max(Pos),

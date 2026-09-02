@@ -54,8 +54,7 @@ per_file <- function(i) {
           score_threshold = 0.80, min_r2_rho = 0.5, distance_threshold = 1e5,
           compute_unflagged_eMLG = TRUE, cores = 1)
   g  <- as.data.table(pr$groups)
-  ms <- rbindlist(lapply(seq_len(nrow(g)), function(k)
-          data.table(marker = g$members[[k]], CL = paste0(i, "_", g$group_id[k]))))
+  ms <- ld_group_map(g, prefix = i)[, .(marker, CL = group_id)]
   mm <- merge(m, ms, by = "marker", all.x = TRUE)[!is.na(CL)]
 
   ## per-cluster summaries from the stored per-marker p-values
