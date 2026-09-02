@@ -131,12 +131,36 @@ over cells, \texttt{ld\_w} retention reads 55/20/5\% against the panel's
 reported to the panel session. Broken out, that 20\% is the average of 5.1\% and
 48.1\%.
 
-\textbf{The two failing axes are also not independent.} Gaps exceeding the
-distance threshold track the number of flagged stage-1 clusters (Spearman
-$-0.905$), and \texttt{ld\_w\_threshold} is what sets that count --- 1,272 to
-32,318 across the eight settings. So a factorial grid cannot vary these two
-orthogonally and read the margins separately, which is a constraint on the
-sensitivity design rather than a caveat on it.
+\textbf{The two failing axes are also not independent, and this is a package
+property.} Gaps exceeding the distance threshold track the number of flagged
+stage-1 clusters (Spearman $-0.905$), and \texttt{ld\_w\_threshold} is what sets
+that count. Sweeping \texttt{ld\_w\_threshold} alone moves the
+\texttt{distance\_threshold} operating point \textbf{37-fold} here (0.73\% to
+27.0\% of gaps splitting) and \textbf{2,000-fold} on the panel --- monotone and
+in the same direction on both. So a factorial grid cannot vary these two
+orthogonally and read the margins separately.
+\end{keybox}
+
+\begin{keybox}
+\textbf{And parts of the proposed grid are degenerate, not merely
+non-orthogonal.} A chromosome with no gap above \texttt{distance\_threshold}
+becomes a single run, so stage 2 cannot preserve any structure on it.
+
+\vspace{2pt}\noindent
+\begin{tabular}{@{}lrrrr@{}}
+\texttt{ld\_w\_threshold} & 0.0125 & \textbf{0.025} & 0.05 & 0.10 \\
+degenerate chromosomes (of 160) & 5 & \textbf{0} & 6 & 21 \\
+chromosomes with $<2$ flagged clusters & 0 & 0 & 2 & 44 \\
+\end{tabular}
+
+\vspace{3pt}\noindent Degeneracy appears at \emph{both} ends --- densely packed
+flagged clusters leave no gap large enough at the low end, too few flagged
+clusters survive at the high end --- and the canonical 0.025 is the only level
+tested with none. On the panel the low cell is degenerate on the chromosome
+carrying \emph{Eda}, which dissolves whatever \texttt{distance\_threshold} is
+set to. \textbf{The two parameters have a joint admissible region, and it is
+dataset-specific.} At least one proposed cell should not be run on the panel at
+all, and that is a result to report rather than a cell to drop quietly.
 \end{keybox}
 
 \begin{keybox}
@@ -145,9 +169,13 @@ sensitivity design rather than a caveat on it.
 on 160 of 160 chromosomes". That was computed on adjacent-marker gaps over the
 whole map; \texttt{split\_by\_distance()} uses gaps between consecutive
 \emph{flagged stage-1 clusters}. Wrong unit, wrong subset, and the correct
-quantity reverses the conclusion. Found by the panel session reading the source
-rather than by any disagreement in the numbers --- which is the second time
-today a result broke under decomposition rather than under challenge.
+quantity reverses the conclusion. How it was found matters more than that it was found. The panel session did not
+read the source out of rigour: they went to it because two of their own numbers
+could not be reconciled --- a chromosome with zero split points at both 1e5 and
+5e5, which made a known result impossible. \textbf{The trigger was an
+irreconcilable pair of their own numbers, not suspicion of the method.} Neither
+session checked the source until something failed to add up, and both had been
+running the same wrong analysis for a day.
 \end{keybox}
 
 \noindent The practical rule that follows is **different invariants for
