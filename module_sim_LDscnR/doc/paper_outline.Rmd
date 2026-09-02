@@ -118,20 +118,36 @@ wrong.**
 ```{r transfer, results="asis"}
 cat("\\begin{tabular}{@{}p{2.5cm}p{4.1cm}p{3.5cm}p{4.0cm}@{}}\n\\toprule\n")
 cat("\\textbf{Parameter} & \\textbf{Across sim settings} & \\textbf{To the panel} & \\textbf{Transfers as} \\\\\n\\midrule\n")
-cat("\\texttt{distance\\_} \\texttt{threshold} 1e5 & \\textbf{inert everywhere}: 0.003--0.010\\% of marker gaps exceed it; the derived value exceeds the \\emph{largest observed gap} on \\textbf{160 of 160} chromosomes & \\textbf{decisive}: derived is 3--18 kb, \\emph{below} the hand-set value, and 6,416 gaps exceed it against 4 & an \\textbf{operating point} (gap exceedance), never a bp value \\\\\n\\addlinespace\n")
+cat("\\texttt{distance\\_} \\texttt{threshold} 1e5 & \\textbf{fails}: 0.60--10.94\\% of flagged-cluster gaps exceed it, an 18$\\times$ spread; switching to the derived value removes \\textbf{68--100\\%} of split points in every setting & \\textbf{also consequential}, in the opposite direction: derived is 3--18 kb, \\emph{below} the hand-set value & an \\textbf{operating point} (gap exceedance), never a bp value --- but the operating point itself does not transfer \\\\\n\\addlinespace\n")
 cat("size floor 2 & \\textbf{stable}: retains 46.0--51.2\\% of clusters across all eight settings, a 1.1$\\times$ spread & \\textbf{does not}: 17.0\\%, a 2.8$\\times$ gap & a \\textbf{structural value} --- Simes over a singleton \\emph{is} that marker's $p$ --- with the differing retention reported as a result \\\\\n\\addlinespace\n")
 cat("\\texttt{ld\\_w\\_} \\texttt{threshold} 0.025 & \\textbf{fails}: retains 5.1\\% to 48.1\\% of markers, a 9.4$\\times$ spread & panel's 28\\% sits \\emph{inside} the simulation range & \\textbf{marker retention}, matched per dataset; the numeric value carries no meaning \\\\\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
 \begin{keybox}
-\textbf{Pooling hid the only failure.} Averaged over all cells, \texttt{ld\_w}
-retention reads 55/20/5\% against the panel's 54/28/13\% --- close enough to
-call the axis well matched, which is what was reported to the panel session.
-Broken out, that 20\% is the average of 5.1\% and 48.1\%. This is the same shape
-as the $T_1$ plateau artefact (\S\ref{sec:todo}): \textbf{a composite that looks
-stable can be two components moving in opposite directions.} Any transferability
-claim has to be made per setting, never pooled.
+\textbf{Only the size floor transfers, and pooling hid both failures.} Averaged
+over cells, \texttt{ld\_w} retention reads 55/20/5\% against the panel's
+54/28/13\% --- close enough to call the axis well matched, which is what was
+reported to the panel session. Broken out, that 20\% is the average of 5.1\% and
+48.1\%.
+
+\textbf{The two failing axes are also not independent.} Gaps exceeding the
+distance threshold track the number of flagged stage-1 clusters (Spearman
+$-0.905$), and \texttt{ld\_w\_threshold} is what sets that count --- 1,272 to
+32,318 across the eight settings. So a factorial grid cannot vary these two
+orthogonally and read the margins separately, which is a constraint on the
+sensitivity design rather than a caveat on it.
+\end{keybox}
+
+\begin{keybox}
+\textbf{A withdrawn claim, and how it was caught.} This table first read
+"\texttt{distance\_threshold} inert everywhere, derived exceeds the largest gap
+on 160 of 160 chromosomes". That was computed on adjacent-marker gaps over the
+whole map; \texttt{split\_by\_distance()} uses gaps between consecutive
+\emph{flagged stage-1 clusters}. Wrong unit, wrong subset, and the correct
+quantity reverses the conclusion. Found by the panel session reading the source
+rather than by any disagreement in the numbers --- which is the second time
+today a result broke under decomposition rather than under challenge.
 \end{keybox}
 
 \noindent The practical rule that follows is **different invariants for
@@ -147,11 +163,13 @@ The `distance_threshold` case is the sharpest. The package derives it as
 $d = \rho/(a(1-\rho))$, so the window **collapses as decay speeds up** and
 carries no term for the size of the feature stage-2 merging exists to bridge. On
 the panel that yields a 6 kb median merge distance on a genome whose motivating
-feature is a 430 kb inversion; here it yields roughly 1 Mb, past the top of the
-gap distribution. Identical rule, opposite failure --- too small to span the
-features there, physically meaningless here (4,961 Mb derived on a 30 Mb
-chromosome). Three fixes were proposed and all three refuted, each acting
-hardest exactly where the local estimate is most informative.
+feature is a 430 kb inversion. Here it yields roughly 1 Mb --- which is *not*
+past the top of the flagged-cluster gap distribution, and adopting it would
+remove 68--100% of split points depending on the setting. Identical rule,
+consequential on both datasets, and in opposite directions: too small to span
+the features there, and physically meaningless in its tail here (4,961 Mb
+derived on a 30 Mb chromosome). Three fixes were proposed and all three refuted,
+each acting hardest exactly where the local estimate is most informative.
 
 # What still needs to be done {#sec:todo}
 
@@ -164,7 +182,7 @@ rows <- list(
  c("2","\\textbf{The factorial sensitivity grid}","$3\\times3\\times3$, 9 re-clusterings. Now better specified than when it was planned: report \\emph{operating points} rather than values, never pool across cells, and report the two axes (selection vs test) separately."),
  c("3","$T_2$ / $T_2$b for the local threshold","Scoped down: since the local rule collapses to a flat threshold on the panel, the most $T_2$ can support is \\emph{helps in the cold-block regime, inert to degenerate outside it}. Worth deciding whether that claim is wanted before spending the time."),
  c("4","\\textbf{An empirical demonstration}","Unchanged and still the largest gap. See below."),
- c("5","Document the hardcoded 1e5","It appears in roughly 20 scripts. It is inert here so nothing needs re-running, but it is a constant standing where the package has a rule and must be stated as such rather than found by a reader."))
+ c("5","\\textbf{Decide what to do about the hardcoded 1e5}","It appears in roughly 20 scripts. It is \\emph{not} inert -- that claim was withdrawn -- so this is a live choice rather than documentation: adopting the derived rule would remove 68--100\\% of split points and repartition every result. Nothing needs re-running to keep the current results valid, but the choice has to be argued rather than inherited."))
 for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n\\addlinespace\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```

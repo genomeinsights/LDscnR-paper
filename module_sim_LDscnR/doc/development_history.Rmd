@@ -946,28 +946,56 @@ $d = d_{\text{from\_rho}}(a_{\text{pred}}, \rho) = \rho/(a(1-\rho))$, exactly as
 `min_r2` is already derived. Both sessions had been overriding a rule with a
 constant, and neither had noticed.
 
-The first reading of that was alarming and wrong. The derived value here averages
-**1,167 kb** against the hand-set 100 kb, which looks like a twelve-fold regime
-change. It is not, because **the bp ratio is not the operating point**:
-`distance_threshold` splits a run at a *consecutive marker gap*.
+## A withdrawn result: "inert on bgs5"
+
+This section first reported that the substitution is **inert** here, on the
+grounds that only 0.004% of gaps exceed 1e5 and the derived value exceeds the
+largest observed gap on 20 of 20 chromosomes. **That was computed on the wrong
+quantity and the conclusion is withdrawn.** 2c found it by reading the source:
+
+```r
+split_by_distance <- function(pos_min, pos_max, distance_threshold) {
+  gap <- pos_min[ord] - c(NA, pos_max[ord][-length(ord)])
+  new_run <- is.na(gap) | gap > distance_threshold
+```
+
+\noindent The gap is between consecutive **stage-1 clusters**, and it is applied
+to the **flagged subset only** --- clusters with any member $ld_w >$
+`ld_w_threshold` (`ld_prune_and_eMLG.R:389`). Both sessions had computed gaps
+between adjacent *markers* over the whole map. Wrong unit and wrong subset, and
+the subset dominates: flagged clusters are sparse, so gaps between them are far
+larger.
 
 ```{r gaps, results="asis"}
-cat("\\begin{tabular}{@{}lr@{}}\n\\toprule\n")
-cat("median gap & 800 bp \\\\\n99.9th percentile gap & 20.7 kb \\\\\nlargest gap observed & 308 kb \\\\\n\\midrule\n")
-cat("gaps exceeding the hand-set 1e5 & 0.004\\% \\\\\n")
-cat("gaps exceeding the derived 1167 kb & 0.000\\% \\\\\n")
-cat("chromosomes where derived $>$ largest observed gap & \\textbf{20 of 20} \\\\\n")
+cat("\\begin{tabular}{@{}lrr@{}}\n\\toprule\n")
+cat(" & \\textbf{as first reported} & \\textbf{corrected} \\\\\n\\midrule\n")
+cat("quantity & adjacent markers, whole map & flagged stage-1 clusters \\\\\n")
+cat("gaps exceeding 1e5 & 0.004\\% & \\textbf{1.54\\%} pooled, \\textbf{0.60--10.94\\%} by setting \\\\\n")
+cat("derived $>$ largest gap & 160 of 160 chr & \\textbf{85 of 160} \\\\\n")
+cat("split points lost, 1e5 $\\to$ derived & (none) & \\textbf{68--100\\%} in every setting \\\\\n")
 cat("\\bottomrule\n\\end{tabular}\n")
 ```
 
-\noindent Both settings mean "never split" on data this dense, and twelve-fold
-between two numbers past the top of the gap distribution is inert.
+\noindent So the substitution is **consequential on both datasets**, and the
+inert-versus-dominant asymmetry both sessions were reporting does not exist. 2c's
+own figure moves too --- their "4 gaps exceed 1e5" becomes 453, and their
+1,300-fold becomes 9--23-fold --- but their *direction* survives and mine did
+not, because mine was the claim that nothing happens.
 
-**The same substitution is decisive on the stickleback panel, in the opposite
-direction.** There the derived threshold is 3--18 kb --- *smaller* than the
-hand-set 100 kb --- and cuts into the body of the gap distribution: 6,416 gaps
-exceed it against 4. So the identical rule is inert on one dataset and a
-roughly 1,300-fold change in split events on the other.
+\begin{keybox}
+\textbf{The dcap operating point does not transfer across simulation settings
+either, and it is not an independent axis.} Gaps exceeding 1e5 span 0.60\% to
+10.94\% across the eight settings, an 18$\times$ spread, tracking the number of
+flagged clusters (1,272 to 32,318, a 25$\times$ spread) at
+Spearman $= -0.905$. Since \texttt{ld\_w\_threshold} is what sets that count,
+\textbf{\texttt{ld\_w\_threshold} and \texttt{distance\_threshold} are coupled by
+construction} --- a factorial grid cannot vary them orthogonally and read the
+margins separately.
+\end{keybox}
+
+**On the panel the derived threshold is smaller than the hand-set one** --- 3--18
+kb against 100 kb --- so it cuts into the body of the gap distribution rather
+than sitting past the top of it.
 
 \begin{keybox}
 That is an LDscnR calibration issue rather than a parameter choice.
@@ -1212,7 +1240,7 @@ Scripts: `filter_then_test_clusters.R`, `filter_then_test.R`, `filter_fdr_check.
 `stratified_paired_table.R`, `recluster_filter_test.R`, and the three `plot_*` scripts.
 For \S\ref{sec:dthr}--\S\ref{sec:panel-limits}: `operating_points.R`,
 `decay_window_test.R`, `proxy_T1_local_decay.R`, `proxy_T1_by_window.R`,
-`cap_cost.R`, `floor_sweep.R`.
+`cap_cost.R`, `floor_sweep.R`, `dcap_operating_point.R`.
 Parameters: $\alpha$ 0.05; stage-2 `min_r2_rho` 0.5, `distance_threshold` 1e5;
 scoring `dmax_cap` 1e5. Commits `60c8134`, `88797ff`, `7e595b5`.
 
