@@ -118,8 +118,20 @@
 ##          carry the spatial autocorrelation that makes the real covariate hard;
 ##          the 3sp work in this project found the spatial null the stringent one
 ##          for the same reason.
-## Both are residualised against the observed environment, following
-## structured_null(), so a surrogate carries none of the real signal.
+## RESIDUALISATION IS NOW A SWITCH (RESID), NOT A GIVEN. structured_null()
+## residualises each surrogate against the observed phenotype so it carries none
+## of the real signal. That is safe-looking and is a candidate cause of every
+## valid null here being anti-conservative: projecting out y removes the part of
+## the structure MOST ALIGNED WITH THE REAL PHENOTYPE, which is precisely the
+## part that generates confounded associations. A residualised surrogate is
+## therefore systematically easier than the phenotype it stands in for.
+##
+## EVERY NULL IS NOW SCORED FOR REGION LOCKING TOO. E[V] cannot detect a null
+## that rediscovers the observed discoveries, and one basis here looked
+## appropriately stringent by E[V] while being 500x enriched for exactly that.
+## `lock_overlap` is the fraction of surrogate discoveries that are also observed
+## discoveries; `lock_chance` is what that would be if surrogates hit units at
+## random. A ratio far above 1 invalidates the null whatever E[V] says.
 ##
 ## SURROGATE-MAJOR, NOT CHROMOSOME-MAJOR. BH is applied over the whole panel, so
 ## a surrogate's p-values must exist for all ten chromosomes at once before it can
@@ -150,7 +162,8 @@ ENVS  <- as.integer(strsplit(Sys.getenv("ENVS", "1,2,3,4,5"), ",")[[1]])
 FILES <- as.integer(strsplit(Sys.getenv("FILES", "1,2,3,4,5,6,7,8,9,10"), ",")[[1]])
 NSIM  <- as.integer(Sys.getenv("NSIM", "1000"))
 ROUTES <- strsplit(Sys.getenv("ROUTES", "consensus,best,simes"), ",")[[1]]
-BASIS  <- Sys.getenv("BASIS", "pop")                # pop | indiv
+BASIS  <- Sys.getenv("BASIS", "pop")                # pop | indiv | spatial | vc
+RESID  <- as.logical(Sys.getenv("RESID", "TRUE"))   # residualise surrogates against y?
 FLOORS <- as.integer(strsplit(Sys.getenv("FLOORS", "1,2,5,8"), ",")[[1]])
 ALPHA  <- as.numeric(Sys.getenv("ALPHA", "0.05"))
 SEED  <- as.integer(Sys.getenv("SEED", "2026"))
@@ -169,7 +182,7 @@ simes <- function(p) { p <- sort(p[is.finite(p)]); n <- length(p)
 ## analogue of the observed covariate. The population-level covariance is the
 ## block mean of the GRM, which is the object BayPass calls Omega.
 draw_null_env <- function(GRM, pop, y, nsim, seed, basis = "pop", coords = NULL,
-                          prep = NULL) {
+                          prep = NULL, resid = TRUE) {
   n <- length(pop)
   if (basis == "vc") {
     ## REML components from the observed phenotype, so the surrogate carries the
@@ -208,14 +221,14 @@ draw_null_env <- function(GRM, pop, y, nsim, seed, basis = "pop", coords = NULL,
     set.seed(seed)
     out <- L %*% matrix(stats::rnorm(n * nsim), n, nsim)
   }
-  ## residualise against the observed environment, as structured_null() does, so
-  ## no surrogate carries the real signal.
+  if (!resid) return(out)
   apply(out, 2, function(v) as.numeric(stats::resid(stats::lm(v ~ y))))
 }
 
 one_panel <- function(CELL, TAG, ENV) {
-  fo <- file.path(OUT, sprintf("null_%s_%s_env%d_%s_%s_N%d.rds",
-                               CELL, TAG, ENV, paste(ROUTES, collapse = "-"), BASIS, NSIM))
+  fo <- file.path(OUT, sprintf("null_%s_%s_env%d_%s_%s_r%d_N%d.rds",
+                               CELL, TAG, ENV, paste(ROUTES, collapse = "-"), BASIS,
+                               as.integer(RESID), NSIM))
   if (file.exists(fo)) return(invisible(NULL))
 
   ## ---- pass 1: build every chromosome's partition, rotation and truth links
@@ -305,12 +318,17 @@ one_panel <- function(CELL, TAG, ENV) {
   names(obs_R) <- names(obs_S) <- ROUTES
 
   ## ---- surrogates, one draw at a time across the whole panel
-  NE <- draw_null_env(GRM, POP, yy, NSIM, SEED + ENV, BASIS, XY, P[[1]]$prep)
+  NE <- draw_null_env(GRM, POP, yy, NSIM, SEED + ENV, BASIS, XY, P[[1]]$prep, RESID)
   Vmat <- lapply(ROUTES, function(r) matrix(0L, NSIM, length(FLOORS)))
   names(Vmat) <- ROUTES
+  ## surrogate discovery IDENTITIES at floor 1, for the locking check
+  hits <- lapply(ROUTES, function(r) character(0)); names(hits) <- ROUTES
   for (b in seq_len(NSIM)) {
     SB <- score_routes(NE[, b])
-    for (r in ROUTES) Vmat[[r]][b, ] <- vapply(keeps, function(k) bh_rej(SB[[r]], k), integer(1))
+    for (r in ROUTES) {
+      Vmat[[r]][b, ] <- vapply(keeps, function(k) bh_rej(SB[[r]], k), integer(1))
+      hits[[r]] <- c(hits[[r]], bh_set(SB[[r]], keeps[[1]]))
+    }
   }
 
   lk <- rbindlist(lnk, fill = TRUE); nq <- uniqueN(lk$qtn)
@@ -335,9 +353,12 @@ one_panel <- function(CELL, TAG, ENV) {
     V_max   = apply(Vmat[[r]], 2, max),
     pct_any = 100 * colMeans(Vmat[[r]] > 0),
     est_FDP = colMeans(Vmat[[r]]) / pmax(obs_R[[r]], 1),
+    lock_overlap = if (length(hits[[r]])) mean(hits[[r]] %in% obs_S[[r]][[1]]) else NA_real_,
+    lock_chance  = length(obs_S[[r]][[1]]) / length(CLall),
+    lock_distinct = uniqueN(hits[[r]]), lock_hits = length(hits[[r]]),
     realised_FDP = realised_for(obs_S[[r]]),
     n_qtn = nq)))
-  saveRDS(list(summary = out, Vmat = Vmat, floors = FLOORS, routes = ROUTES,
+  saveRDS(list(summary = out, Vmat = Vmat, floors = FLOORS, routes = ROUTES, hits = hits,
                units = data.table(CL = CLall, n_loci = NL,
                                   p_cons = OBS$consensus, p_best = OBS$best, p_simes = OBS$simes),
                links = lk), fo)
@@ -348,8 +369,8 @@ one_panel <- function(CELL, TAG, ENV) {
 }
 
 grid <- CJ(cell = CELLS, tag = TAGS, env = ENVS, sorted = FALSE)
-cat(sprintf("%s | routes %s | basis %s | NSIM %d | %d panels | CORES %d\n",
-            paste(CELLS, collapse=","), paste(ROUTES, collapse=","), BASIS, NSIM,
+cat(sprintf("%s | routes %s | basis %s | resid %s | NSIM %d | %d panels | CORES %d\n",
+            paste(CELLS, collapse=","), paste(ROUTES, collapse=","), BASIS, RESID, NSIM,
             nrow(grid), CORES))
 invisible(mclapply(seq_len(nrow(grid)), function(z)
   tryCatch(one_panel(grid$cell[z], grid$tag[z], grid$env[z]),
