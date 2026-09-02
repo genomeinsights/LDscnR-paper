@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LDscnR in Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground:      #F2F5F6;
+    --surface:     #FFFFFF;
+    --surface-2:   #E9EFF1;
+    --ink:         #14212A;
+    --ink-2:       #4C6673;
+    --ink-3:       #7C949F;
+    --rule:        #D2DEE3;
+    --rule-strong: #A9BFC8;
+    --accent:      #1F7085;
+    --accent-wash: #DDEBEF;
+
+    --f-display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --f-body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E171C;
+      --surface:     #151F26;
+      --surface-2:   #1B2830;
+      --ink:         #E3ECEF;
+      --ink-2:       #9DB2BC;
+      --ink-3:       #6E8794;
+      --rule:        #27363F;
+      --rule-strong: #3C525E;
+      --accent:      #63B7CD;
+      --accent-wash: #16303A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E171C; --surface: #151F26; --surface-2: #1B2830;
+    --ink: #E3ECEF; --ink-2: #9DB2BC; --ink-3: #6E8794;
+    --rule: #27363F; --rule-strong: #3C525E;
+    --accent: #63B7CD; --accent-wash: #16303A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 15.5px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: clamp(1.75rem, 5vw, 3.25rem) clamp(1.25rem, 5vw, 3rem) 3rem;
+  }
+
+  /* --- header --- */
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 1.15rem; }
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.7rem;
+  }
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: clamp(1.9rem, 4.5vw, 2.4rem);
+    line-height: 1.1;
+    letter-spacing: -0.017em;
+    margin: 0 0 0.45rem;
+  }
+  .sub {
+    font-size: 1.05rem;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 60ch;
+  }
+  .byline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.5rem;
+    margin-top: 1.1rem;
+    font-family: var(--f-mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+  }
+  .byline a { color: var(--ink-3); }
+
+  /* --- sections --- */
+  section { padding-top: 1.55rem; }
+  h2 {
+    font-family: var(--f-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.75rem;
+  }
+  p { margin: 0 0 0.8rem; max-width: 72ch; }
+  p:last-child { margin-bottom: 0; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+
+  .lead {
+    font-size: 1.05rem;
+    max-width: 68ch;
+  }
+  .lead b { color: var(--accent); font-weight: 600; }
+
+  /* --- step grid --- */
+  .steps {
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.4rem;
+  }
+  @media (min-width: 760px) { .steps { grid-template-columns: 1fr 1fr; } }
+  .step {
+    background: var(--surface);
+    padding: 0.85rem 1rem;
+    display: grid;
+    grid-template-columns: 1.9rem 1fr;
+    gap: 0 0.65rem;
+    align-items: baseline;
+  }
+  .step .n {
+    font-family: var(--f-mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .step .t { font-weight: 600; display: block; margin-bottom: 0.1rem; }
+  .step .d { font-size: 0.875rem; color: var(--ink-2); display: block; }
+  .step .d code {
+    font-family: var(--f-mono);
+    font-size: 0.9em;
+    background: var(--surface-2);
+    padding: 0.05em 0.28em;
+    border-radius: 3px;
+  }
+
+  /* --- distinctive points --- */
+  .points { display: grid; gap: 0.9rem; margin-top: 0.3rem; }
+  @media (min-width: 760px) { .points { grid-template-columns: repeat(3, 1fr); } }
+  .point {
+    border-left: 2px solid var(--accent);
+    padding-left: 0.85rem;
+  }
+  .point b { display: block; margin-bottom: 0.15rem; }
+  .point span { font-size: 0.9rem; color: var(--ink-2); }
+
+  /* --- comparisons --- */
+  .diffs { display: grid; gap: 1.15rem 2rem; margin-top: 0.3rem; }
+  @media (min-width: 760px) { .diffs { grid-template-columns: 1fr 1fr; } }
+  .diff { border-top: 1px solid var(--rule-strong); padding-top: 0.6rem; }
+  .diff b { display: block; margin-bottom: 0.2rem; font-weight: 600; }
+  .diff .ref {
+    font-family: var(--f-mono);
+    font-weight: 400;
+    font-size: 0.76em;
+    color: var(--accent);
+    letter-spacing: 0.03em;
+  }
+  .diff span.body { font-size: 0.9rem; color: var(--ink-2); display: block; }
+
+  /* --- figure --- */
+  figure {
+    margin: 0.3rem 0 0;
+    padding: 1.1rem 1.1rem 0.85rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; height: auto; color: var(--ink-2); }
+  figcaption {
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    margin-top: 0.8rem;
+    max-width: 70ch;
+  }
+  .sl { font-family: "IBM Plex Mono", monospace; font-size: 11px; fill: var(--ink-2); }
+  .ss { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 500; fill: var(--ink); }
+  .sa { fill: var(--accent); }
+  .sbox { fill: var(--surface-2); stroke: var(--rule-strong); stroke-width: 1; }
+  .sline { stroke: var(--ink-3); stroke-width: 1.4; fill: none; }
+  .cell { fill: none; stroke: var(--rule-strong); stroke-width: 1; }
+  .cellon { fill: var(--accent); stroke: var(--accent); stroke-width: 1; }
+
+  footer {
+    margin-top: 2.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.85rem;
+    color: var(--ink-2);
+  }
+  footer a { color: var(--accent); }
+
+  @media print {
+    body { background: #fff; color: #14212A; font-size: 9.4pt; line-height: 1.4; }
+    .sheet { max-width: none; padding: 0; }
+    header { padding-bottom: 0.6rem; }
+    h1 { font-size: 19pt; }
+    .sub { font-size: 10.5pt; }
+    .byline { margin-top: 0.6rem; gap: 0.2rem 1.1rem; }
+    section { padding-top: 0.8rem; break-inside: avoid; }
+    h2 { margin-bottom: 0.45rem; }
+    p { margin-bottom: 0.5rem; }
+    .lead { font-size: 10.2pt; }
+    /* the min-width media queries above collapse to one column on the print
+       canvas; restore the multi-column layouts explicitly */
+    .steps { grid-template-columns: 1fr 1fr; }
+    .step { padding: 0.5rem 0.7rem; }
+    .step .d { font-size: 8.3pt; }
+    .points { grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+    .point span { font-size: 8.6pt; }
+    .diffs { grid-template-columns: 1fr 1fr; gap: 0.5rem 1.3rem; }
+    .diff { padding-top: 0.4rem; }
+    .diff span.body { font-size: 8.0pt; }
+    figure { padding: 0.6rem 0.6rem 0.4rem; break-inside: avoid; }
+    figure svg { max-width: 100mm; margin: 0 auto; }
+    figcaption { font-size: 8.4pt; margin-top: 0.4rem; }
+    footer { margin-top: 0.6rem; padding-top: 0.45rem; font-size: 8.4pt; }
+    .steps, .points { break-inside: avoid; }
+    a { text-decoration: none; }
+    @page { size: A4; margin: 13mm 14mm; }
+  }
+
+  @media print {
+    :root { font-size: 15.2px; }
+    .sheet { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+    section { padding-top: 1.3rem; }
+    figure { margin: 0.6rem 0 0; }
+    footer { padding-top: 0.7rem; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <p class="kicker">Method overview</p>
+    <h1>LDscnR &mdash; LD-aware outlier regions</h1>
+    <p class="sub">Testing loci instead of markers, so that the reported false-discovery rate is a statement about the thing you care about.</p>
+    <div class="byline">
+      <span>Petri Kemppainen &amp; Fr&eacute;d&eacute;ric Guillaume</span>
+      <span>University of Helsinki</span>
+      <span>petri@genomeinsights.fi</span>
+      <span>github.com/genomeinsights/LDscnR</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>The premise</h2>
+    <p>A genome scan tests markers; the object of interest is a locus. Benjamini&ndash;Hochberg controls the false discovery proportion <em>among the units tested</em>, so a single-SNP scan controls it among SNPs while being judged against a locus-level truth. On one simulated panel, 2,467 significant SNPs were <strong>132 distinct LD clusters</strong>, with the rejected set 6.3&times; more redundant than the genome as a whole. &ldquo;5% FDR over 2,467 discoveries&rdquo; is a guarantee about a different object from the one being counted.</p>
+    <p>There is a second reason, and it is the one the method exists for. Where the environment is collinear with population structure, residual confounding survives a mixed model and produces <em>isolated</em> single-marker hits, while real adaptive loci produce <em>clustered</em> signal. <strong>That difference is measured, not assumed:</strong> across 2,547 simulated discoveries with known causal variants, true positives sit in clusters about twice the size and false positives are 3&ndash;4&times; more likely to be singletons.</p>
+  </section>
+
+  <section>
+    <h2>The pipeline</h2>
+    <div class="steps">
+      <div class="step"><span class="n">00</span><span><span class="t">LD-decay estimation</span><span class="d">Fit the decay of <em>r</em><sup>2</sup> with distance per chromosome. Every downstream threshold is <em>derived</em> from this fit rather than chosen, so a setting means the same thing on chromosomes with different recombination.</span></span></div>
+      <div class="step"><span class="n">01</span><span><span class="t">Kinship</span><span class="d">Build the relatedness matrix from LD-<em>independent</em> markers, so it cannot absorb the very regions under selection.</span></span></div>
+      <div class="step"><span class="n">02</span><span><span class="t">Complexity reduction</span><span class="d">Two stages. Group markers into LD clusters, then merge clusters that are linked and physically contiguous. Grouping is by <em>linkage</em>, not physical distance, so an inversion stays one unit while an adjacent looser block separates. <strong>The partition never sees a phenotype.</strong></span></span></div>
+      <div class="step"><span class="n">03</span><span><span class="t">Association scan</span><span class="d">EMMAX, LFMM, or any test giving one <em>p</em>-value per marker. The method consumes the vector and is agnostic to its source; EMMAX and LFMM give the same conclusions.</span></span></div>
+      <div class="step"><span class="n">04</span><span><span class="t">Cluster summary</span><span class="d">Simes across a cluster&rsquo;s members. For methods that emit no per-marker <em>p</em>-value &mdash; BayPass BF, XtX &mdash; the test is run instead on the cluster&rsquo;s consensus genotype, at a measured cost in power.</span></span></div>
+      <div class="step"><span class="n">05</span><span><span class="t">Correction over loci</span><span class="d">BH across clusters. This is the whole point: the correction and the unit now refer to the same object, and no filtering or thresholding is involved.</span></span></div>
+      <div class="step"><span class="n">06</span><span><span class="t">Null diagnostic</span><span class="d">Read <em>&sigma;</em><sup>2</sup><sub>e</sub> from REML <em>before</em> running any permutation. Near zero, the surrogate null is anti-conservative and can only be read one-sidedly. It fires without needing to know why.</span></span></div>
+      <div class="step"><span class="n">07</span><span><span class="t">Report</span><span class="d">Loci with a locus-level FDR, and an explicit statement of what the accompanying null can and cannot certify.</span></span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What is different about it</h2>
+    <div class="points">
+      <div class="point">
+        <b>Units, not filters</b>
+        <span class="body">Every filter we tried was rejected on its own evidence &mdash; four built on cluster geometry, and a minimum-size floor swept from 1 to 12. The recall lost always exceeded the precision gained. The advantage comes from <em>changing what is tested</em>, not from removing anything.</span>
+      </div>
+      <div class="point">
+        <b>Thresholds derived, not chosen</b>
+        <span class="body">Merge distance and correlation floors come from each chromosome&rsquo;s own decay fit. Where a constant remains, it is named as one. A full factorial over the two clustering parameters and the size floor moves the size of the advantage and never its sign.</span>
+      </div>
+      <div class="point">
+        <b>Honest about the null</b>
+        <span class="body">In the regime this method targets, surrogate nulls are anti-conservative &mdash; measured against simulations with known truth. A negative result is therefore trustworthy; survivors are <em>candidates</em>, pending independent evidence. We report the asymmetry rather than a number we cannot support.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The idea in one picture</h2>
+    <figure>
+      <svg viewBox="0 0 700 300" role="img" aria-label="The same rejections counted as SNPs and as loci, and the difference in geometry between true and false positives.">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <text class="sl sa" x="40" y="24">ONE SCAN, COUNTED TWO WAYS</text>
+
+        <rect class="sbox" x="40" y="46" width="150" height="50" rx="3"></rect>
+        <text class="ss" x="115" y="67" text-anchor="middle">per-marker p</text>
+        <text class="sl" x="115" y="84" text-anchor="middle">EMMAX / LFMM</text>
+
+        <line class="sline" x1="192" y1="71" x2="248" y2="71" marker-end="url(#a1)"></line>
+        <text class="sl" x="330" y="40" text-anchor="middle">BH over markers</text>
+        <rect class="sbox" x="252" y="46" width="156" height="50" rx="3"></rect>
+        <text class="ss" x="330" y="67" text-anchor="middle">2,467 SNPs</text>
+        <text class="sl" x="330" y="84" text-anchor="middle">FDR over SNPs</text>
+        <text class="sl" x="424" y="65">a guarantee about</text>
+        <text class="sl" x="424" y="81">markers, judged</text>
+        <text class="sl" x="424" y="97">against loci</text>
+
+        <line class="sline" x1="115" y1="98" x2="115" y2="150" marker-end="url(#a1)"></line>
+        <text class="sl" x="128" y="128">cluster by linkage</text>
+
+        <rect class="sbox" x="40" y="154" width="150" height="50" rx="3"></rect>
+        <text class="ss" x="115" y="175" text-anchor="middle">LD clusters</text>
+        <text class="sl" x="115" y="192" text-anchor="middle">phenotype-blind</text>
+
+        <line class="sline" x1="192" y1="179" x2="248" y2="179" marker-end="url(#a1)"></line>
+        <text class="sl" x="330" y="148" text-anchor="middle">BH over loci</text>
+        <rect class="sbox" x="252" y="154" width="156" height="50" rx="3"></rect>
+        <text class="ss" x="330" y="175" text-anchor="middle">132 loci</text>
+        <text class="sl" x="330" y="192" text-anchor="middle">FDR over loci</text>
+        <text class="sl" x="424" y="173">the same rejections,</text>
+        <text class="sl" x="424" y="189">counted as the thing</text>
+        <text class="sl" x="424" y="205">being claimed</text>
+
+        <text class="sl sa" x="40" y="240">AND WHY IT SEPARATES</text>
+        <text class="sl" x="40" y="264">true positive</text>
+        <rect class="cellon" x="150" y="252" width="14" height="14"></rect>
+        <rect class="cellon" x="166" y="252" width="14" height="14"></rect>
+        <rect class="cellon" x="182" y="252" width="14" height="14"></rect>
+        <rect class="cellon" x="198" y="252" width="14" height="14"></rect>
+        <rect class="cellon" x="214" y="252" width="14" height="14"></rect>
+        <text class="sl" x="240" y="263">clustered &#8212; median 28 markers</text>
+
+        <text class="sl" x="40" y="290">false positive</text>
+        <rect class="cellon" x="150" y="278" width="14" height="14"></rect>
+        <rect class="cell" x="166" y="278" width="14" height="14"></rect>
+        <rect class="cell" x="182" y="278" width="14" height="14"></rect>
+        <rect class="cell" x="198" y="278" width="14" height="14"></rect>
+        <rect class="cell" x="214" y="278" width="14" height="14"></rect>
+        <text class="sl" x="240" y="289">isolated &#8212; 3&#8211;4&#215; more often a singleton</text>
+      </svg>
+      <figcaption>Above: the same scan, corrected over markers and over loci. Below: why the two disagree &mdash; structure-driven false positives are isolated, real signal is clustered, and aggregation makes an isolated hit contribute one unit instead of surviving as many. <strong>The separation is real and is not a threshold:</strong> the distributions overlap enough that no size cutoff exploits it.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>How it differs from existing approaches</h2>
+    <div class="diffs">
+      <div class="diff">
+        <b>Haplotype and LD-pattern sweep scans <span class="ref">H12 &middot; OmegaPlus</span></b>
+        <span class="body">These read elevated LD as direct evidence of selection. LDscnR does not &mdash; elevated LD also arises from inversions, recombination-rate variation, demography and structure. Local LD is used only to define <em>units</em>; it is never interpreted as a test of selection and never folded into the evidence.</span>
+      </div>
+      <div class="diff">
+        <b>Window-based regional aggregation <span class="ref">WZA</span></b>
+        <span class="body">Fixed physical windows assume adjacent variants carry one evolutionary signal; recombination means they often do not, so aggregation dilutes highly localised signal. LDscnR takes units from the topology of the local LD network &mdash; overlapping but distinct signals in the same interval stay distinct &mdash; and the joining thresholds self-calibrate to each chromosome&rsquo;s LD decay.</span>
+      </div>
+      <div class="diff">
+        <b>LD-based complexity reduction <span class="ref">the LDna lineage</span></b>
+        <span class="body">Complexity reduction originates here, not with LDscnR. Fang <em>et al.</em> (2021) shrank the test count so the permutation of Li <em>et al.</em> (2018) became affordable, and scored regions by the proportion of settings finding them significant. LDscnR keeps the reduction and drops that consistency score as an inferential device: swept over our grid it is informative only at its ceiling &mdash; units called under <em>every</em> setting are 4&times; enriched for lying near a causal variant, everything below flat. It is an indicator, not a ranking. What is new is that the reduction is <strong>benchmarked against simulations with known causal variants</strong>, with a convention-free false-positive control.</span>
+      </div>
+      <div class="diff">
+        <b>How significance is established &mdash; and its limit</b>
+        <span class="body">Permutation is the acknowledged gold standard, because it accounts for the genome&rsquo;s correlation structure directly. Under population structure the standard version is invalid and the correct substitute is specified: surrogate phenotypes from MVN(0, &sigma;<sup>2</sup><sub>g</sub><em>A</em> + &sigma;<sup>2</sup><sub>e</sub><em>I</em>). <strong>We find it fails in exactly the regime it is needed.</strong> Where the covariate is collinear with structure, REML returns &sigma;<sup>2</sup><sub>e</sub> &asymp; 0 and the surrogate null runs several-fold too light in the tail where BH operates &mdash; anti-conservative in 8 of 9 simulated panels. The failure is detectable in advance from the variance split and its direction is known, which is what makes it usable: a negative result can be trusted, survivors are candidates needing independent corroboration. We regard this as a finding about structure-aware nulls, not a limitation of this pipeline.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Status</h2>
+    <p>Benchmarked on forward-in-time, individual-based simulations (NEMO) with known causal variants: 80 panels across four selection regimes and two background-selection arms, with half of all markers on chromosomes carrying no causal variant, so that a discovery there is a false positive by construction and no scoring convention is involved. Cluster-level testing roughly doubles precision (0.35 against 0.19), and the advantage holds in every cell of a full factorial over the clustering parameters and under both association engines. The trade against recall is explicit: the crossover in <em>F</em><sub>&beta;</sub> sits at &beta; &asymp; 2.</p>
+    <p>Application to the three-spined stickleback marine&ndash;freshwater panel of Fang <em>et al.</em> (2021) is in progress, where a single-SNP scan returns three isolated loci matching no known adaptation peak. Corroboration of the cluster-level regions against published recurrent marine&ndash;freshwater peaks is being tested against a positional null and is <strong>not yet complete</strong>.</p>
+  </section>
+
+  <footer>
+    Implemented as an R package: <a href="https://github.com/genomeinsights/LDscnR">github.com/genomeinsights/LDscnR</a>. Manuscript in preparation &mdash; comments welcome at petri@genomeinsights.fi.
+  </footer>
+
+</div>
+</body>
+</html>
