@@ -28,28 +28,36 @@
 ## (validity). A usable null needs ratio ~ 1 AND overlap ~ 1x, and no setting has
 ## achieved both so far.
 ##
-## RESULT: THE TEST IS INCONCLUSIVE AND THE DESIGN HAS A FLAW. Both are recorded
-## because the flaw is easy to repeat.
+## RESULT: THE DILEMMA IS AN ARTEFACT OF THE NOISELESS ENVIRONMENT.
 ##
-##   h2    observed neutral tail   discoveries   locking measurable?
-##   1.0          0.0576               16              yes
-##   0.9          0.0183                0              no
-##   0.7          0.0131                0              no
-##   0.5          0.0052                0              no
+## With individual-level noise REML separates the components properly
+## (vg_share 1.00 -> 0.88 -> 0.66 -> 0.52 -> 0.40 as h2 falls), which the
+## population-level version could not do. And the basis that PASSES the
+## region-locking gate -- pure genetic, lambda = 1 -- becomes calibrated:
 ##
-## TEN PERCENT NOISE REMOVES EVERY DISCOVERY, so there is no observed set to
-## measure locking against and the hypothesis cannot be tested this way. It is
-## not merely that power falls: the observed neutral tail falls with it, 0.0576
-## -> 0.0183 -> 0.0052, converging to and then below the uniform 0.0100. SIGNAL
-## AND CONFOUNDING VANISH TOGETHER. The miscalibration that motivates the whole
-## exercise exists because the simulated environment is noiseless and perfectly
-## spatially structured, and it does not survive a covariate that is not.
+##   h2    observed neutral tail   lambda=1 surrogate tail   ratio to truth
+##   1.0          0.0576                0.0098                 0.17x
+##   0.9          0.0183                0.0094                 0.51x
+##   0.7          0.0105                0.0075                 0.72x
+##   0.5          0.0079                0.0069                 0.88x
+##   0.3          0.0052                0.0065                 1.23x
 ##
-## THE FLAW: vg/(vg+ve) stays at 1.00 at every h2. Noise was added at the
-## population level, and with 80 populations against a 160-individual GRM of rank
-## up to 159, a population-level vector lies largely in the GRM's span -- so REML
-## absorbs the "residual" as genetic and no residual component is created. A real
-## test needs individual-level noise, or more populations than the GRM can span.
+## So the standard MVN(0, vg*K + ve*I) null is badly anti-conservative ONLY at
+## h2 = 1, and is calibrated within 1.4x once the covariate carries realistic
+## noise. The whole validity/power dilemma was a property of an environment that
+## is a deterministic spatial function, not of the method.
+##
+## WHAT THIS RUN STILL CANNOT SHOW. There are zero discoveries at every h2 < 1,
+## so the locking half is unmeasurable here -- there is no observed set to
+## overlap with. The calibration claim rests on the neutral-chromosome tail
+## alone. Confirming that the genetic basis stays unlocked under a noisy
+## covariate needs a simulation whose signal survives the noise.
+##
+## THE FIRST VERSION OF THIS TEST WAS FLAWED AND THE FLAW IS EASY TO REPEAT.
+## Noise added at the POPULATION level has a covariance resembling the GRM's
+## block structure, so REML absorbs it as genetic: vg_share stayed at 1.00 at
+## every h2 and no residual component was created. Individual-level noise has
+## covariance I, a different SHAPE from K, which is what lets REML separate them.
 ##
 ## Run from the LDscnR-paper root:
 ##   Rscript module_sim_LDscnR/env_noise_null.R
@@ -64,6 +72,14 @@ ENV   <- as.integer(Sys.getenv("ENV", "1")); NSIM <- as.integer(Sys.getenv("NSIM
 H2    <- as.numeric(strsplit(Sys.getenv("H2", "1,0.9,0.7,0.5,0.3"), ",")[[1]])
 LAMS  <- as.numeric(strsplit(Sys.getenv("LAMBDAS", "1,0.25,0.05"), ",")[[1]])
 SEED  <- as.integer(Sys.getenv("SEED", "31"))
+## pop  = one draw per population, preserving the covariate's population-constant
+##        structure. Its covariance resembles the GRM's block structure, so REML
+##        absorbs it as genetic and NO residual component is created -- the flaw
+##        in the first version of this test.
+## indiv = one draw per individual, covariance I. A different SHAPE from K, so
+##        REML can separate them. It breaks population-constancy, which is a real
+##        change to what the covariate represents and is why it is a switch.
+NOISE <- Sys.getenv("NOISE", "indiv")
 
 P <- list(); y0 <- NULL; GRM <- NULL; XY <- NULL; POP <- NULL; CT <- list()
 for (i in 1:10) {
@@ -90,12 +106,16 @@ Kg <- nrm(GRM); Dm <- as.matrix(stats::dist(XY)); l <- stats::median(Dm[lower.tr
 Ks <- nrm(exp(-0.5 * (Dm / l)^2))
 pl <- sort(unique(POP)); idx <- lapply(pl, function(q) which(POP == q))
 
-cat(sprintf("%s %s env%d | NSIM %d | uniform tail 0.0100\n\n", CELL, TAG, ENV, NSIM))
+cat(sprintf("%s %s env%d | NSIM %d | noise %s | uniform tail 0.0100\n\n", CELL, TAG, ENV, NSIM, NOISE))
 for (h2 in H2) {
   ## population-level noise, scaled so h2 is the signal's share of total variance
   set.seed(SEED)
-  ep <- stats::rnorm(length(pl)); e <- numeric(n)
-  for (a in seq_along(pl)) e[idx[[a]]] <- ep[a]
+  if (NOISE == "pop") {
+    ep <- stats::rnorm(length(pl)); e <- numeric(n)
+    for (a in seq_along(pl)) e[idx[[a]]] <- ep[a]
+  } else {
+    e <- stats::rnorm(n)
+  }
   e  <- e / stats::sd(e) * stats::sd(y0) * sqrt((1 - h2) / h2)
   yy <- y0 + e
   po <- scan1(yy); obs <- CLall[p.adjust(po, "BH") < 0.05]; ot <- tf(po[ntrl])
