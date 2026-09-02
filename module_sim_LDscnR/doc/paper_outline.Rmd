@@ -106,6 +106,88 @@ always exceeds the precision gained.
 
 ## 5. Limitations
 
+
+# Parameters that transfer, and the currency each transfers in
+
+The pipeline has three tunable thresholds. All three were being quoted as
+*numbers*, and measuring what each number actually does --- across the eight
+simulation settings, and against the stickleback panel --- shows that **each
+transfers in a different currency, and for two of them the naive choice is
+wrong.**
+
+```{r transfer, results="asis"}
+cat("\\begin{tabular}{@{}p{2.5cm}p{4.1cm}p{3.5cm}p{4.0cm}@{}}\n\\toprule\n")
+cat("\\textbf{Parameter} & \\textbf{Across sim settings} & \\textbf{To the panel} & \\textbf{Transfers as} \\\\\n\\midrule\n")
+cat("\\texttt{distance\\_} \\texttt{threshold} 1e5 & \\textbf{inert everywhere}: 0.003--0.010\\% of marker gaps exceed it; the derived value exceeds the \\emph{largest observed gap} on \\textbf{160 of 160} chromosomes & \\textbf{decisive}: derived is 3--18 kb, \\emph{below} the hand-set value, and 6,416 gaps exceed it against 4 & an \\textbf{operating point} (gap exceedance), never a bp value \\\\\n\\addlinespace\n")
+cat("size floor 2 & \\textbf{stable}: retains 46.0--51.2\\% of clusters across all eight settings, a 1.1$\\times$ spread & \\textbf{does not}: 17.0\\%, a 2.8$\\times$ gap & a \\textbf{structural value} --- Simes over a singleton \\emph{is} that marker's $p$ --- with the differing retention reported as a result \\\\\n\\addlinespace\n")
+cat("\\texttt{ld\\_w\\_} \\texttt{threshold} 0.025 & \\textbf{fails}: retains 5.1\\% to 48.1\\% of markers, a 9.4$\\times$ spread & panel's 28\\% sits \\emph{inside} the simulation range & \\textbf{marker retention}, matched per dataset; the numeric value carries no meaning \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{Pooling hid the only failure.} Averaged over all cells, \texttt{ld\_w}
+retention reads 55/20/5\% against the panel's 54/28/13\% --- close enough to
+call the axis well matched, which is what was reported to the panel session.
+Broken out, that 20\% is the average of 5.1\% and 48.1\%. This is the same shape
+as the $T_1$ plateau artefact (\S\ref{sec:todo}): \textbf{a composite that looks
+stable can be two components moving in opposite directions.} Any transferability
+claim has to be made per setting, never pooled.
+\end{keybox}
+
+\noindent The practical rule that follows is **different invariants for
+different axes** --- match marker retention on `ld_w`, hold the size floor at an
+identical value and report the differing retention, and specify
+`distance_threshold` by what fraction of gaps it splits rather than in bp. A
+grid whose three axes all read as matched numbers would be comparing three
+different things.
+
+## Why this is a result and not housekeeping
+
+The `distance_threshold` case is the sharpest. The package derives it as
+$d = \rho/(a(1-\rho))$, so the window **collapses as decay speeds up** and
+carries no term for the size of the feature stage-2 merging exists to bridge. On
+the panel that yields a 6 kb median merge distance on a genome whose motivating
+feature is a 430 kb inversion; here it yields roughly 1 Mb, past the top of the
+gap distribution. Identical rule, opposite failure --- too small to span the
+features there, physically meaningless here (4,961 Mb derived on a 30 Mb
+chromosome). Three fixes were proposed and all three refuted, each acting
+hardest exactly where the local estimate is most informative.
+
+# What still needs to be done {#sec:todo}
+
+Ordered by what blocks what.
+
+```{r todo, results="asis"}
+cat("\\begin{tabular}{@{}p{0.4cm}p{5.2cm}p{8.4cm}@{}}\n\\toprule\n")
+rows <- list(
+ c("1","\\textbf{Check whether the cells are comparable at all}","\\texttt{ld\\_w\\_threshold} 0.025 retains 5--6\\% of markers in \\texttt{V0.5\\_c1} and 26--48\\% in \\texttt{V0.5\\_c2}. The cell where clustering wins 19/19 is at the most aggressive end. This does not invalidate anything --- unflagged markers are still clustered and tested --- but the cross-cell comparison carrying the headline result has not been checked at matched operating points. \\textbf{Newly surfaced; do this before the sensitivity grid.}"),
+ c("2","\\textbf{The factorial sensitivity grid}","$3\\times3\\times3$, 9 re-clusterings. Now better specified than when it was planned: report \\emph{operating points} rather than values, never pool across cells, and report the two axes (selection vs test) separately."),
+ c("3","$T_2$ / $T_2$b for the local threshold","Scoped down: since the local rule collapses to a flat threshold on the panel, the most $T_2$ can support is \\emph{helps in the cold-block regime, inert to degenerate outside it}. Worth deciding whether that claim is wanted before spending the time."),
+ c("4","\\textbf{An empirical demonstration}","Unchanged and still the largest gap. See below."),
+ c("5","Document the hardcoded 1e5","It appears in roughly 20 scripts. It is inert here so nothing needs re-running, but it is a constant standing where the package has a rule and must be stated as such rather than found by a reader."))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n\\addlinespace\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+## Settled since the first draft of this outline
+
+- **`n_win_decay` = 20**, by two independent criteria --- an internal consistency
+  measure and an external one scored against the simulation's true recombination
+  rate. Not 50, which buys nothing for 2.5 times the windows.
+- **The recombination proxy is real**: Spearman +0.757 against exact truth, 20 of
+  20 chromosomes. The operational figure is **0.782** at $w = 20$, not the 0.830
+  headline, which was a composite of cold-block *detection* and continuous
+  *tracking*.
+- **The cap is generous or nothing**: the cost is monotone, so there is no
+  optimum; 10 Mb costs 0.004 and bounds a quantity that otherwise reaches
+  4,961 Mb.
+- **The size floor is inert above 2** ($p = 0.11$, 0.40, 0.053 for floor 2 to 8),
+  and floor 1 to 2 *gains* recall while *losing* precision --- so floor 2 keeps
+  its structural justification but not the performance gloss.
+- **The panel can falsify the proxy but cannot calibrate it**, because
+  calibration needs variation in the cold-block regime it lacks. A property of
+  the stickleback map, not of empirical data in general.
+
 # Evidence inventory: what would a referee ask for?
 
 \begin{gapbox}
@@ -127,12 +209,11 @@ there is signal, indistinguishable where there is not.}
 \end{gapbox}
 
 \begin{gapbox}
-\textbf{Gap 3 --- the sensitivity analysis is planned, not run.} It is also the
-link that makes the pipeline usable by someone else. Design is in
-\texttt{TODO\_sensitivity.md}: $3\times3\times3$ over \texttt{ld\_w\_threshold},
-\texttt{min\_r2\_rho} and minimum cluster size (9 re-clusterings, not 27, since
-the size floor is a post-filter), reported on two axes with no threshold
-recommended.
+\textbf{Gap 3 --- the sensitivity analysis is planned, not run}, and it now has
+a prerequisite it did not have: the four cells sit at very different
+\texttt{ld\_w} operating points (item 1, \S\ref{sec:todo}), so a grid run over
+them would inherit that. Design is in \texttt{TODO\_sensitivity.md}, amended to
+report operating points rather than values and never to pool across cells.
 \end{gapbox}
 
 \begin{gapbox}
@@ -152,6 +233,11 @@ model.
   tried on a C-like quantity failed, including the one that looked principled.
 - That enrichment for containing a QTN is irrelevant to detection. It predicts
   precision; it just cannot be exploited by restriction.
+- That a threshold means the same thing on two datasets because it is the same
+  number. Measured, one of the three transfers, one does not, and one fails even
+  across simulation settings.
+- That raising the minimum cluster size improves precision. Measured, floor 1 to
+  2 *lowers* it.
 
 # Two methodological findings that may be worth their own space
 
