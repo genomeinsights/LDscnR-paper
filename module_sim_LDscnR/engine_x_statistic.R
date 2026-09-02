@@ -123,12 +123,14 @@ one <- function(CELL, ENV) {
     kept <- setdiff(regions, setdiff(sub$CL2, best$CL2))
     tp   <- if (nrow(best)) uniqueN(best$CL2) else 0L
     o    <- OCC[CL2 %in% regions]
-    data.table(cell = CELL, env = ENV, partition = part, statistic = stat, engine = eng,
+    data.table(cell = CELL, tag = TAG, env = ENV, partition = part, statistic = stat, engine = eng,
                n_test = n_test, regions = length(kept), tp = tp,
                precision = tp / max(length(kept), 1),
                recall = (if (nrow(best)) uniqueN(best$qtn) else 0L) / nq,
                widest_Mb = if (nrow(o)) max(o$span)/1e6 else NA_real_,
-               med_occupancy = if (nrow(o)) median(o$occ) else NA_real_, n_qtn = nq)
+               med_occupancy = if (nrow(o)) median(o$occ) else NA_real_,
+               occ_all_units = median(OCC$occ), widest_all_Mb = max(OCC$span)/1e6,
+               n_qtn = nq)
   }
   R <- list()
   for (eng in c("EMMAX","LFMM")) {
@@ -148,10 +150,12 @@ R <- rbindlist(Filter(Negate(is.null), mclapply(seq_len(nrow(G)),
        function(k) tryCatch(one(G$cell[k], G$env[k]), error = function(e) {
          cat("FAIL", G$cell[k], G$env[k], conditionMessage(e), "\n"); NULL }),
        mc.cores = CORES)))
-fwrite(R, "module_sim_LDscnR/results/engine_x_statistic.csv")
+OUTF <- Sys.getenv("OUT", "module_sim_LDscnR/results/engine_x_statistic.csv")
+fwrite(R, OUTF)
 cat(sprintf("\n%d panels\n\n", uniqueN(R[, .(cell, env)])))
 print(R[, .(panels = .N, regions = round(mean(regions), 1), tp = round(mean(tp), 1),
             precision = round(mean(precision), 3), recall = round(mean(recall), 3),
             widest_Mb = round(mean(widest_Mb, na.rm = TRUE), 2),
-            occupancy = round(mean(med_occupancy, na.rm = TRUE), 3)),
-        by = .(partition, statistic, engine)][order(partition, statistic, engine)])
+            occ_disc = round(mean(med_occupancy, na.rm = TRUE), 3),
+            occ_all = round(mean(occ_all_units), 3)),
+        by = .(tag, partition, statistic, engine)][order(tag, partition, statistic, engine)])
