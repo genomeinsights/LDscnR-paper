@@ -60,6 +60,16 @@ OUTFIG <- "module_sim_LDscnR/figures"; OUTRES <- "module_sim_LDscnR/results"
 CORES  <- as.integer(Sys.getenv("SIM_CORES", "1"))          # env-level parallelism over ENVS
 QTAB_C <- if (CORES > 1L) 1L else 4L
 if (CORES > 1L) { data.table::setDTthreads(1L); Sys.setenv(OMP_NUM_THREADS = "1") }  # avoid fork thread oversubscription                        # avoid nested threads under mclapply
+## TAU_FIX: the operating point for the fixed-tau DISCOVERY COUNT arm, nominated
+## BEFORE the run at ldscnr-2c's condition -- a count effect only counts as a
+## second dataset if tau is fixed in advance rather than chosen where the effect
+## appears. 0.05 is not a new choice: it is already the canonical tau in seven
+## places in this module and in both committed 3sp region sets
+## (regions_tau0.05_lmin3, regions_tau0.05_lmin10). l_min uses PAR$lmin unchanged.
+## Rationale: 2c's panel result (GCTA 79 vs centred 59 discoveries) is a COUNT at
+## a fixed threshold; PR-AUC integrates over thresholds and cannot disagree with
+## it. This arm measures 2c's quantity on the sims.
+TAU_FIX <- as.numeric(Sys.getenv("SIM_TAU_FIX", "0.05"))
 PAR <- list(qstar = seq(0, 0.95, by = 0.05), alpha = c(0.001, 0.01, 0.05, 0.1),
             lmin = c(1L, 2L, 4L, 8L), rho_ld = 0.75, rho_d = 0.95, dcap = 1e5, max_tau = 50L)
 
@@ -136,17 +146,28 @@ per_env <- function(env) {
       rbindlist(lapply(PAR$lmin, function(lm) { ev <- evaluate_ors(reg[lengths(reg) >= lm], map, qtab, th$r2min, th$dmax)
         data.table(l_min = lm, recall = ev$Recall, precision = ev$Precision) })) }
     rbindlist(lapply(TAUC, function(t) sc(names(C)[C >= t])))[, .(PR_AUC = pr_auc(recall, precision)), by = l_min] }
+  ## discovery COUNT at the pre-nominated fixed tau (2c's quantity)
+  ndisc <- function(C) { mk <- names(C)[C >= TAU_FIX]
+    reg <- if (length(mk)) ld_regions(mk, edges) else list()
+    rbindlist(lapply(PAR$lmin, function(lm) {
+      keep <- reg[lengths(reg) >= lm]
+      ev <- evaluate_ors(keep, map, qtab, th$r2min, th$dmax)
+      data.table(l_min = lm, n_disc = length(keep), tp_disc = ev$TP) })) }
   cat(sprintf("env%d: %s ; |tau|=%d\n", env,
       paste(sprintf("%s gif=%.3f maxC=%.3f", names(Cs), sapply(names(Cs), function(g) mean(gifs[[g]])),
                     sapply(Cs, max)), collapse = " | "), length(TAUC))); utils::flush.console()
-  rbindlist(lapply(names(Cs), function(g) prauc(Cs[[g]])[, `:=`(method = g, env = env,
-    gif = mean(gifs[[g]]))]))
+  rbindlist(lapply(names(Cs), function(g) {
+    merge(prauc(Cs[[g]]), ndisc(Cs[[g]]), by = "l_min")[, `:=`(method = g, env = env,
+      gif = mean(gifs[[g]]))] }))
 }
 
 cat(sprintf("V%s_c%s (%s): GRM comparison over env %s\n", V, CC, TAG, paste(ENVS, collapse = ",")))
 auc <- rbindlist(if (CORES > 1L) parallel::mclapply(ENVS, per_env, mc.cores = CORES) else lapply(ENVS, per_env))
 summ <- auc[, .(gif = round(mean(gif), 3), PR_AUC = round(mean(PR_AUC, na.rm = TRUE), 3),
-                SE = round(stats::sd(PR_AUC, na.rm = TRUE) / sqrt(sum(!is.na(PR_AUC))), 3)),
+                SE = round(stats::sd(PR_AUC, na.rm = TRUE) / sqrt(sum(!is.na(PR_AUC))), 3),
+                n_disc = round(mean(n_disc, na.rm = TRUE), 1),
+                n_disc_SE = round(stats::sd(n_disc, na.rm = TRUE) / sqrt(sum(!is.na(n_disc))), 2),
+                tp_disc = round(mean(tp_disc, na.rm = TRUE), 1)),
             by = .(method, l_min)][order(method, l_min)]
 fwrite(auc[order(method, env, l_min)], file.path(OUTRES, sprintf("grm_comparison_prauc_perenv_%s.csv", paste0("V", V, "_c", CC))))
 fwrite(summ, file.path(OUTRES, "grm_comparison_prauc.csv"))
