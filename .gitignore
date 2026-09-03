@@ -110,3 +110,7 @@ the_premise.pdf
 manuscript/*.pdf
 manuscript/*.fls
 manuscript/*.fdb_latexmk
+
+# 3sp_data/ is untracked bulk input, but its manifest and checker are not
+!3sp_data/MANIFEST.md
+!3sp_data/verify_manifest.sh
