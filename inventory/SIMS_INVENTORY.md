@@ -25,12 +25,21 @@ Every claim lands in exactly one block; no block is empty; no claim needs two.
 | `03_regions_and_merging` | precision by span quintile; region-level precision not comparable across partitions |
 | `04_parameters` | full factorial grid; stability score; joint admissibility; four geometry filters rejected; minimum cluster size |
 | `05_calibration` | neutral chromosomes as FP control; locating the miscalibration; tail calibration explains the cells; kinship effective rank |
-| `06_validity` | (no standalone claim — holds the truth definitions and scoring conventions every other block depends on) |
+| `06_validity` | **dependency block** — no claims; holds the truth definitions and scoring conventions the other five depend on |
 
-`06` is listed despite carrying no claim of its own because the dedup convention,
-the QTN-tagging rule and the neutral-chromosome definition are used by all five
-others; without it every block would duplicate them. If that fails the
-one-block-per-claim test, it should be folded into `05`.
+### Block types
+
+The rule is: **a block either holds claims or is an explicit shared dependency,
+and must be labelled as one or the other.** What is forbidden is a block that is
+neither. `01`–`05` here are claim blocks; `06` is a dependency block, holding the
+dedup convention, the QTN-tagging rule and the neutral-chromosome definition.
+Folding it into `05` would not remove it — it would make `05` the quiet owner of
+conventions five blocks rest on, which is worse than owning them openly.
+
+**The two halves' `06`s are different kinds.** The panel half's `06` is a claim
+block (region locking). This one is a dependency block. Same number, same
+granularity, different type — stated here rather than left for a curator to
+notice.
 
 ---
 
