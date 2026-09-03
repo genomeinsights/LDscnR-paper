@@ -80,10 +80,16 @@ grm_set <- function(d) {
   if (!length(mk)) stop("bundle carries neither grm_markers nor pruned_markers")
   mk
 }
+## LAM_W: the lambda-calibrated ld_w cutoff. The lambda sweep (manuscript
+## tab:lambda-sweep) puts gif ~ 1 near w = 0.008; this arm is the third row of
+## tab:grm-prauc, which no committed version of this script built -- the table
+## had no producer on disk until now.
+LAM_W <- as.numeric(Sys.getenv("SIM_LAM_W", "0.008"))
 ## the GRM marker sets under comparison (extend here to add variants)
 grm_markers <- list(
   chain  = function(d, G, lw, b) grm_set(d),                     # complexity-reduction pruned set
-  ldw_b  = function(d, G, lw, b) colnames(G)[which(lw < b)])      # ld_w_095 < background LD
+  ldw_b  = function(d, G, lw, b) colnames(G)[which(lw < b)],      # ld_w_095 < background LD
+  ldw_008 = function(d, G, lw, b) colnames(G)[which(lw < LAM_W)])   # lambda-calibrated cutoff
 
 ## ---- 1. per-env: pool, per-GRM EMMAX, C-score, PR-AUC ----------------
 per_env <- function(env) {
@@ -131,6 +137,7 @@ auc <- rbindlist(if (CORES > 1L) parallel::mclapply(ENVS, per_env, mc.cores = CO
 summ <- auc[, .(gif = round(mean(gif), 3), PR_AUC = round(mean(PR_AUC, na.rm = TRUE), 3),
                 SE = round(stats::sd(PR_AUC, na.rm = TRUE) / sqrt(sum(!is.na(PR_AUC))), 3)),
             by = .(method, l_min)][order(method, l_min)]
+fwrite(auc[order(method, env, l_min)], file.path(OUTRES, sprintf("grm_comparison_prauc_perenv_%s.csv", paste0("V", V, "_c", CC))))
 fwrite(summ, file.path(OUTRES, "grm_comparison_prauc.csv"))
 cat("\n=== PR-AUC (mean +/- SE, adaptive tau) ===\n"); print(summ)
 
