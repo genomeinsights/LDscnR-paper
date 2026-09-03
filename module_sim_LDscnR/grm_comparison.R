@@ -66,7 +66,14 @@ PAR <- list(qstar = seq(0, 0.95, by = 0.05), alpha = c(0.001, 0.01, 0.05, 0.1),
 gcta_grm <- function(X) { p <- colMeans(X) / 2; k <- p > 0 & p < 1; X <- X[, k, drop = FALSE]; p <- p[k]
   Z <- sweep(sweep(X, 2, 2 * p, "-"), 2, sqrt(2 * p * (1 - p)), "/"); tcrossprod(Z) / ncol(Z) }
 ## per-file EMMAX from a GRM marker set (+ genomic control if gif > 1.1)
-emx_p <- function(G, mk, y) { K <- gcta_grm(G[, mk, drop = FALSE]); pv <- emmax_fast(emmax_setup(G, K), y)
+## centred-only kinship, K = ZZ'/m -- NO sqrt(2p(1-p)) standardisation. This is
+## the estimator ldscnr-2c found gives 59 discoveries against GCTA's 79 on the
+## SAME panel markers, despite the two correlating at 0.99. The chain_centred arm
+## below pairs it with the chain marker set, so estimator is the only thing that
+## varies between chain and chain_centred.
+centred_grm <- function(X) { p <- colMeans(X) / 2; k <- p > 0 & p < 1; X <- X[, k, drop = FALSE]; p <- p[k]
+  Z <- sweep(X, 2, 2 * p, "-"); tcrossprod(Z) / ncol(Z) }
+emx_p <- function(G, mk, y, est = gcta_grm) { K <- est(G[, mk, drop = FALSE]); pv <- emmax_fast(emmax_setup(G, K), y)
   n <- nrow(G); Fv <- stats::qf(pv, 1, n - 2, lower.tail = FALSE)
   gif <- stats::median(Fv) / stats::qf(0.5, 1, n - 2, lower.tail = FALSE)
   if (gif > 1.1) { Fv <- Fv / gif; pv <- stats::pf(Fv, 1, n - 2, lower.tail = FALSE) }
@@ -89,7 +96,11 @@ LAM_W <- as.numeric(Sys.getenv("SIM_LAM_W", "0.008"))
 grm_markers <- list(
   chain  = function(d, G, lw, b) grm_set(d),                     # complexity-reduction pruned set
   ldw_b  = function(d, G, lw, b) colnames(G)[which(lw < b)],      # ld_w_095 < background LD
-  ldw_008 = function(d, G, lw, b) colnames(G)[which(lw < LAM_W)])   # lambda-calibrated cutoff
+  ldw_008 = function(d, G, lw, b) colnames(G)[which(lw < LAM_W)],   # lambda-calibrated cutoff
+  chain_centred = function(d, G, lw, b) grm_set(d))                 # chain markers, centred estimator
+## estimator per arm; only chain_centred departs from GCTA
+grm_est <- list(chain = gcta_grm, ldw_b = gcta_grm, ldw_008 = gcta_grm,
+                chain_centred = centred_grm)
 
 ## ---- 1. per-env: pool, per-GRM EMMAX, C-score, PR-AUC ----------------
 per_env <- function(env) {
@@ -101,7 +112,7 @@ per_env <- function(env) {
     d <- readRDS(files[i]); m <- as.data.table(d$map); G <- d$GTs; y <- d$env$env
     lwc <- if ("rho_0.95" %in% colnames(d$ld_ws)) "rho_0.95" else "0.95"; lw <- d$ld_ws[, lwc]
     b <- stats::median(as.data.table(d$LD_decay$decay_sum)$b)
-    for (g in names(grm_markers)) { r <- emx_p(G, grm_markers[[g]](d, G, lw, b), y)
+    for (g in names(grm_markers)) { r <- emx_p(G, grm_markers[[g]](d, G, lw, b), y, grm_est[[g]])
       m[, (paste0("p_", g)) := r$p]; gifs[[g]] <- c(gifs[[g]], r$gif) }
     m[, `:=`(Chr = paste0("R", i, "_", Chr), marker = paste0("R", i, "_", marker))]
     colnames(G) <- paste0("R", i, "_", colnames(G))
