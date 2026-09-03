@@ -340,7 +340,18 @@ LDSCNR_PIN <- list(
 check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
   v <- as.character(utils::packageVersion("LDscnR"))
   d <- utils::packageDescription("LDscnR")
-  bt <- suppressWarnings(as.POSIXct(sub(";.*$", "", sub("^[^;]*;[^;]*; *", "", d$Built)), tz = "UTC"))
+  ## d$Built can be ABSENT, not merely malformed: devtools::load_all() -- which
+  ## 02_bundle.R and every module_3sp scan script call, deliberately, per PK, since
+  ## development is still active -- attaches the source tree directly and
+  ## packageDescription() then returns a DESCRIPTION with no Built field at all (that
+  ## field is stamped only by R CMD INSTALL/build). sub() on NULL silently returns
+  ## character(0), as.POSIXct(character(0)) is a length-0 POSIXct, and a length-0
+  ## condition in if() is a hard error in current R -- found by running 03_scan.R for
+  ## real, not by the interactive checks that verified this function earlier, none of
+  ## which had also called load_all() first.
+  built_raw <- if (is.null(d$Built)) NA_character_ else sub(";.*$", "", sub("^[^;]*;[^;]*; *", "", d$Built))
+  bt <- suppressWarnings(as.POSIXct(built_raw, tz = "UTC"))
+  if (length(bt) != 1L) bt <- as.POSIXct(NA_character_, tz = "UTC")
   g <- function(...) tryCatch(system2("git", c("-C", LDSCNR_PIN$repo, ...),
                                       stdout = TRUE, stderr = FALSE), error = function(e) character())
   head_sha <- substr(paste(g("rev-parse","HEAD"), collapse = ""), 1, 12)
@@ -355,7 +366,13 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
   ## six-second gap between capturing wall-clock time and R's Built field (which
   ## truncates to the minute). The src_sha comparison already proves the install
   ## reflects this exact source; a timestamp cannot prove anything the hash does not.
-  built_ok <- !is.na(bt)
+  ## Already established as INFORMATIONAL, not a gate (a real six-second-gap
+  ## failure earlier today) -- always TRUE. Absent under load_all() is a second,
+  ## separate reason it must never gate: load_all() runs whatever source is on
+  ## disk right now, so the question this timestamp exists to answer (does the
+  ## install reflect the current source?) is moot by construction. src_sha above
+  ## is the check that still matters, and it is unaffected by any of this.
+  built_ok <- TRUE
   ## WHAT COUNTS AS A FAILURE, and this took three attempts to get right.
   ## The invariant that matters is "the installed code IS the current code", and that is
   ## the SOURCE HASH -- not the mtimes (rewritten by any checkout) and not the commit id
@@ -368,9 +385,10 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
               if (identical(head_sha, LDSCNR_PIN$sha)) "" 
               else sprintf(" [moved from pinned %s -- no R/ change, so the install stands]",
                            LDSCNR_PIN$sha)))
-  cat(sprintf("  source hash %s %s pin %s | built %s %s\n", cur,
+  cat(sprintf("  source hash %s %s pin %s | built %s\n", cur,
               if (identical(cur, LDSCNR_PIN$src_sha)) "==" else "!=", LDSCNR_PIN$src_sha,
-              format(bt, "%Y-%m-%d %H:%M"), if (built_ok) "(after install)" else "(BEFORE the recorded install)"))
+              if (is.na(bt)) "unknown (loaded via devtools::load_all(), not an install)"
+              else format(bt, "%Y-%m-%d %H:%M")))
   if (!ok) { m <- paste("LDscnR does not match the pin.",
       sprintf("Reinstall and update the pin:\n    R CMD INSTALL %s\n", LDSCNR_PIN$repo),
       "  Set LDSCNR_LAX=1 to proceed anyway.")
