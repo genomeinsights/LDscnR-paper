@@ -72,7 +72,12 @@ kingman2021/data/*.rds
 kingman2021/data/*.snp_p.tsv.gz
 
 # Large regenerable data / simulation outputs at repo root (NOT for git; ~19 GB)
-3sp_data/
+3sp_data/*
+# exception: the cross-based recombination maps + their build scripts are small
+# (~300 KB) and are inputs to analysis, so they are tracked -- but not the ~3.5 MB
+# of published supplementary files the scripts rebuild them from.
+!3sp_data/rec_maps/
+3sp_data/rec_maps/source/
 LFMM_3sp/
 NEMO/
 Nemo3/
