@@ -55,7 +55,12 @@ module_sticklebacks_LDscnR/figures/
 module_sticklebacks_LDscnR/results/
 module_sim_LDscnR/data/
 module_sim_LDscnR/figures/
-module_sim_LDscnR/results/
+# module_sim_LDscnR/results: summaries are TRACKED BY DEFAULT so a new one is not
+# silently dropped (a plain `git add` of an ignored path only prints a hint, so
+# 9cf2594 reported committing three CSVs and committed none of them). The large
+# regenerable .rds intermediates stay out -- 392 MB against 19.5 MB of csv.
+module_sim_LDscnR/results/*.rds
+module_sim_LDscnR/results/**/*.rds
 
 # LaTeX build artifacts
 manuscript/*.aux
