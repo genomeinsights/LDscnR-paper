@@ -318,12 +318,12 @@ MAP_SUBSETS      <- c("all bins", "concordant only")
 ## comparison would demand a pointless reinstall for a documentation commit.
 LDSCNR_PIN <- list(
   repo    = path.expand("~/gitlab/LDscnR"),
-  sha     = "848e4b997b85",
+  sha     = "011a165c8c99",
   branch  = "outlier-scan", # the promoted API is on this branch, not yet merged to main
   version = "0.0.0.9000",
   ## SHA-256 over the CONCATENATED CONTENT of every tracked file under R/, taken at the
   ## moment the package was installed from this commit. This is the check that works.
-  src_sha = "1936e648ea445820",
+  src_sha = "362892c1ee4c6628",
   installed_after = NULL   # informational only; set at each pin refresh, never checked
 )
 
