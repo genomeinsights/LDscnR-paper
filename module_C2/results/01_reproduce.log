@@ -1,0 +1,49 @@
+[1] loaded cached grid core (B=200)
+
+[2a] B=100 (prototype config): 175 cells, 134 usable (>=1 significant region)
+[2b] B=200 (all available)  : 175 cells, 134 usable
+[2c] cells producing >=1 OBSERVED region: 134 ; of those, usable (>=1 significant): 134
+     -> every productive cell is usable: TRUE. The 'usable' restriction therefore
+        removes only the 41 cells where the method finds NOTHING, i.e. |U| carries
+        no information about null danger on this dataset.
+
+[3] reproduction vs committed region_stability2.csv (B=100, by=chr):
+    loci: ref 20 / new 20 ; usable cells: ref 134 / new 134
+    max |delta n_cells_sig| = 0 ; exact match on all loci: TRUE
+
+[3] prototype aggregation `by = chr` -> 20 'loci' (i.e. chromosomes)
+    intended  `by = chr, cl` (10 kb consensus merge) -> 126 loci
+    => the committed score is a per-CHROMOSOME statistic, not a per-locus one.
+               locus stability n_cells_sig best_q max_score
+              <char>     <num>       <int>  <num>     <num>
+ 1:  Chr1:1.04-27.28     1.000         134 0.0198     38.01
+ 2: Chr20:0.18-16.11     0.746         100 0.0149      6.92
+ 3:  Chr7:0.27-27.72     0.507          68 0.0149      2.22
+ 4:   Chr5:1.61-6.83     0.448          60 0.0198      3.06
+ 5: Chr17:6.55-11.10     0.448          60 0.0260      1.67
+ 6:  Chr4:4.69-31.26     0.410          55 0.0165      1.34
+ 7:  Chr16:0.71-5.34     0.351          47 0.0165      1.29
+ 8: Chr13:1.22-16.92     0.269          36 0.0260      0.72
+ 9: Chr12:0.41-16.55     0.254          34 0.0260      0.92
+10:  Chr3:0.10-13.03     0.209          28 0.0165      0.46
+11: Chr10:6.36-15.42     0.194          26 0.0165      0.52
+12: Chr18:1.24-14.82     0.187          25 0.0260      0.59
+13: Chr11:0.23-15.74     0.157          21 0.0260      0.36
+14: Chr14:5.45-14.97     0.142          19 0.0260      0.38
+15: Chr15:1.48-14.88     0.090          12 0.0260      0.25
+16:  Chr9:0.30-16.06     0.075          10 0.0260      0.17
+17:  Chr2:0.41-22.52     0.075          10 0.0361      0.24
+18:  Chr8:1.50-10.90     0.067           9 0.0260      0.15
+19:  Chr21:7.33-7.96     0.052           7 0.0337      0.12
+20:   Chr6:4.90-4.90     0.007           1 0.0260      0.02
+               locus stability n_cells_sig best_q max_score
+              <char>     <num>       <int>  <num>     <num>
+
+[4] Monte Carlo resolution: B=200 -> p floor = 1/(B+1) = 0.00498 ; B=100 -> 0.00990
+    regions with emp_p at the floor (full B, over all cells): 352 of 1267 rows
+    single-usable-cell check: min attainable non-zero stability = 1/134 = 0.0075
+    loci significant in exactly 1 cell: Chr6:4.90-4.90 (stability 0.007)
+
+[4] Spearman(stability, .) : span=0.757  maxC=0.861  C-mass=0.988  -log10(best_q)=0.716
+
+[4] wrote results/current_C2_reproduction.csv + grid_cells_B{100,full}.csv

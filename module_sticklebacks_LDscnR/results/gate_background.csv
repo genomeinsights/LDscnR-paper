@@ -1,0 +1,16 @@
+canonical,set,engine,cell,B,obs_regions,med_regions,ratio,pass,obs_Cgt0,med_Cgt0,q3_regions,max_regions,frac_surr_any_region
+TRUE,legacy,EMMAX,EMMAX | genetic (MVN on K) | legacy,100,17,0,0,TRUE,1729,0,0,1,0.01
+TRUE,legacy,EMMAX,EMMAX | global permutation | legacy,200,17,0,0,TRUE,1729,6,1,87,0.27
+TRUE,legacy,EMMAX,EMMAX | regional permutation | legacy,200,17,0,0,TRUE,1729,6,0,40,0.21
+TRUE,legacy,EMMAX,EMMAX | spatial (GP kernel) | legacy,200,17,15,0.882352941176471,FALSE,1729,792,46,113,0.815
+TRUE,legacy,EMMAX,EMMAX | latent (PC subspace) | legacy,50,17,112,6.58823529411765,FALSE,1729,2487,152.75,207,0.84
+FALSE,emmax_v2,EMMAX,EMMAX | genetic (MVN on K) | emmax_v2,200,17,0,0,TRUE,1729,0,0,2,0.02
+FALSE,emmax_v2,EMMAX,EMMAX | global permutation | emmax_v2,200,17,0,0,TRUE,1729,6,1,110,0.275
+FALSE,emmax_v2,EMMAX,EMMAX | regional permutation | emmax_v2,200,17,0,0,TRUE,1729,5,0,23,0.2
+FALSE,emmax_v2,EMMAX,EMMAX | spatial (GP kernel) | emmax_v2,200,17,18,1.05882352941176,FALSE,1729,811.5,47,135,0.775
+FALSE,emmax_v2,EMMAX,EMMAX | latent (PC subspace) | emmax_v2,200,17,124,7.29411764705882,FALSE,1729,2827.5,165.25,268,0.9
+TRUE,lfmm,LFMM,LFMM | regional permutation | lfmm,96,90,0,0,TRUE,1125,1,0,91,0.229166666666667
+FALSE,lfmm_b1,LFMM,LFMM | genetic (MVN on K) | lfmm_b1,1,90,0,0,TRUE,1125,0,0,0,0
+FALSE,lfmm_b1,LFMM,LFMM | global permutation | lfmm_b1,1,90,0,0,TRUE,1125,1,0,0,0
+FALSE,lfmm_b1,LFMM,LFMM | regional permutation | lfmm_b1,1,90,7,0.0777777777777778,TRUE,1125,581,7,7,1
+FALSE,lfmm_b1,LFMM,LFMM | spatial (GP kernel) | lfmm_b1,1,90,4,0.0444444444444444,TRUE,1125,129,4,4,1

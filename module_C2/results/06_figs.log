@@ -1,0 +1,4 @@
+Warning message:
+In melt.data.table(V[, .(label, S_U, S_G, D, Q_over_D)], id.vars = "label",  :
+  'measure.vars' [S_U, S_G, D, Q_over_D, ...] are not all of the same type. By order of hierarchy, the molten data value column will be of type 'double'. All measure variables not of type 'double' will be coerced too. Check DETAILS in ?melt.data.table for more on coercion.
+[fig] wrote 5 figures to module_C2/figures

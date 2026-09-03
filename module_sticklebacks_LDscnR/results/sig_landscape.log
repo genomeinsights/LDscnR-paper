@@ -1,0 +1,52 @@
+[1] pop-perm B=100 ; edges over universe=11269 ; 175 grid cells
+   tau=0.02 done
+   tau=0.04 done
+   tau=0.06 done
+   tau=0.08 done
+   tau=0.10 done
+   tau=0.12 done
+   tau=0.14 done
+   tau=0.16 done
+   tau=0.18 done
+   tau=0.20 done
+   tau=0.22 done
+   tau=0.24 done
+   tau=0.26 done
+   tau=0.28 done
+   tau=0.30 done
+   tau=0.32 done
+   tau=0.34 done
+   tau=0.36 done
+   tau=0.38 done
+   tau=0.40 done
+   tau=0.42 done
+   tau=0.44 done
+   tau=0.46 done
+   tau=0.48 done
+   tau=0.50 done
+[1b] usable cells (>=1 significant region) = 134 of 175
+
+=== per-cell: max cell tau=0.02 l_min=1 -> 133/134 significant (grid steps 0.02; op tau=0.05 clustered off-grid for the anchor) ===
+
+=== PER-REGION C2: 17 operating-point regions (tau=0.05, l_min=3), ranked by grid-stability ===
+                           locus  size score    c2
+                          <char> <int> <num> <num>
+ 1: Chr1:21.50-21.93 (inversion)   245 25.00 1.000
+ 2:              Chr20:0.18-0.26    33  4.76 0.746
+ 3:             Chr7:11.55-11.66    10  1.94 0.507
+ 4:               Chr5:2.48-2.50    22  2.58 0.448
+ 5:              Chr17:6.55-6.77     5  1.40 0.418
+ 6:             Chr4:27.55-27.55     5  1.26 0.388
+ 7:              Chr17:9.94-9.94     9  1.65 0.351
+ 8:            Chr12:16.52-16.55     5  0.76 0.254
+ 9:             Chr4:22.51-22.51     4  0.58 0.187
+10:              Chr18:5.61-5.61     3  0.50 0.187
+11:       Chr4:12.81-12.81 (Eda)     4  0.49 0.179
+12:              Chr20:3.67-3.67     3  0.40 0.149
+13:             Chr1:27.28-27.28     3  0.36 0.119
+14:            Chr12:15.55-15.55     4  0.34 0.097
+15:              Chr20:8.89-8.90     3  0.18 0.075
+16:             Chr4:25.67-25.99     3  0.23 0.045
+17:             Chr3:13.03-13.03     4  0.21 0.045
+
+[2] wrote null_sig_landscape_popperm.png + region_c2_manhattan.png

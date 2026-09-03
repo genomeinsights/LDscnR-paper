@@ -1,0 +1,13 @@
+comparison,spearman_vs_full_rec50,top5_overlap,n_zero_support,mean_support,note
+1 full grid (175 cells),1,1,0,0.0871,reference for all rows
+2 admissible P20 (116 cells),0.654,0.6,4,0.0355,null-only rule; 4/17 regions lose all support
+2 admissible P10 (86 cells),0.404,0.6,9,0.0267,null-only rule; 9/17 regions lose all support
+2 admissible P05 (42 cells),,0.4,17,0,null-only rule; 17/17 regions lose all support
+2 admissible U10 (61 cells),0.477,0.6,12,0.0106,null-only rule; 12/17 regions lose all support
+2 admissible C001 (107 cells),,0.4,17,0,null-only rule; 17/17 regions lose all support
+3 old conditional |U| = 134,1,1,0,0.1137,pure rescaling of row 1; identical ranking
+4 BH-significance support (full),1,1,0,0.0871,IDENTICAL to detection: 0 detected-but-not-significant cells
+5 matching rec25 (full),0.776,0.6,0,0.1462,anchor-marker retention threshold
+5 matching rec75 (full),0.972,1,0,0.082,anchor-marker retention threshold
+5 reciprocal rec50 (full),0.88,0.6,0,0.0763,also demands |AnR|/|R| >= 0.5
+6 anchor-free mean S_m (full),0.88,0.8,0,0.114,marker-level support of the same regions

@@ -1,0 +1,15 @@
+===== null_uncapped_3sp =====
+[1] genetic null B=100 ; C_obs: 1729 C>0 ; tau=0.050 l_min=3 rho_ld=0.60 ; universe=1790
+regions with emp_p < 0.05 : 17 / 17 ; emp_q < 0.05 : 17
+median overlap_freq (null rebuilds the locus): 0.00
+[4] wrote module_sticklebacks_LDscnR/results/region_emp_pvals_genetic_tau0.05_lmin3_rho0.60.csv
+===== null_popperm_3sp =====
+[1] pop_perm null B=200 ; C_obs: 1729 C>0 ; tau=0.050 l_min=3 rho_ld=0.60 ; universe=11269
+regions with emp_p < 0.05 : 17 / 17 ; emp_q < 0.05 : 17
+median overlap_freq (null rebuilds the locus): 0.01
+[4] wrote module_sticklebacks_LDscnR/results/region_emp_pvals_pop_perm_tau0.05_lmin3_rho0.60.csv
+===== null_spatial_3sp =====
+[1] spatial null B=200 ; C_obs: 1729 C>0 ; tau=0.050 l_min=3 rho_ld=0.60 ; universe=25274
+regions with emp_p < 0.05 : 15 / 17 ; emp_q < 0.05 : 14
+median overlap_freq (null rebuilds the locus): 0.00
+[4] wrote module_sticklebacks_LDscnR/results/region_emp_pvals_spatial_tau0.05_lmin3_rho0.60.csv

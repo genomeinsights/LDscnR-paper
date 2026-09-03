@@ -1,0 +1,6 @@
+[1] grid 25 tau x 7 l_min x 4 nulls ; per-null edge graphs
+   null: genetic (MVN)        universe= 1790 ; 100 surrogates
+   null: global perm.         universe=11269 ; 100 surrogates
+   null: regional perm.       universe= 8405 ; 100 surrogates
+   null: spatial (MVN kernel) universe=25274 ; 100 surrogates
+[2] wrote figures/null_fdr_landscape_4nulls.png

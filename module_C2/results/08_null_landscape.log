@@ -1,0 +1,84 @@
+[0] grid = 25 tau x 7 l_min = 175 cells ; B = 200 ; universe = 11269 markers
+[0] cached-but-OFF-GRID tau values (reference only, excluded from all grid
+    denominators): 0.05
+
+[1] p_null_any over the grid: min 0.025, median 0.105, max 0.755
+    cells with p_null_any == 0 : 0 of 175 (0%)
+    cells with p_null_any == 1 : 0
+
+[1] p_null_any by l_min (across tau_C):
+    lmin   min median   max n_zero
+   <int> <num>  <num> <num>  <int>
+1:     1 0.395  0.510 0.755      0
+2:     2 0.210  0.295 0.480      0
+3:     3 0.125  0.195 0.315      0
+4:     5 0.080  0.105 0.180      0
+5:    10 0.055  0.055 0.090      0
+6:    15 0.035  0.040 0.085      0
+7:    20 0.025  0.030 0.055      0
+
+[1] p_null_any at the most lenient l_min = 1, across tau_C:
+      tau p_null_any mean_null_regions mean_null_coverage
+    <num>      <num>             <num>              <num>
+ 1:  0.02      0.755             15.23             0.0047
+ 2:  0.04      0.710             12.41             0.0036
+ 3:  0.06      0.675             11.04             0.0032
+ 4:  0.08      0.650             10.11             0.0028
+ 5:  0.10      0.625              9.38             0.0025
+ 6:  0.12      0.600              8.74             0.0023
+ 7:  0.14      0.575              8.20             0.0021
+ 8:  0.16      0.560              7.82             0.0020
+ 9:  0.18      0.545              7.42             0.0019
+10:  0.20      0.535              7.03             0.0017
+11:  0.22      0.525              6.72             0.0016
+12:  0.24      0.520              6.40             0.0015
+13:  0.26      0.510              6.02             0.0014
+14:  0.28      0.505              5.78             0.0014
+15:  0.30      0.495              5.50             0.0013
+16:  0.32      0.490              5.28             0.0012
+17:  0.34      0.480              5.05             0.0012
+18:  0.36      0.475              4.75             0.0011
+19:  0.38      0.470              4.54             0.0010
+20:  0.40      0.470              4.39             0.0010
+21:  0.42      0.460              4.11             0.0009
+22:  0.44      0.425              3.88             0.0009
+23:  0.46      0.420              3.67             0.0009
+24:  0.48      0.400              3.45             0.0008
+25:  0.50      0.395              3.29             0.0008
+      tau p_null_any mean_null_regions mean_null_coverage
+    <num>      <num>             <num>              <num>
+
+[2] transition: largest tau_C at which p_null_any still exceeds each tolerance
+    (i.e. the lenient region is tau_C <= this value); NA = never exceeds it
+Key: <lmin>
+    lmin last_tau_above_0.05 last_tau_above_0.1 last_tau_above_0.2
+   <int>               <num>              <num>              <num>
+1:     1                0.50               0.50               0.50
+2:     2                0.50               0.50               0.50
+3:     3                0.50               0.50               0.18
+4:     5                0.50               0.28                 NA
+5:    10                0.50                 NA                 NA
+6:    15                0.10                 NA                 NA
+7:    20                0.06                 NA                 NA
+   n_cells_above_0.05 n_cells_above_0.1 n_cells_above_0.2
+                <int>             <int>             <int>
+1:                 25                25                25
+2:                 25                25                25
+3:                 25                25                 9
+4:                 25                14                 0
+5:                 25                 0                 0
+6:                  5                 0                 0
+7:                  3                 0                 0
+
+[3] contiguity of {p_null_any > eps} in tau_C, per l_min:
+    eps = 0.05 : excluded set is a contiguous low-tau prefix at every l_min: TRUE
+    eps = 0.10 : excluded set is a contiguous low-tau prefix at every l_min: TRUE
+    eps = 0.20 : excluded set is a contiguous low-tau prefix at every l_min: TRUE
+
+[4] Spearman(p_null_any, n_obs_regions) = 0.925  [DIAGNOSTIC ONLY]
+    Spearman(mean_null_coverage, obs_coverage) = 0.962
+    -> null and empirical burden co-vary, but admissibility below uses the
+       null columns ONLY; the empirical columns are never consulted.
+
+[5] wrote results/null_grid_diagnostics.csv, null_reference_point.csv
+[5] wrote figures fig7-fig11

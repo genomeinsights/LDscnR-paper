@@ -35,28 +35,82 @@ suppressMessages({ library(data.table); library(ggplot2); library(LDscnR) })
 a  <- commandArgs(trailingOnly = TRUE)
 V  <- if (length(a) >= 1) a[1] else "2"
 CC <- if (length(a) >= 2) a[2] else "1"
-ENVS <- 1:5                                             # replicate-average (mandatory)
-SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data")
+SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs")
 TAG    <- "nobgs"
+
+## ENVS is derived from what is on disk, not hardcoded, so adding replicates does
+## not mean editing this file. Only COMPLETE cells are used: pooling needs all
+## CHR_N chromosomes of an env, and a partial cell would silently pool a smaller
+## genome. Override with SIM_ENVS=1,2,3.
+CHR_N <- 10L
+discover_envs <- function(dir, tag, V, CC, chr_n = CHR_N) {
+  fs <- list.files(dir, pattern = sprintf("^adapt_%s_chr[0-9]+_V%s_c%s_env[0-9]+[.]rds$", tag, V, CC))
+  if (!length(fs)) stop("no bundles matching V", V, "_c", CC, " (", tag, ") in ", dir)
+  e <- as.integer(sub(".*_env([0-9]+)[.]rds$", "\\1", fs)); tab <- table(e)
+  full <- as.integer(names(tab)[tab == chr_n]); short <- setdiff(as.integer(names(tab)), full)
+  if (length(short)) message(sprintf("  [envs] incomplete cells skipped: %s",
+    paste(sprintf("env%d (%d/%d chr)", short, as.integer(tab[as.character(short)]), chr_n), collapse = ", ")))
+  sort(full)
+}
+ENVS <- { .e <- Sys.getenv("SIM_ENVS", "")
+          if (nzchar(.e)) as.integer(strsplit(.e, ",")[[1]]) else discover_envs(SIM_DATA, TAG, V, CC) }
+if (!length(ENVS)) stop("no complete env cells in ", SIM_DATA)
+message(sprintf("  [envs] using %d env cell(s): %s", length(ENVS), paste(ENVS, collapse = ",")))
 OUTFIG <- "module_sim_LDscnR/figures"; OUTRES <- "module_sim_LDscnR/results"
 CORES  <- as.integer(Sys.getenv("SIM_CORES", "1"))          # env-level parallelism over ENVS
 QTAB_C <- if (CORES > 1L) 1L else 4L
 if (CORES > 1L) { data.table::setDTthreads(1L); Sys.setenv(OMP_NUM_THREADS = "1") }  # avoid fork thread oversubscription                        # avoid nested threads under mclapply
+## TAU_FIX: the operating point for the fixed-tau DISCOVERY COUNT arm, nominated
+## BEFORE the run at ldscnr-2c's condition -- a count effect only counts as a
+## second dataset if tau is fixed in advance rather than chosen where the effect
+## appears. 0.05 is not a new choice: it is already the canonical tau in seven
+## places in this module and in both committed 3sp region sets
+## (regions_tau0.05_lmin3, regions_tau0.05_lmin10). l_min uses PAR$lmin unchanged.
+## Rationale: 2c's panel result (GCTA 79 vs centred 59 discoveries) is a COUNT at
+## a fixed threshold; PR-AUC integrates over thresholds and cannot disagree with
+## it. This arm measures 2c's quantity on the sims.
+TAU_FIX <- as.numeric(Sys.getenv("SIM_TAU_FIX", "0.05"))
 PAR <- list(qstar = seq(0, 0.95, by = 0.05), alpha = c(0.001, 0.01, 0.05, 0.1),
-            lmin = c(1L, 2L, 4L, 8L), rho_ld = 0.75, rho_d = 0.95, dcap = 5e5, max_tau = 50L)
+            lmin = c(1L, 2L, 4L, 8L), rho_ld = 0.75, rho_d = 0.95, dcap = 1e5, max_tau = 50L)
 
 gcta_grm <- function(X) { p <- colMeans(X) / 2; k <- p > 0 & p < 1; X <- X[, k, drop = FALSE]; p <- p[k]
   Z <- sweep(sweep(X, 2, 2 * p, "-"), 2, sqrt(2 * p * (1 - p)), "/"); tcrossprod(Z) / ncol(Z) }
 ## per-file EMMAX from a GRM marker set (+ genomic control if gif > 1.1)
-emx_p <- function(G, mk, y) { K <- gcta_grm(G[, mk, drop = FALSE]); pv <- emmax_fast(emmax_setup(G, K), y)
+## centred-only kinship, K = ZZ'/m -- NO sqrt(2p(1-p)) standardisation. This is
+## the estimator ldscnr-2c found gives 59 discoveries against GCTA's 79 on the
+## SAME panel markers, despite the two correlating at 0.99. The chain_centred arm
+## below pairs it with the chain marker set, so estimator is the only thing that
+## varies between chain and chain_centred.
+centred_grm <- function(X) { p <- colMeans(X) / 2; k <- p > 0 & p < 1; X <- X[, k, drop = FALSE]; p <- p[k]
+  Z <- sweep(X, 2, 2 * p, "-"); tcrossprod(Z) / ncol(Z) }
+emx_p <- function(G, mk, y, est = gcta_grm) { K <- est(G[, mk, drop = FALSE]); pv <- emmax_fast(emmax_setup(G, K), y)
   n <- nrow(G); Fv <- stats::qf(pv, 1, n - 2, lower.tail = FALSE)
   gif <- stats::median(Fv) / stats::qf(0.5, 1, n - 2, lower.tail = FALSE)
   if (gif > 1.1) { Fv <- Fv / gif; pv <- stats::pf(Fv, 1, n - 2, lower.tail = FALSE) }
   list(p = pv, gif = gif, n = length(mk)) }
+## The regen bundles renamed this field: older ones populate `pruned_markers`
+## and leave `grm_markers` empty, current ones do the reverse. Accept either, and
+## fail loudly rather than returning an empty set -- an empty marker set would
+## build a GRM from nothing and report it as a result.
+grm_set <- function(d) {
+  mk <- if (length(d$grm_markers)) d$grm_markers else d$pruned_markers
+  if (!length(mk)) stop("bundle carries neither grm_markers nor pruned_markers")
+  mk
+}
+## LAM_W: the lambda-calibrated ld_w cutoff. The lambda sweep (manuscript
+## tab:lambda-sweep) puts gif ~ 1 near w = 0.008; this arm is the third row of
+## tab:grm-prauc, which no committed version of this script built -- the table
+## had no producer on disk until now.
+LAM_W <- as.numeric(Sys.getenv("SIM_LAM_W", "0.008"))
 ## the GRM marker sets under comparison (extend here to add variants)
 grm_markers <- list(
-  chain  = function(d, G, lw, b) d$pruned_markers,               # complexity-reduction pruned set
-  ldw_b  = function(d, G, lw, b) colnames(G)[which(lw < b)])      # ld_w_095 < background LD
+  chain  = function(d, G, lw, b) grm_set(d),                     # complexity-reduction pruned set
+  ldw_b  = function(d, G, lw, b) colnames(G)[which(lw < b)],      # ld_w_095 < background LD
+  ldw_008 = function(d, G, lw, b) colnames(G)[which(lw < LAM_W)],   # lambda-calibrated cutoff
+  chain_centred = function(d, G, lw, b) grm_set(d))                 # chain markers, centred estimator
+## estimator per arm; only chain_centred departs from GCTA
+grm_est <- list(chain = gcta_grm, ldw_b = gcta_grm, ldw_008 = gcta_grm,
+                chain_centred = centred_grm)
 
 ## ---- 1. per-env: pool, per-GRM EMMAX, C-score, PR-AUC ----------------
 per_env <- function(env) {
@@ -68,7 +122,7 @@ per_env <- function(env) {
     d <- readRDS(files[i]); m <- as.data.table(d$map); G <- d$GTs; y <- d$env$env
     lwc <- if ("rho_0.95" %in% colnames(d$ld_ws)) "rho_0.95" else "0.95"; lw <- d$ld_ws[, lwc]
     b <- stats::median(as.data.table(d$LD_decay$decay_sum)$b)
-    for (g in names(grm_markers)) { r <- emx_p(G, grm_markers[[g]](d, G, lw, b), y)
+    for (g in names(grm_markers)) { r <- emx_p(G, grm_markers[[g]](d, G, lw, b), y, grm_est[[g]])
       m[, (paste0("p_", g)) := r$p]; gifs[[g]] <- c(gifs[[g]], r$gif) }
     m[, `:=`(Chr = paste0("R", i, "_", Chr), marker = paste0("R", i, "_", marker))]
     colnames(G) <- paste0("R", i, "_", colnames(G))
@@ -92,19 +146,56 @@ per_env <- function(env) {
       rbindlist(lapply(PAR$lmin, function(lm) { ev <- evaluate_ors(reg[lengths(reg) >= lm], map, qtab, th$r2min, th$dmax)
         data.table(l_min = lm, recall = ev$Recall, precision = ev$Precision) })) }
     rbindlist(lapply(TAUC, function(t) sc(names(C)[C >= t])))[, .(PR_AUC = pr_auc(recall, precision)), by = l_min] }
+  ## WHERE DO THE DROPPED CALLS SIT IN THE RANKING? ldscnr-2c's question: the
+  ## centred estimator finds a SUBSET of GCTA's calls on both datasets, but the
+  ## panel finds the dropped ones MORE enriched while these sims find them mostly
+  ## false. If the dropped markers are low-ranked under GCTA, "finds a subset" is
+  ## a threshold effect and the same phenomenon in both; if they are spread
+  ## through the ranking, it is not.
+  drop_rank <- function(Ca, Cb) {          # Ca = GCTA, Cb = centred
+    pos <- names(Ca)[Ca > 0]
+    if (!length(pos)) return(data.table(set = character(), n = integer(), med_pctile = numeric()))
+    pct <- stats::ecdf(Ca[pos])            # percentile within GCTA's own C>0 scores
+    a <- names(Ca)[Ca >= TAU_FIX]
+    b <- names(Cb)[Cb >= TAU_FIX]
+    shared <- intersect(a, b); only <- setdiff(a, b)
+    rbindlist(list(
+      data.table(set = "shared",    n = length(shared),
+                 med_pctile = if (length(shared)) stats::median(pct(Ca[shared])) else NA_real_),
+      data.table(set = "gcta_only", n = length(only),
+                 med_pctile = if (length(only))   stats::median(pct(Ca[only]))   else NA_real_)))
+  }
+  dr <- drop_rank(Cs[["chain"]], Cs[["chain_centred"]])[, env := env]
+  fwrite(dr, file.path(OUTRES, "estimator_drop_rank.csv"), append = file.exists(file.path(OUTRES, "estimator_drop_rank.csv")))
+  ## discovery COUNT at the pre-nominated fixed tau (2c's quantity)
+  ndisc <- function(C) { mk <- names(C)[C >= TAU_FIX]
+    reg <- if (length(mk)) ld_regions(mk, edges) else list()
+    rbindlist(lapply(PAR$lmin, function(lm) {
+      keep <- reg[lengths(reg) >= lm]
+      ev <- evaluate_ors(keep, map, qtab, th$r2min, th$dmax)
+      data.table(l_min = lm, n_disc = length(keep), tp_disc = ev$TP) })) }
   cat(sprintf("env%d: %s ; |tau|=%d\n", env,
       paste(sprintf("%s gif=%.3f maxC=%.3f", names(Cs), sapply(names(Cs), function(g) mean(gifs[[g]])),
                     sapply(Cs, max)), collapse = " | "), length(TAUC))); utils::flush.console()
-  rbindlist(lapply(names(Cs), function(g) prauc(Cs[[g]])[, `:=`(method = g, env = env,
-    gif = mean(gifs[[g]]))]))
+  rbindlist(lapply(names(Cs), function(g) {
+    merge(prauc(Cs[[g]]), ndisc(Cs[[g]]), by = "l_min")[, `:=`(method = g, env = env,
+      gif = mean(gifs[[g]]))] }))
 }
 
 cat(sprintf("V%s_c%s (%s): GRM comparison over env %s\n", V, CC, TAG, paste(ENVS, collapse = ",")))
 auc <- rbindlist(if (CORES > 1L) parallel::mclapply(ENVS, per_env, mc.cores = CORES) else lapply(ENVS, per_env))
 summ <- auc[, .(gif = round(mean(gif), 3), PR_AUC = round(mean(PR_AUC, na.rm = TRUE), 3),
-                SE = round(stats::sd(PR_AUC, na.rm = TRUE) / sqrt(sum(!is.na(PR_AUC))), 3)),
+                SE = round(stats::sd(PR_AUC, na.rm = TRUE) / sqrt(sum(!is.na(PR_AUC))), 3),
+                n_disc = round(mean(n_disc, na.rm = TRUE), 1),
+                n_disc_SE = round(stats::sd(n_disc, na.rm = TRUE) / sqrt(sum(!is.na(n_disc))), 2),
+                tp_disc = round(mean(tp_disc, na.rm = TRUE), 1)),
             by = .(method, l_min)][order(method, l_min)]
+fwrite(auc[order(method, env, l_min)], file.path(OUTRES, sprintf("grm_comparison_prauc_perenv_%s.csv", paste0("V", V, "_c", CC))))
 fwrite(summ, file.path(OUTRES, "grm_comparison_prauc.csv"))
+source("module_sim_LDscnR/prov.R")
+write_prov(file.path(OUTRES, "grm_comparison_prauc.csv"),
+           list(SIM_DATA = SIM_DATA, TAG = TAG, V = V, c = CC, ENVS = ENVS,
+                LAM_W = LAM_W, CORES = CORES, rho_ld = PAR, dcap = PAR))
 cat("\n=== PR-AUC (mean +/- SE, adaptive tau) ===\n"); print(summ)
 
 ## ---- 2. ld_w_095 Manhattan (mechanism figure) ------------------------

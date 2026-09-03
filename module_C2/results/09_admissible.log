@@ -1,0 +1,56 @@
+[1] candidate null-only admissibility rules (175-cell grid):
+      rule                        expr n_adm frac_adm n_components
+    <char>                      <char> <int>    <num>        <int>
+ 1:    P05          p_null_any <= 0.05    42    0.240            1
+ 2:    P10           p_null_any <= 0.1    86    0.491            1
+ 3:    P20           p_null_any <= 0.2   116    0.663            1
+ 4:    U05           p_null_hi <= 0.05     0    0.000            0
+ 5:    U10            p_null_hi <= 0.1    61    0.349            1
+ 6:    U20            p_null_hi <= 0.2   101    0.577            1
+ 7:   C001 mean_null_coverage <= 0.001   107    0.611            1
+ 8:  C0005 mean_null_coverage <= 5e-04    48    0.274            1
+ 9:     M1      mean_null_regions <= 1   104    0.594            1
+10:    M05    mean_null_regions <= 0.5    81    0.463            1
+      lmins_retained contiguous_high_tau rectangular max_p_null_retained
+              <char>              <lgcl>      <lgcl>               <num>
+ 1:            15,20                TRUE       FALSE               0.045
+ 2:       5,10,15,20                TRUE       FALSE               0.100
+ 3:     3,5,10,15,20                TRUE       FALSE               0.200
+ 4:           (none)                  NA          NA                  NA
+ 5:         10,15,20                TRUE       FALSE               0.055
+ 6:     3,5,10,15,20                TRUE       FALSE               0.140
+ 7: 1,2,3,5,10,15,20                TRUE       FALSE               0.470
+ 8:       5,10,15,20                TRUE       FALSE               0.085
+ 9:     3,5,10,15,20                TRUE       FALSE               0.170
+10:       5,10,15,20                TRUE       FALSE               0.085
+
+[2] which l_min values survive each tolerance (tau_C plays almost no role):
+    P05  : l_min=15 (20 tau, 0.12-0.50) ; l_min=20 (22 tau, 0.08-0.50)
+    P10  : l_min=5 (11 tau, 0.30-0.50) ; l_min=10 (25 tau, 0.02-0.50) ; l_min=15 (25 tau, 0.02-0.50) ; l_min=20 (25 tau, 0.02-0.50)
+    P20  : l_min=3 (16 tau, 0.20-0.50) ; l_min=5 (25 tau, 0.02-0.50) ; l_min=10 (25 tau, 0.02-0.50) ; l_min=15 (25 tau, 0.02-0.50) ; l_min=20 (25 tau, 0.02-0.50)
+
+[2] Spearman(p_null_any, l_min) = -0.970  vs  Spearman(p_null_any, tau_C) = -0.216
+    -> null-region production is governed by l_min, not by tau_C. There is no
+       'lenient tau_C corner': p_null_any at l_min=1 falls only from 0.76 to 0.40
+       across the entire tau_C range, and never reaches any candidate tolerance.
+
+[3] natural-break check on the sorted p_null_any values:
+    range 0.025-0.755 ; largest gap = 0.045 between 0.710 and 0.755
+    second largest gap = 0.035 ; median gap = 0.0000
+    -> NO distinct break: p_null_any is a smooth continuum, so ANY tolerance is arbitrary
+
+[4] finite-B uncertainty (B = 200; Clopper-Pearson):
+    eps = 0.05 : point rule keeps  42 cells, upper-bound rule keeps   0;
+                42 cells (100% of those kept) are statistically indistinguishable
+               from failing the rule at B = 200.
+    eps = 0.10 : point rule keeps  86 cells, upper-bound rule keeps  61;
+                25 cells (29% of those kept) are statistically indistinguishable
+               from failing the rule at B = 200.
+    eps = 0.20 : point rule keeps 116 cells, upper-bound rule keeps 101;
+                15 cells (13% of those kept) are statistically indistinguishable
+               from failing the rule at B = 200.
+    typical CI width at the boundary: 0.086
+    -> at B = 200 a cell with k = 20/200 has CI [0.062, 0.150]; distinguishing
+       eps = 0.05 from eps = 0.10 is at the edge of this resolution.
+
+[5] wrote results/admissible_grid_rules.csv + figures/fig12_admissible_grids.png

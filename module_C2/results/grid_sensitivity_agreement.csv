@@ -1,0 +1,6 @@
+grid,spearman,top5_overlap,pearson
+G2_coarse,0.537,0.6,0.623
+G3_breakpoint,0.983,0.8,0.948
+G4_tau_low,1,1,1
+G5_tau_high,,0.4,
+G6_tau_sparse,0.894,0.8,0.906

@@ -17,7 +17,7 @@ V  <- if (length(a) >= 1) a[1] else "2"
 cc <- if (length(a) >= 2) a[2] else "1"
 ENV <- if (length(a) >= 3) a[-(1:2)] else as.character(1:5)
 QSTAR <- seq(0, 0.95, by = 0.05); ALPHA_C <- c(0.001, 0.01, 0.05, 0.1)   # universe = loosest grid
-RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5; ALPHA_S <- c(0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1)
+RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5; ALPHA_S <- c(0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1)
 
 build_one <- function(env) {
   files <- list.files(SIM_DATA, full.names = TRUE,

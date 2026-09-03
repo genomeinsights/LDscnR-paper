@@ -52,10 +52,19 @@ rsconnect/
 # LDscnR module outputs (regenerable, large: bundles, caches, figures, results)
 module_sticklebacks_LDscnR/data/
 module_sticklebacks_LDscnR/figures/
-module_sticklebacks_LDscnR/results/
+# module_sticklebacks_LDscnR/results: TRACKED IN FULL, .rds included. Unlike the
+# sim module these are not regenerable caches -- their producers were deleted in
+# 3cb47ba (restored under superseded/), they are written through sprintf-built
+# names that defeat a producer search, and some invocations were never recorded.
+# 62 MB, consumed live by kingman2021/R and LD-pruning-paper/R_3sp.
 module_sim_LDscnR/data/
 module_sim_LDscnR/figures/
-module_sim_LDscnR/results/
+# module_sim_LDscnR/results: summaries are TRACKED BY DEFAULT so a new one is not
+# silently dropped (a plain `git add` of an ignored path only prints a hint, so
+# 9cf2594 reported committing three CSVs and committed none of them). The large
+# regenerable .rds intermediates stay out -- 392 MB against 19.5 MB of csv.
+module_sim_LDscnR/results/*.rds
+module_sim_LDscnR/results/**/*.rds
 
 # LaTeX build artifacts
 manuscript/*.aux
@@ -63,3 +72,45 @@ manuscript/*.bbl
 manuscript/*.blg
 manuscript/*.log
 manuscript/*.out
+
+# macOS
+.DS_Store
+
+# kingman2021: large analysis bundles (regenerable from the joint VCF via R/run_all.sh)
+kingman2021/data/*.rds
+kingman2021/data/*.snp_p.tsv.gz
+
+# Large regenerable data / simulation outputs at repo root (NOT for git; ~19 GB)
+3sp_data/*
+# exception: the cross-based recombination maps + their build scripts are small
+# (~300 KB) and are inputs to analysis, so they are tracked -- but not the ~3.5 MB
+# of published supplementary files the scripts rebuild them from.
+!3sp_data/rec_maps/
+3sp_data/rec_maps/source/
+LFMM_3sp/
+NEMO/
+Nemo3/
+Nemo_sim/
+OR_performance/
+OR_performance2/
+R_080726/
+parsed_sim_data/
+parsed_sim_data_genomes/
+gds_3sp.gds
+emmax_perm_reginal.rds
+map_100kb_100qtn_100delet.zip
+
+# Session scratch + stray files (not source)
+claude_snapshot_summaries/
+key.txt
+/*.png
+the_premise.pdf
+
+# LaTeX build products
+manuscript/*.pdf
+manuscript/*.fls
+manuscript/*.fdb_latexmk
+
+# 3sp_data/ is untracked bulk input, but its manifest and checker are not
+!3sp_data/MANIFEST.md
+!3sp_data/verify_manifest.sh

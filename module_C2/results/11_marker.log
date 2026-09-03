@@ -1,0 +1,63 @@
+[1] markers with S_m > 0, per grid (of 11269 in the universe):
+    full  (175 cells):  1152 markers ; max S_m = 0.766 ; mean over positive = 0.077
+    P20   (116 cells):   956 markers ; max S_m = 0.647 ; mean over positive = 0.069
+    P10   ( 86 cells):   906 markers ; max S_m = 0.523 ; mean over positive = 0.069
+    U10   ( 61 cells):   869 markers ; max S_m = 0.344 ; mean over positive = 0.038
+
+[2] S_m vs the marker C-score (the honest caveat):
+    full  : Spearman(S_m, C_m) over supported markers = 0.712
+    P20   : Spearman(S_m, C_m) over supported markers = 0.690
+    P10   : Spearman(S_m, C_m) over supported markers = 0.769
+    U10   : Spearman(S_m, C_m) over supported markers = 0.847
+    -> S_m is substantially a re-expression of C_m, as expected: a marker can only
+       enter a region at tau_C <= C_m. Report it as support, never as new evidence.
+
+[3] locus families (r^2-connected components of the support-gated markers,
+    500 kb gap-split -- grouped by chromosome AND component, never by chromosome alone):
+      grid support_gate n_families n_in_reference n_novel median_markers
+    <char>        <num>      <int>          <int>   <int>          <num>
+ 1:    P10         0.02          6              6       0           29.5
+ 2:    P10         0.05          3              3       0           40.0
+ 3:    P10         0.10          3              3       0           31.0
+ 4:    P20         0.02         10             10       0           18.0
+ 5:    P20         0.05          4              4       0           31.5
+ 6:    P20         0.10          3              3       0           31.0
+ 7:    U10         0.02          3              3       0           40.0
+ 8:    U10         0.05          1              1       0           61.0
+ 9:    U10         0.10          1              1       0           41.0
+10:   full         0.02         58             17      41            1.0
+11:   full         0.05         28             16      12            3.0
+12:   full         0.10         20             12       8            2.0
+
+[4] P20 families classified (gate S_m >= 0.02):
+                           kind     n markers
+                         <char> <int>   <int>
+1:                  stable core     3     827
+2:         low-support isolated     6      62
+3: parameter-dependent shoulder     1      20
+
+    top families by max S_m:
+      Chr start_Mb end_Mb n_marker max_S max_C
+    <int>    <num>  <num>    <int> <num> <num>
+ 1:     1    21.49  21.94      684 0.647  0.76
+ 2:    20     0.18   0.26      106 0.353  0.58
+ 3:     5     2.48   2.50       37 0.164  0.32
+ 4:     7    11.53  11.67       20 0.095  0.74
+ 5:     4    12.80  12.81       22 0.034  0.30
+ 6:    17     9.94   9.94        9 0.034  0.79
+ 7:    12    16.52  16.55        5 0.034  0.40
+ 8:    20     8.89   8.90       16 0.026  0.07
+ 9:     4    27.55  27.55        5 0.026  0.44
+10:    17     6.55   6.77        5 0.026  0.69
+
+[5] reference-point coverage of the supported markers:
+    full  :  1152 supported markers,   365 (31.7%) inside a reference-point region;
+            support MASS outside the reference set = 33.3% ; max S_m outside = 0.269
+    P20   :   956 supported markers,   352 (36.8%) inside a reference-point region;
+            support MASS outside the reference set = 31.6% ; max S_m outside = 0.069
+    P10   :   906 supported markers,   331 (36.5%) inside a reference-point region;
+            support MASS outside the reference set = 33.1% ; max S_m outside = 0.070
+    U10   :   869 supported markers,   314 (36.1%) inside a reference-point region;
+            support MASS outside the reference set = 29.2% ; max S_m outside = 0.033
+
+[6] wrote results/marker_support.csv (3883 rows) + marker_support_families.csv

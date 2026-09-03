@@ -2,6 +2,31 @@
 ## module_sticklebacks_LDscnR / regen_3sp_data.R
 ##
 ## Regenerate the 3sp input data FROM the raw parsed genotypes, using the current
+##
+## ---------------------------------------------------------------------------
+## RESTORED 2026-09-03 after being deleted in 3cb47ba ("retire the superseded
+## stickleback modules"). It is NOT superseded: THIS IS THE ONLY PRODUCER OF
+## 3sp_LDscnR_data.rds, the bundle that every 3sp number in LD-pruning-paper is
+## computed from. Twelve scripts read that bundle and this is the one that writes
+## it, so deleting it made the canonical kinship unregenerable.
+##
+## It matters specifically because of CR in LD-pruning-paper/3SP_RESULTS.md: the
+## GRM below is built with snpgdsGRM(method = "GCTA"), and rebuilding the same
+## 742,858 markers with a plain centred product gives 59 discoveries against this
+## one's 79. The estimator is load-bearing, and it is recorded HERE and nowhere
+## else.
+##
+## TWO THINGS TO KNOW BEFORE RUNNING IT.
+##   1. OUT_FILE below still points at module_sticklebacks_LDscnR/data/. The live
+##      bundle now sits at 3sp_data/3sp_LDscnR_data.rds. The path was NOT changed
+##      on restore, deliberately -- pointing it at the live file would let a
+##      re-run silently overwrite the bundle every published number depends on.
+##      Redirect it consciously, and diff before replacing.
+##   2. The GRM basis uses `ld_w_095 < 0.1`, strict. LD-pruning-paper/R_3sp/136
+##      uses `<=`. The two sets happen to be identical here (no marker sits
+##      exactly at 0.1), verified in R_3sp/143_grm_construction.R, but the
+##      convention differs and the next threshold could split them.
+## ---------------------------------------------------------------------------
 ## LDscnR machinery (compute_LD_decay / compute_ld_w / emmax), replacing the
 ## outdated ld_decay() machinery in the earlier exploratory 3sp code.
 ##

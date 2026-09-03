@@ -29,7 +29,7 @@ suppressMessages({ library(data.table); library(SNPRelate); library(LEA)
                    devtools::load_all("/Users/petrikem/gitlab/LDscnR", quiet = TRUE) })
 
 IN_DIR  <- Sys.getenv("SIM_IN",  "/Volumes/Nemo/Nemo_sim/parsed_sim_data2")
-OUT_DIR <- Sys.getenv("SIM_OUT", "/Volumes/Nemo/Nemo_sim/regen_sim_data")
+OUT_DIR <- Sys.getenv("SIM_OUT", "/Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs")
 if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
 
 ## ---- canonical settings ----------------------------------------------
@@ -42,8 +42,18 @@ DECAY_ARGS <- list(min_maf_decay = 0.1, q = 0.95, n_sub_bg = 5000, n_win_decay =
                    slide = 1000, rho_targets = c(0.99), cores = 1, ld_w_rho = RHO_GRID)
 GRM_METHOD <- Sys.getenv("SIM_GRM", "complexity_chain")    # or "ld_w_threshold"
 CR_RHO     <- 0.5                                           # ld_complexity_reduction rho
+## min_r2 is DERIVED per chromosome from that chromosome's own decay fit at
+## min_r2_rho = 0.5, not fixed. A fixed floor is the conventional LD-pruning
+## quantity and does not adapt: on this genome rho = 0.5 puts the direct-merge
+## threshold near 0.509 rather than 0.2, so the chain merges less readily and the
+## threshold means the same thing on chromosomes with different recombination.
+## Deriving it requires LD_decay at the call site.
 PRUNE_ARGS <- list(ld_w_col = "ld_w_095", ld_w_threshold = 0.025, score_threshold = 0.80,
-                   min_r2 = 0.2, distance_threshold = 5e5, compute_unflagged_eMLG = FALSE)
+                   ## 1e5, not 5e5: the cap is nearly inert on these simulations, where
+                   ## blocks are short relative to either value, but decisive on a real
+                   ## panel -- 5e5 absorbs 120 of 165 Eda markers into one 821-marker,
+                   ## 18.4 Mb group on the stickleback data. Set it by the case it binds on.
+                   min_r2_rho = 0.5, distance_threshold = 1e5, compute_unflagged_eMLG = FALSE)
 GRM_LDW_THRESHOLD <- 0.02                                  # used only if GRM_METHOD == "ld_w_threshold"
 LFMM_K     <- 5L
 
@@ -68,7 +78,11 @@ regen_file <- function(V, cc, env, chr, tag = "nobgs") {
     stage1 <- NULL
   } else {
     stage1 <- ld_complexity_reduction(map = map, LD_decay = LD_decay, rho = CR_RHO)
-    grm_markers <- do.call(ld_prune_and_eMLG, c(list(GTs = GTs, stage1 = stage1), PRUNE_ARGS))$pruned
+    ## LD_decay is required, not optional: min_r2 comes from ld_from_rho(b, c,
+    ## min_r2_rho) per chromosome, so without it there is nothing to derive from
+    grm_markers <- do.call(ld_prune_and_eMLG,
+                           c(list(GTs = GTs, stage1 = stage1, LD_decay = LD_decay),
+                             PRUNE_ARGS))$pruned
   }
   message(sprintf("  GRM (%s): %d / %d markers", GRM_METHOD, length(grm_markers), nrow(map)))
   GRM <- snpgdsGRM(gds, snp.id = grm_markers, method = "GCTA",

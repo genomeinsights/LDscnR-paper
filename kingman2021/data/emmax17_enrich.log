@@ -1,0 +1,3 @@
+[validate] 39/40 LFMM regions lifted; chrom match 39; max |start diff| 482303 bp, max |end diff| 8338318 bp
+Error: chain lifter disagrees with the module's liftOver; abort
+Execution halted

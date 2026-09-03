@@ -24,7 +24,7 @@ ALPHA_C <- c(0.001, 0.01, 0.05, 0.1)          # alpha SWEPT on sim (reviewer evi
 TAUC    <- seq(0.05, 1.0, by = 0.05)          # C-gate sweep (the ordered knob)
 ALPHA_S <- c(0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1)  # single-SNP alpha sweep
 LMIN_SET <- c(1L, 2L, 4L, 8L)                 # post-C region-size filter, shown as linetype
-RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
+RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5
 
 ## pool GTs + map + full ld_ws + decay
 files <- list.files(SIM_DATA, full.names = TRUE,

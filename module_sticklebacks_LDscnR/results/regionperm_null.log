@@ -1,0 +1,17 @@
+[1] strata=pop_locality ; 35 pops in 4 stratum/strata:
+Key: <stratum>
+     stratum Freshwater Marine
+      <char>      <int>  <int>
+1:    Baltic          6      2
+2:  NorthSea          8      6
+3: Norwegian          4      1
+4:    WB_Sea          4      4
+[2] C_obs: 1729 C>0 ; building region_perm null B=200 ...
+  perm 40 / 200 
+  perm 80 / 200 
+  perm 120 / 200 
+  perm 160 / 200 
+  perm 200 / 200 
+[3] saved module_sticklebacks_LDscnR/results/null_regionperm_3sp.rds ; universe=8405
+
+=== region_perm null: calibrated tau_C=0.050, l_min=157 ===

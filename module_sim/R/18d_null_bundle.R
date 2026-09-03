@@ -17,7 +17,7 @@ cc  <- if (length(a) >= 2) a[2] else "1"
 env <- if (length(a) >= 3) a[3] else "1"
 B   <- if (length(a) >= 4) as.integer(a[4]) else 100L
 QSTAR <- seq(0, 0.95, by = 0.05); ALPHA_C <- c(0.001, 0.01, 0.05, 0.1)   # sim: alpha swept
-RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 5e5
+RHO_LD <- 0.75; RHO_D <- 0.95; DCAP <- 1e5
 gcta_grm <- function(X){ p<-colMeans(X)/2; k<-p>0&p<1; X<-X[,k,drop=F]; p<-p[k]
   Z<-sweep(sweep(X,2,2*p,"-"),2,sqrt(2*p*(1-p)),"/"); tcrossprod(Z)/ncol(Z) }
 

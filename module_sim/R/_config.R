@@ -206,7 +206,7 @@ cscore_count <- function(pv, LDW, rho = colnames(LDW), qstar = seq(0, 0.95, by =
 ## poster clusters at r^2>0.4, NOT a decay-relative rho, which maps to r^2~0.1 and
 ## massively overclusters). Leave them NULL to keep the decay-relative behaviour.
 build_edge_cache <- function(universe, map, GTs, decay_sum, rho_ld = 0.75,
-                             rho_d = 0.95, dcap_max = 5e5, r2_link = NULL, dcap = NULL) {
+                             rho_d = 0.95, dcap_max = 1e5, r2_link = NULL, dcap = NULL) {
   m <- as.data.table(map)[marker %in% universe]
   ds <- as.data.table(decay_sum); ac <- if ("a_pred" %in% names(ds)) ds$a_pred else ds$a
   cc <- if ("c" %in% names(ds)) ds$c else rep(1, nrow(ds))

@@ -25,17 +25,40 @@ suppressMessages({ library(data.table); library(LDscnR) })
 a  <- commandArgs(trailingOnly = TRUE)
 V  <- if (length(a) >= 1) a[1] else "2"
 CC <- if (length(a) >= 2) a[2] else "1"
-ENVS <- 1:5
-SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data")
+SIM_DATA <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs")
 TAG <- "nobgs"; OUTRES <- "module_sim_LDscnR/results"
+
+## ENVS is derived from what is on disk, not hardcoded, so adding replicates does
+## not mean editing this file. Only COMPLETE cells are used: pooling needs all
+## CHR_N chromosomes of an env, and a partial cell would silently pool a smaller
+## genome. Override with SIM_ENVS=1,2,3.
+CHR_N <- 10L
+discover_envs <- function(dir, tag, V, CC, chr_n = CHR_N) {
+  fs <- list.files(dir, pattern = sprintf("^adapt_%s_chr[0-9]+_V%s_c%s_env[0-9]+[.]rds$", tag, V, CC))
+  if (!length(fs)) stop("no bundles matching V", V, "_c", CC, " (", tag, ") in ", dir)
+  e <- as.integer(sub(".*_env([0-9]+)[.]rds$", "\\1", fs)); tab <- table(e)
+  full <- as.integer(names(tab)[tab == chr_n]); short <- setdiff(as.integer(names(tab)), full)
+  if (length(short)) message(sprintf("  [envs] incomplete cells skipped: %s",
+    paste(sprintf("env%d (%d/%d chr)", short, as.integer(tab[as.character(short)]), chr_n), collapse = ", ")))
+  sort(full)
+}
+ENVS <- { .e <- Sys.getenv("SIM_ENVS", "")
+          if (nzchar(.e)) as.integer(strsplit(.e, ",")[[1]]) else discover_envs(SIM_DATA, TAG, V, CC) }
+if (!length(ENVS)) stop("no complete env cells in ", SIM_DATA)
+message(sprintf("  [envs] using %d env cell(s): %s", length(ENVS), paste(ENVS, collapse = ",")))
 CORES  <- as.integer(Sys.getenv("SIM_CORES", "1")); QTAB_C <- if (CORES > 1L) 1L else 4L
 if (CORES > 1L) { data.table::setDTthreads(1L); Sys.setenv(OMP_NUM_THREADS = "1") }  # avoid fork thread oversubscription
 PAR <- list(qstar = seq(0, 0.95, by = 0.05), alpha = c(0.001, 0.01, 0.05, 0.1),
-            rho_ld = 0.75, rho_d = 0.95, dcap = 5e5, B = 100L, seed = 1L,
+            rho_ld = 0.75, rho_d = 0.95, dcap = 1e5, B = 100L, seed = 1L,
             lmin = c(1L, 2L, 4L), fdr = 0.05, lmin_q = 0.99, lmin_tau = 0.05,
             tau_grid = seq(0.02, 1, by = 0.02))
-gcta_grm <- function(X) { p <- colMeans(X)/2; k <- p>0 & p<1; X <- X[,k,drop=FALSE]; p <- p[k]
-  Z <- sweep(sweep(X,2,2*p,"-"),2,sqrt(2*p*(1-p)),"/"); tcrossprod(Z)/ncol(Z) }
+## KINSHIP: this script uses the bundle's SAVED GCTA kinship (d$GRM) throughout.
+## A local gcta_grm() rebuild was defined here and never called; removed
+## 2026-09-03. Do not reintroduce one. Mixing a rebuilt kinship with the saved
+## one inside a single comparison confounds ESTIMATOR with MARKER SET -- on the
+## 3sp panel GCTA and centred-only give 79 vs 59 discoveries on identical
+## markers (ldscnr-2c, R_3sp/143_grm_construction.R). Rebuild every arm or reuse
+## every arm, never both.
 
 ## pool a (V,c,env): per-file EMMAX engine on the saved GRM, pooled ld_ws/map/lfmm_p
 pool_cell <- function(env) {

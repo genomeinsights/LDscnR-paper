@@ -1,0 +1,42 @@
+[1] env1: 35 anchors (tau=0.05 l_min=2) ; 4 TRUE / 31 FALSE ; B=100
+[2] env2: 136 anchors (tau=0.05 l_min=2) ; 6 TRUE / 130 FALSE ; B=100
+[3] env3: 41 anchors (tau=0.05 l_min=2) ; 9 TRUE / 32 FALSE ; B=100
+[4] env4: 43 anchors (tau=0.05 l_min=2) ; 7 TRUE / 36 FALSE ; B=100
+[5] env5: 1 anchors (tau=0.05 l_min=2) ; 1 TRUE / 0 FALSE ; B=100
+
+[1] mean stability by truth, per env:
+     env is_true     n          D          Q        QD
+   <int>  <lgcl> <int>      <num>      <num>     <num>
+1:     1   FALSE    31 0.07701613 0.07701613 1.0000000
+2:     1    TRUE     4 0.29062500 0.29062500 1.0000000
+3:     2   FALSE   130 0.11298077 0.11182692 0.9923077
+4:     2    TRUE     6 0.68333333 0.68333333 1.0000000
+5:     3    TRUE     9 0.53472222 0.53472222 1.0000000
+6:     3   FALSE    32 0.10312500 0.10117187 0.9687500
+7:     4   FALSE    36 0.08263889 0.08263889 1.0000000
+8:     4    TRUE     7 0.60178571 0.60178571 1.0000000
+9:     5    TRUE     1 0.07500000 0.07500000 1.0000000
+
+[1] replicate-averaged over 5 envs:
+   is_true     n         D          Q        QD
+    <lgcl> <int>     <num>      <num>     <num>
+1:   FALSE   229 0.0939402 0.09316345 0.9902644
+2:    TRUE    27 0.4370933 0.43709325 1.0000000
+[1] per-env Wilcoxon Q ~ truth p: 0.000688 4.93e-05 1.2e-07 6.21e-08 NA
+
+[2] PR-AUC by ranking (per env):
+     env PR_stability_Q PR_detection_D PR_QoverD   PR_maxC   PR_size  base_rate
+   <int>          <num>          <num>     <num>     <num>     <num>      <num>
+1:     1      0.7678571      0.7678571 0.1519880 0.8750000 0.5476190 0.11428571
+2:     2      0.7847222      0.7847222 0.0560010 0.9107143 0.6627345 0.04411765
+3:     3      0.9500000      0.9500000 0.4536488 0.9278139 0.8567901 0.21951220
+4:     4      1.0000000      1.0000000 0.2981864 1.0000000 0.9682540 0.16279070
+5:     5      1.0000000      1.0000000 1.0000000 1.0000000 1.0000000 1.00000000
+
+[2] replicate-averaged PR-AUC (mean +- SE over 5 envs):
+     PR_stability_Q PR_detection_D PR_QoverD PR_maxC PR_size base_rate
+mean          0.901          0.901     0.392   0.943   0.807     0.308
+SE            0.052          0.052     0.166   0.025   0.088     0.175
+
+[2] wrote results/sim_validation_prauc.csv + sim_anchor_scores.csv
+[3] wrote figures/fig6_sim_truth.png

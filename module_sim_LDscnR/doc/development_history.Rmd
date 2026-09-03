@@ -1,0 +1,1248 @@
+---
+title: "Development history: filtering, the C-score, and LD clustering"
+subtitle: "The full record, including what was tried and withdrawn"
+author: "module_sim_LDscnR"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  pdf_document:
+    number_sections: true
+    toc: true
+    toc_depth: 2
+    fig_caption: true
+    latex_engine: pdflatex
+geometry: margin=2.4cm
+fontsize: 10pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage[table]{xcolor}
+  - \definecolor{shade}{HTML}{F2F5F6}
+  - \usepackage{mdframed}
+  - \newmdenv[backgroundcolor=shade,linewidth=0pt,skipabove=8pt,skipbelow=8pt]{keybox}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.pos = "H", out.width = "100%")
+suppressMessages({library(data.table); library(knitr)})
+R   <- "../results/filter_then_test"
+clu <- fread(file.path(R, "filter_then_test_clusters_emx.csv"))
+fdr <- fread(file.path(R, "filter_fdr_check_emmax.csv"))
+key <- c("cell","tag","env","window_kb")
+gw  <- clu[method=="genome_wide", c(key,"n_tp","n_sig"), with=FALSE]
+setnames(gw, c("n_tp","n_sig"), c("gw_tp","gw_sig"))
+f   <- merge(clu[method!="genome_wide"], gw, by=key)
+f[, `:=`(dtp = n_tp - gw_tp, dsig = n_sig - gw_sig)]
+
+## paired summary: ties explicit, magnitude alongside direction
+pr <- function(x) {
+  x <- x[is.finite(x)]; w <- sum(x>0); l <- sum(x<0); t <- sum(x==0); nz <- w+l
+  data.table(n=length(x), wins=w, losses=l, ties=t,
+             pct_nt = if (nz) 100*w/nz else NA_real_,
+             med = median(x), q25 = quantile(x,.25), q75 = quantile(x,.75),
+             p = if (nz) binom.test(w, nz)$p.value else NA_real_)
+}
+fp <- function(p) ifelse(is.na(p), "--", ifelse(p < 1e-3, sprintf("%.0e", p), sprintf("%.3f", p)))
+esc <- function(s) gsub("_", "\\\\_", s)
+```
+
+# Purpose of this document
+
+This is the **working record**. It keeps every line of enquiry, including those
+that failed, every claim that was withdrawn, and the reason each correction was
+made. It exists so that a result cannot quietly revert to a superseded version
+and so that the reasoning behind the final method is auditable.
+
+A companion document, `ld_clustering_result.pdf`, states only what survived and
+is written for a reader who does not need this history.
+
+\begin{keybox}
+\textbf{Where this ended up.} Two things were tried on the same premise --- that
+$ld_w$, being phenotype-blind, carries information about where causal variation
+sits.
+
+\textbf{Using $ld_w$ to rank markers (the C-score): abandoned.} It does not beat
+BH at any deployable threshold.
+
+\textbf{Using $ld_w$ to select which units to test ($k$-filtering): abandoned.}
+It buys recall at a steep precision cost, requires a free parameter $k$ with no
+principled value, and was outperformed by doing nothing.
+
+\textbf{Using $ld_w$ to define the units (LD clustering): kept.} This is the
+result in the companion document. It has no free parameter, and its central
+argument --- that BH over near-independent clusters controls FDR over loci rather
+than over SNPs --- requires no knowledge of causal positions.
+\end{keybox}
+
+# Scope, and what changed after review
+
+This describes a **selection** analysis: choosing which units to test before the
+phenotype is seen. It shares a premise with the abandoned C-score work --- $ld_w$
+is phenotype-blind and may carry information about where causal variation sits ---
+but differs in unit, truth, comparison and conclusion.
+
+An earlier draft was reviewed externally. That review found two factual errors, an
+ambiguous denominator, and --- most consequentially --- that pooling 80 panels
+across four parameter cells concealed the main structure in the data. **This
+version is stratified, and the conclusion changed as a result.** All corrections
+are recorded in Section~\ref{sec:corrections} rather than silently applied.
+
+\begin{keybox}
+\textbf{The finding, as the evidence now supports it.} Pre-filtering LD clusters
+increases QTN-proximal discoveries at moderate-to-large filter sizes --- by a
+median of about \textbf{one} such discovery per panel, against four to five extra
+total calls. Which filter is better \textbf{depends on the regime}: local-LD
+weight outperforms cluster size where background LD is low, and fails where it is
+high. Neither filter is established as generally preferable.
+\end{keybox}
+
+## Terminology
+
+The endpoint is **not** a true discovery. Truth here is bp proximity to a driving
+QTN with the causal variants themselves excluded, so a cluster at 49 kb counts and
+one at 51 kb does not, regardless of actual LD. Throughout this document such
+discoveries are called **QTN-proximal**. "True discovery" is reserved for a rule
+tied to the simulated causal architecture, which this is not.
+
+# Why the ranking approach was abandoned
+
+Recorded for self-containment. All paired within run with a sign test.
+
+| Test | Result |
+|:-----|:-------|
+| $\tau_C = 0.05$ vs $\alpha = 0.05$ | C better in 79/151 non-tied (52%), $p = 0.63$ |
+| PR-AUC at the operative distance cap | C better in 120/313 (38%), $p = 4.4\times10^{-5}$ |
+| Stage-2 clusters as fixed units | $\alpha$ ahead by 0.07 PR, flat at every size floor |
+
+Two external results agree: the 3sp panel session finds C *ties* an oracle
+best-single-cell, and the simulation-parsing session measured the mechanism ---
+reweighting a p-value by $ld_w$ nets about **one marker in 1,400** at 50--100 kb
+and nothing at 10 kb.
+
+# Design
+
+## What is compared
+
+```{r machinery, results="asis"}
+cat("\\begin{tabular}{@{}p{1.7cm}p{5.2cm}p{7.4cm}@{}}\n\\toprule\n")
+cat("\\textbf{Component} & \\textbf{Choice} & \\textbf{Why} \\\\\n\\midrule\n")
+rows <- list(
+ c("Unit","Stage-2 LD cluster, tested through its LD-central pruned representative","Representative = highest median $r^2$ to the other members. Membership recomputed per bundle and required to reproduce the stored GRM marker set exactly"),
+ c("Filter","Top $k$ units by median $ld_w$; computed before any phenotype","Compared against MAF, cluster size and random at identical $k$"),
+ c("Test","BH at 0.05 within the selected set only","Identical to the conventional analysis, applied to fewer tests"),
+ c("Endpoint","QTN-proximal: within 10 / 50 / 100 kb of a driving QTN, causal variants excluded","Shares no machinery with $ld_w$; an $r^2$-tagging truth would flatter it by construction"),
+ c("Baseline","BH at 0.05 over all units","This IS the conventional $\\alpha$ analysis, so the comparison is built in"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+## Composition of the panels
+
+```{r composition, results="asis"}
+comp <- clu[method=="genome_wide" & window_kb==50, .N, by=.(cell, tag)]
+cat(sprintf("The %d panels are %d parameter cells $\\times$ %d background-selection arms $\\times$ %d environments, each pooling %d map sets into a genome-wide panel of about %s stage-2 clusters. Cells and arms are \\textbf{not} interchangeable and are stratified throughout Section~\\ref{sec:strat}.\n\n",
+  uniqueN(clu[, .(cell,tag,env)]), uniqueN(clu$cell), uniqueN(clu$tag),
+  uniqueN(clu$env), 10, format(round(median(clu$n_units), -3), big.mark=",")))
+```
+
+## The multiplicity mechanism, and its cost
+
+Filtering changes no p-value. It changes the BH threshold, because BH over
+`r format(99786, big.mark=",")` units is far more severe than BH over 5,000. On
+the illustrative panel below the accounting is **27 discoveries $-$ 1 lost $+$ 28
+gained $=$ 54**: filtering can and does *remove* an already-significant result
+when it falls outside the selected set. Of the 28 gained, **6 (21%) are
+QTN-proximal**, so precision on gained units is low by construction.
+
+![The mechanism. Navy: cleared the genome-wide cutoff. Orange: lie between the two cutoffs, gained by filtering alone. Grey dashed verticals mark driving QTN. One navy unit outside the selected set is lost and is not shown separately.](../figures/filter_manhattan_V0.5_c1_nobgs_env3.png)
+
+![Units coloured by $r^2$ with the nearest driving QTN; triangles are the 25 clusters carrying a causal variant, which are excluded from testing. Only 459 of 99,786 clusters reach $r^2 \geq 0.2$ with any QTN, and several QTN-carrying clusters sit at $p \approx 1$.](../figures/filter_manhattan_ldQTN_V0.5_c1_nobgs_env3.png)
+
+# Results, pooled --- with ties and magnitudes
+
+```{r pooled, results="asis"}
+a <- f[window_kb==50, pr(dtp), by=.(method,k)]
+a <- a[method %in% c("ld_w","size","MAF","random")]
+cat("\\begin{tabular}{@{}llrrrrrrl@{}}\n\\toprule\n")
+cat("Filter & $k$ & wins & losses & ties & \\% non-tied & median & IQR & $p$ \\\\\n\\midrule\n")
+for (m in c("ld_w","size","MAF","random")) for (kk in sort(unique(a$k))) {
+  z <- a[method==m & k==kk]; if (!nrow(z)) next
+  cat(sprintf("%s & %s & %d & %d & %d & %.0f & %+.1f & [%.0f, %.0f] & %s \\\\\n",
+      esc(m), format(kk, big.mark=","), z$wins, z$losses, z$ties, z$pct_nt, z$med, z$q25, z$q75, fp(z$p)))
+}
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Read the denominator carefully. At $k = 20{,}000$, $ld_w$ has
+`r a[method=="ld_w" & k==20000]$wins` wins and
+`r a[method=="ld_w" & k==20000]$losses` losses --- 100% of non-tied panels --- but
+`r a[method=="ld_w" & k==20000]$ties` of 80 panels are **ties**, so the win is on
+`r a[method=="ld_w" & k==20000]$wins + a[method=="ld_w" & k==20000]$losses` panels,
+not 80. The median gain is
+`r sprintf("%+.0f", a[method=="ld_w" & k==20000]$med)` QTN-proximal discovery.
+
+```{r totals}
+b <- f[window_kb==50, .(`QTN-proximal` = median(dtp), `all discoveries` = median(dsig)),
+       by=.(method,k)]
+kable(dcast(b, k ~ method, value.var = c("QTN-proximal","all discoveries")),
+      booktabs = TRUE, digits = 1,
+      caption = "Median paired change against the alpha analysis: QTN-proximal discoveries, and total discoveries. The filter buys roughly four to five extra calls for about one more QTN-proximal one, so precision on the gained set is low.")
+```
+
+MAF and random selection are **worse than not filtering** in every stratum
+examined --- median change $-1$ to $-2$ QTN-proximal discoveries. Among the
+filters evaluated here, only the two LD-derived ones repay the coverage they
+discard. Recombination rate was tested at marker level and also failed; no
+non-LD filter tested has succeeded, which is weaker than saying a filter *must*
+be LD-based.
+
+![Filter-then-test against the conventional alpha analysis. Points are medians over panels; ribbons are the interquartile range across panels. The dashed line in panel A is the median genome-wide result; the dashed line in panel B is 50 percent of non-tied panels.](../figures/filter_then_test_summary.png)
+
+# Stratified results {#sec:strat}
+
+Pooling concealed the main structure. Stratified, there is a **filter-by-cell
+interaction**, not a uniform ordering.
+
+```{r headtohead, results="asis"}
+h <- merge(f[method=="ld_w", c(key,"k","n_tp"), with=FALSE],
+           f[method=="size", c(key,"k","n_tp"), with=FALSE],
+           by=c(key,"k"), suffixes=c("_l","_s"))
+hh <- h[window_kb==50 & k==5000, pr(n_tp_l - n_tp_s), by=cell]
+cat("\\begin{tabular}{@{}lrrrrrl l@{}}\n\\toprule\n")
+cat("Cell & wins & losses & ties & \\% non-tied & median & $p$ & Reading \\\\\n\\midrule\n")
+rd <- c(V0.5_c1="$ld_w$ much better", V2_c1="$ld_w$ better",
+        V1_c1.5="no difference", V0.5_c2="cluster size much better")
+for (cl in c("V0.5_c1","V2_c1","V1_c1.5","V0.5_c2")) {
+  z <- hh[cell==cl]; if (!nrow(z)) next
+  cat(sprintf("\\texttt{%s} & %d & %d & %d & %.0f & %+.1f & %s & %s \\\\\n",
+      esc(cl), z$wins, z$losses, z$ties, z$pct_nt, z$med, fp(z$p), rd[[cl]]))
+}
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+$ld_w$ beats cluster size decisively in two cells, ties in one, and loses
+decisively in one. Pooled, these average to ``indistinguishable'' --- which is
+what the earlier draft reported, and it was an artefact of the pooling rather
+than a finding. \texttt{V0.5\_c2} is the high-background-LD cell ($b = 0.42$); a
+plausible but untested reading is that $ld_w$ is a \emph{local}-LD statistic and
+loses discrimination when everything is correlated, whereas large clusters still
+mark real linkage blocks.
+\end{keybox}
+
+```{r bycellarm, results="asis"}
+dd <- f[window_kb==50 & method=="ld_w" & k==5000, pr(dtp), by=.(cell,tag)]
+ee <- f[window_kb==50 & method=="size"  & k==5000, pr(dtp), by=.(cell,tag)]
+cat("\\begin{tabular}{@{}llrrrrl@{}}\n\\toprule\n")
+cat("\\multicolumn{7}{@{}l}{\\textbf{Against the alpha analysis, $k=5{,}000$, 50 kb, by cell and BGS arm}}\\\\\n")
+cat("Filter & Cell / arm & wins & losses & ties & median & $p$ \\\\\n\\midrule\n")
+for (nm in c("ld_w","size")) {
+  z0 <- if (nm=="ld_w") dd else ee
+  for (i in seq_len(nrow(z0))) {
+    z <- z0[i]
+    cat(sprintf("%s & \\texttt{%s} %s & %d & %d & %d & %+.1f & %s \\\\\n",
+        if (i==1) esc(nm) else "", esc(z$cell), z$tag, z$wins, z$losses, z$ties, z$med, fp(z$p)))
+  }
+  cat("\\midrule\n")
+}
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+```{r byarm}
+cc <- f[window_kb==50 & method=="ld_w", pr(dtp), by=.(tag,k)]
+kable(cc[, .(arm=tag, k, wins, losses, ties, `% non-tied`=round(pct_nt), median=med, p=fp(p))],
+      booktabs = TRUE, longtable = TRUE,
+      caption = "Background selection reduces the gain: the nobgs arm shows larger and more consistent improvement than the bgs arm at every k. Consistent with BGS costing recall rather than enrichment.")
+```
+
+# Null behaviour: two nulls, and they disagree {#sec:fdr}
+
+An earlier draft reported one null and dismissed the other. That was wrong, and
+the dismissed one carries the more important result.
+
+```{r fdrtab, results="asis"}
+## NB, not B: "B" is a COLUMN in this CSV and would mask a scalar of that name,
+## silently returning one row per input row instead of one per group. An earlier
+## version of this chunk had exactly that bug and reported CIs computed on 100
+## draws rather than 1000.
+NB <- 100L
+addci <- function(d) {
+  d[, rate := rej/draws]
+  d[, lo := mapply(function(x,n) binom.test(x,n)$conf.int[1], rej, draws)]
+  d[, hi := mapply(function(x,n) binom.test(x,n)$conf.int[2], rej, draws)]
+  d[]
+}
+gwa <- addci(fdr[method == "genome_wide", .(draws = .N*NB, rej = round(sum(reject_rate)*NB)), by = basis])
+oth <- addci(fdr[method != "genome_wide", .(draws = .N*NB, rej = round(sum(reject_rate)*NB)), by = .(basis, method, k)])
+ks  <- sort(unique(oth$k))
+cat("\\begin{tabular}{@{}llrrr@{}}\n\\toprule\n")
+cat("Null & Selection & $k$ & rejection rate & 95\\% CI \\\\\n\\midrule\n")
+for (bs in c("genetic","env_orth")) {
+  g <- gwa[basis==bs]
+  cat(sprintf("\\textbf{%s} & \\textbf{unfiltered scan} & all & \\textbf{%.3f} & [%.3f, %.3f] \\\\\n",
+      gsub("_","\\\\_",bs), g$rate, g$lo, g$hi))
+  for (m in c("ld_w","MAF","random")) for (kk in ks) {
+    z <- oth[basis==bs & method==m & k==kk]; if (!nrow(z)) next
+    cat(sprintf(" & %s & %s & %.3f & [%.3f, %.3f] \\\\\n",
+        gsub("_","\\\\_",m), format(kk, big.mark=","), z$rate, z$lo, z$hi))
+  }
+  cat("\\midrule\n")
+}
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Both nulls are surrogate **environments** over 1,000 draws
+(10 environments $\times$ 100 surrogates), and under both
+$\lambda_{\text{surr}} \approx$
+`r sprintf("%.2f", mean(fdr$lambda_surr))`, so neither result is genomic
+inflation.
+
+\begin{keybox}
+\textbf{The conventional scan fails the structure-preserving null.} Under
+\texttt{env\_orth} the unfiltered genome-wide analysis --- the $\alpha$ baseline
+that every power comparison in this document is measured against --- rejects in
+`r sprintf("%.0f\\%%", 100*gwa[basis=="env_orth"]$rate)` of surrogates at
+$\alpha = 0.05$. Filtering reduces that to
+`r sprintf("%.3f", min(oth[basis=="env_orth" & method=="ld_w"]$rate))`, an
+`r sprintf("%.0f\\%%", 100*(1-min(oth[basis=="env_orth" & method=="ld_w"]$rate)/gwa[basis=="env_orth"]$rate))`
+reduction, \textbf{but does not repair it}: the residual still exceeds $\alpha$.
+
+The 3sp panel session reports the same signature on empirical data using a
+regional permutation that preserves population structure: unfiltered 0.37,
+filtered 0.21--0.34. Two datasets, two null constructions, one conclusion ---
+\emph{filtering improves calibration under structure and cannot rescue a scan
+that is already anti-conservative.}
+\end{keybox}
+
+## Which null is the right one
+
+`genetic` surrogates leave the scan calibrated at
+`r sprintf("%.3f", gwa[basis=="genetic"]$rate)`; `env_orth` surrogates do not.
+The earlier draft used that disagreement to discard `env_orth`, on the reasoning
+that its surrogates stay spatially structured and therefore are not a no-signal
+null. **That reasoning was convenient rather than correct.** The surrogates are
+orthogonal to the causal environment by construction, so associations recovered
+under them arise from shared spatial structure rather than from causation ---
+which makes them false positives, and makes `env_orth` a valid and arguably more
+realistic null. Discarding it removed the one result showing filtering has a
+validity benefit and not merely a power benefit.
+
+Both are reported here. Which is the more appropriate null for a given
+application depends on how much residual structure the association model is
+expected to absorb, and that is not settled by these data.
+
+## What this does and does not establish
+
+\begin{keybox}
+Every hypothesis is null in both experiments, so FDR equals the probability of at
+least one rejection and these are valid \textbf{global-null} checks. They do
+\textbf{not} establish FDR control under mixtures of null and alternative
+hypotheses, nor the Bourgon et al. independence condition in general.
+
+They also do \textbf{not license choosing $k$}. They license evaluating a fixed,
+prespecified $k$ under the tested null. Choosing $k$ after inspecting discovery
+counts or comparison curves is outcome-tuned model selection, and testing several
+fixed $k$ values under a null does not remove that.
+
+\textbf{Coverage.} Both nulls use \texttt{V2\_c1}, nobgs only, while the power
+experiment spans four cells and both arms. Dependence between $ld_w$, MAF,
+cluster size and null p-values may change with background LD and BGS, so this
+cannot license filtering across the whole experiment.
+\end{keybox}
+
+The false-positive count is also heavy-tailed: at $k = 500$ the $ld_w$ set has
+about the same rejection rate as MAF but roughly twelve times the mean rejection
+count, so approximately 96% of surrogates give nothing and the remainder give
+tens to hundreds.
+
+# Status of each claim
+
+```{r status, results="asis"}
+cat("\\begin{tabular}{@{}p{5.6cm}p{2.4cm}p{6.4cm}@{}}\n\\toprule\n")
+cat("\\textbf{Claim} & \\textbf{Status} & \\textbf{Basis} \\\\\n\\midrule\n")
+rows <- list(
+ c("Filtering LD clusters increases QTN-proximal discoveries at moderate-to-large $k$","Supported","Pooled and in 3 of 4 cells; median gain $+1$, IQR [0, 3]"),
+ c("Among filters evaluated, only LD-derived ones repay the lost coverage","Supported","MAF, random and recombination all worse than no filtering"),
+ c("Which LD filter is better depends on regime","\\textbf{Established}","Filter-by-cell interaction; $ld_w$ wins 2 cells, loses 1 decisively"),
+ c("$ld_w$ is generally preferable to cluster size","\\textbf{Not supported}","Fails in \\texttt{V0.5\\_c2} by a median of $-8.5$"),
+ c("Global-null rejection rate is controlled under a genetic-basis null","Supported","One cell, one arm; CIs overlap $\\alpha$"),
+ c("The unfiltered scan is anti-conservative under a structure-preserving null","\\textbf{Established}","0.338 [0.309, 0.368] vs $\\alpha$ 0.05; matches the 3sp panel's 0.37"),
+ c("Filtering improves calibration under structure","Supported","0.338 to 0.057, an 83\\% reduction; does not reach $\\alpha$"),
+ c("FDR is controlled under mixtures","\\textbf{Not tested}","Complete-null design only"),
+ c("A usable rule for choosing $k$ exists","\\textbf{Not established}","$k$ remains a free, outcome-facing parameter"),
+ c("This transfers to empirical data","Untested here","Simulations only"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+# Relationship to the empirical panel analysis
+
+## What EMMAX is actually run on
+
+Worth stating precisely, because it is easy to misread in either direction.
+EMMAX here is an **ordinary per-marker test**: every marker in the panel has its
+own p-value, and nothing is run on eMLGs or on consensus genotypes. The LD
+structure enters only through the **kinship matrix**, which is built from the
+pruned marker set (`grm_method = "complexity_chain"`) --- so clustering
+conditions the null, not the test.
+
+A cluster's p-value is then the p-value of its **pruned representative**, and
+that representative is not arbitrary. `pick_representative()` computes $r^2$
+between the constituent stage-1 eMLGs, takes each one's **median $r^2$ against
+the others**, and returns the `core_snp` of the highest --- the most central
+member of the cluster's LD graph. Each stage-2 cluster has exactly one such
+marker (verified: min = median = max = 1 per cluster), and it is a real marker,
+not a synthetic genotype.
+
+## What the representative costs, measured at locus level
+
+The natural comparison is SNP counts, and it is misleading. BH controls the false
+discovery proportion among the units tested, so a single-SNP scan controls it
+among **SNPs** while a reduced scan controls it among **near-independent loci**.
+Those are different currencies. Counted in loci --- one pooled panel, V0.5_c1
+nobgs env3:
+
+```{r loci, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("Tested & tests & BH cutoff $p$ & clusters flagged & carrying a QTN \\\\\n\\midrule\n")
+cat("every SNP & 294,609 & 4.2e-04 & 132 & 14 \\\\\n")
+cat("LD-central representatives & 99,787 & 1.2e-05 & 27 & 10 \\\\\n")
+cat("\\midrule\n")
+cat("\\multicolumn{3}{@{}l}{precision (flagged clusters carrying a QTN)} & 0.106 & 0.370 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{Reduction recovers 10 of the 14 QTN-bearing loci while calling a fifth as
+many regions} --- precision 0.37 against 0.11. And it is a strict subset: the
+representative analysis flagged \textbf{no} cluster the SNP scan missed, which is
+what the same signal with its redundancy removed should look like.
+
+Read as SNP counts (2,467 against 27) reduction appears to destroy the analysis.
+That comparison is in the wrong currency and an earlier draft made it.
+\end{keybox}
+
+## Why the single-SNP threshold is the looser one
+
+Three times fewer tests gave a BH cutoff **35 times more severe**, which inverts
+the usual intuition. The cause is redundancy in the small-$p$ tail. BH is a
+step-up procedure --- its cutoff is the largest $p$ with $p \le \alpha i/n$ ---
+so it climbs when many small p-values are present, whether or not they are
+independent findings. On this panel the rejected SNPs are far more clustered than
+the panel as a whole:
+
+```{r redund, results="asis"}
+cat("\\begin{tabular}{@{}lr@{}}\n\\toprule\n")
+cat("SNPs per cluster, panel overall & 3.0 \\\\\n")
+cat("SNPs per cluster, among rejections & 18.7 \\\\\n")
+cat("\\midrule\n")
+cat("redundancy of the small-$p$ tail & \\textbf{6.3$\\times$} the panel average \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+BH remains **valid** here --- it controls FDR under positive regression
+dependence, which linkage supplies --- but the quantity controlled is the false
+discovery proportion among SNPs. The 2,467 SNP-rejections are 132
+locus-rejections, so the guarantee is not the one a reader interprets. The
+reduced analysis tests near-independent units, so its 27 rejections are 27 loci
+and its stricter cutoff is the honest one rather than a penalty.
+
+This qualifies the rationale for filtering in Section~\ref{sec:fdr} in a
+different way than an earlier draft claimed. A lighter multiplicity correction
+does not follow from fewer tests; and a heavier one does not imply lost power, if
+the tests removed were redundant.
+
+![Same EMMAX p-values at two resolutions, with **no ld_w filtering** in either panel. A: all 294,609 SNPs; triangles are the 21 driving QTN. B: the 99,787 LD-central representatives, one per stage-2 cluster; triangles mark the clusters that **contain** a driving QTN, plotted at their representative's p-value. Complexity reduction alone recovers 10 of the 21 while flagging 27 clusters against the SNP scan's 132.](../figures/snp_vs_reduced_V0.5_c1_nobgs_env3.png)
+
+\noindent Note that neither panel involves filtering. `ld_w` enters only *inside*
+the clustering (`ld_w_threshold = 0.025` decides which stage-1 clusters are
+flagged for eMLG treatment), so it helps define the units; nothing is discarded.
+What the figure shows is the effect of **complexity reduction alone**.
+
+## How a cluster should be summarised {#sec:summary}
+
+The module used the LD-central representative throughout. Four alternatives were
+compared on **identical clusters, identical GRM and identical BH treatment**, so
+the only thing that varies is how member p-values become one number. One pooled
+panel, 99,787 clusters, 21 containing a driving QTN.
+
+```{r summ, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrr@{}}\n\\toprule\n")
+cat("Cluster summary & flagged & with QTN & precision & recall & PR \\\\\n\\midrule\n")
+cat("Simes over members & 28 & 12 & 0.429 & 0.571 & \\textbf{0.245} \\\\\n")
+cat("eMLG (consensus genotype) & 36 & 13 & 0.361 & \\textbf{0.619} & 0.224 \\\\\n")
+cat("LD-central representative & 27 & 10 & 0.370 & 0.476 & 0.176 \\\\\n")
+cat("best SNP (min $p$, uncorrected) & 39 & 12 & 0.308 & 0.571 & 0.176 \\\\\n")
+cat("highest $ld_w$ member & 28 & 9 & 0.321 & 0.429 & 0.138 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{Aggregation beats any single marker.} Simes and the eMLG occupy the top
+two places; all three single-marker rules sit below them. Simes gains two
+QTN-bearing loci over the representative while flagging \emph{one more} region,
+so its precision rises to 0.43 --- a straight improvement rather than a trade.
+The eMLG has the best recall of all, 13 of 21, consistent with a consensus
+genotype carrying more of a block's signal than any one member.
+
+\textbf{Two informative negatives.} ``Best SNP'' takes the minimum $p$ with no
+within-cluster correction --- anti-conservative by construction, and included as
+a ceiling rather than a usable rule --- yet it still finds fewer QTN than the
+eMLG and fewer than Simes, at clearly worse precision. And selecting the member
+with the \textbf{highest $ld_w$} is the worst of the five. $ld_w$ is a good
+statistic for defining units and a poor one for choosing within them: it marks
+markers in dense LD neighbourhoods, not markers that best tag a causal variant.
+\end{keybox}
+
+This sharpens the cost of the representative. Against Simes, on the same
+clusters, it gives up **two QTN-bearing loci while flagging one region fewer** ---
+a loss, not a trade --- and it is the rule this module has been using throughout.
+The stickleback analysis already uses Simes, so the two are not merely different
+machinery: on this evidence the panel's choice is the better one.
+
+## The residual cost, and its mechanism
+
+Reduction does lose 4 of the 14 QTN-bearing loci, and that loss has a specific
+cause: **no driving QTN is ever its cluster's representative --- 0 of 21.** Not
+chance. QTN sit in unusually large clusters, sizes 2 to 354 with a median near
+55, against a genome-wide **median cluster size of 1** (mean $\approx$ 3). That
+is what selection extending LD around a causal site produces, and it is what
+$ld_w$ responds to, but it makes the chance that any particular member is the
+LD-central one about $1/\text{size}$.
+
+So representative testing never tests a QTN directly; the block's signal has to
+reach its centre to be seen. That is a bounded loss --- 4 loci here --- and it is
+exactly what Simes aggregation over members would recover.
+
+## Relationship to the empirical panel analysis
+
+Given that, the difference from the stickleback analysis should be stated as
+**a single LD-central representative versus aggregation over members**, not as an
+arbitrary or lossy summary. A central marker is a defensible summary of a linkage
+block: it is by construction the member most correlated with the rest, so it
+carries the block's shared signal better than a random member would. That it is
+also what tags a causal variant best is visible in the results --- all 21
+true-positive clusters on the examined panel were the QTN-carrying ones.
+
+What remains true is narrower. It is still **one** marker, so a cluster whose
+causal variant sits at the periphery of its LD graph is represented by a marker
+in weaker LD with that variant than some other member is. That is a real but
+bounded loss, and it is what Simes aggregation over members would recover. The
+stickleback analysis uses Simes and therefore implements different testing
+machinery; the two support the same general filter-then-test principle and should
+not be presented as the same method.
+
+# Corrections applied after review {#sec:corrections}
+
+```{r corrections, results="asis"}
+cat("\\begin{tabular}{@{}p{6.2cm}p{8.2cm}@{}}\n\\toprule\n")
+cat("\\textbf{Defect} & \\textbf{Resolution} \\\\\n\\midrule\n")
+rows <- list(
+ c("``Every filtered rate sits at or below $\\alpha$'' was false --- random reached 0.053","Restated with binomial CIs as no detectable excess over $\\alpha$"),
+ c("Mechanism example: 27 to 54 with 28 gained did not reconcile","Confirmed: one genome-wide discovery is LOST. Accounting $27-1+28=54$ now reported by the script"),
+ c("Win-rate denominator ambiguous with ties","Wins, losses and ties reported everywhere; percentages stated as non-tied"),
+ c("Direction reported without magnitude","Median paired change with IQR alongside every sign test; total discoveries too"),
+ c("80 panels pooled across heterogeneous cells and arms","Stratified by cell, arm and $k$; the conclusion changed"),
+ c("``Licenses choosing $k$ at all''","Withdrawn. It licenses a prespecified $k$ only"),
+ c("``True discovery''","Renamed QTN-proximal throughout"),
+ c("``The filter must be LD-structure-based''","Weakened to the filters evaluated"),
+ c("``Indistinguishable at every window'' conflicted with $p = 0.030$","Replaced by the stratified interaction analysis"),
+ c("\\texttt{79\\%\\%} rendering bug; cramped tables","Fixed; tables given explicit column widths"),
+ c("The cluster representative was described as an arbitrary or lossy summary","Wrong. \\texttt{pick\\_representative()} returns the member with the highest median $r^2$ to the others --- the LD-central marker. Restated as single-representative vs Simes aggregation, and the cost of it is now measured"),
+
+ c("The \\texttt{env\\_orth} null was dismissed as ``not a true null''","REINSTATED. Its surrogates are orthogonal to the causal environment, so rejections under them are false positives. Both nulls now reported side by side"),
+ c("Confidence intervals were computed on 100 draws, not 1{,}000","A scalar named \\texttt{B} was masked by a COLUMN named \\texttt{B} in the input, so the grouping returned one row per input row. Intervals were ten times too wide"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+## Open, and in progress
+
+Re-clustering at the pilot decay settings ($n_{\text{win}} = 50$, half-decay
+26 kb against the bundles' 56 kb) is running, with $n_{\text{win}} = 10$ through
+the identical code path as its control. The $k$ sweep is being extended to 40,000
+and 60,000 to locate the turning point --- the win rate is currently monotone up
+to the largest $k$ tested, and since $k = n$ makes the two analyses identical the
+curve must return to ties somewhere above 20,000. Structured-null checks in the
+remaining cells and arms are not yet run.
+
+# Geometric exclusion of long-and-sparse clusters: a negative result {#sec:sparse}
+
+Stage-2 clusters were classified by span and by marker density, and the driving
+QTN counted in each class (184,004 clusters over both BGS arms, 40 QTN-bearing):
+
+```{r geom, results="asis"}
+cat("\\begin{tabular}{@{}lrrr@{}}\n\\toprule\n")
+cat("Class & \\% of units & \\% of QTN & fold enrichment \\\\\n\\midrule\n")
+cat("long \\& \\textbf{dense} ($\\ge$5 markers / 100 kb) & 2.30 & 70.0 & \\textbf{30.4} \\\\\n")
+cat("long \\& sparse & 3.36 & 2.5 & 0.7 \\\\\n")
+cat("short \\& dense & 39.06 & 27.5 & 0.7 \\\\\n")
+cat("short \\& sparse & 1.67 & 0.0 & 0.0 \\\\\n")
+cat("singleton & 53.61 & 0.0 & 0.0 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+Two rules are ruled out by this table before any test. **Density alone fails**:
+short-and-dense units are 39% of the genome and are *depleted* for QTN. **Span
+alone is destructive**: dropping every unit over 100 kb removes 29 of the 40
+QTN-bearing clusters, because that is where the real low-recombination blocks
+are. Only the conjunction discriminates.
+
+That suggested excluding **long-and-sparse** units --- 3.4% of the genome holding
+1 QTN of 40 --- as free power: fewer tests at almost no cost in signal, on a
+criterion that is phenotype-blind (span and marker count come from the map and
+the clustering, with nothing tuned on outcomes).
+
+```{r sparsearm, results="asis"}
+cat("\\begin{tabular}{@{}lrrr@{}}\n\\toprule\n")
+cat("Arm & QTN recovered & flagged & dedup PR (nobgs) \\\\\n\\midrule\n")
+cat("Simes, all clusters & 3.0 & 10 & 0.0491 \\\\\n")
+cat("Simes, long-and-sparse excluded & 1.0 & 6 & 0.0327 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{It does not work.} Excluding long-and-sparse clusters costs two thirds of
+the recovered QTN --- a median of 3 down to 1 --- and improves PR nowhere. Paired
+over 80 panels: \texttt{nobgs} 14 W / 12 L / 6 T, $p = 0.85$; \texttt{bgs}
+4 W / 14 L / 11 T, $p = 0.031$, i.e. significantly \emph{worse}.
+\end{keybox}
+
+## Why the inference was wrong
+
+The argument rested on a **census** --- the excluded class rarely *contains* a
+QTN --- and concluded it would rarely *find* one. Those are different claims, and
+only the second was relevant. A cluster can contribute a true detection by
+tagging a QTN it does not contain, which is precisely the satellite category
+separated out earlier in this work; the error was made anyway. Removing
+3.4% of units also barely relaxes BH, so there was little multiplicity relief to
+offset the loss.
+
+## The falsification test, and the conclusion it corrects
+
+Four filters were tested --- $ld_w$ top-$k$, MAF, cluster size, and geometric
+exclusion --- all strongly enriched for QTN-bearing units, and none improved
+precision-recall. That was recorded here as *"enrichment for containing a QTN is
+not the quantity that predicts detection performance"*.
+
+**That claim was too strong, and a direct test refutes it.** Two restrictions of
+matched size were run: keep **only** the 30-fold-enriched class (long-and-dense),
+and keep **only** the 0.7-fold class (long-and-sparse).
+
+```{r inv, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrr@{}}\n\\toprule\n")
+cat("Restriction & flagged & contains QTN & TP & precision & PR \\\\\n\\midrule\n")
+cat("only long-and-\\textbf{dense} (30$\\times$) & 4.5 & 1.0 & 1 & \\textbf{0.333} & 0.0359 \\\\\n")
+cat("only long-and-sparse (0.7$\\times$) & 5.0 & 1.0 & 1 & 0.082 & 0.0147 \\\\\n")
+cat("\\midrule\n")
+cat("Simes, all clusters & 10.0 & 3.0 & 3 & 0.229 & \\textbf{0.0464} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{Enrichment does predict precision.} At matched size the QTN-rich class
+beats the QTN-poor one in 34 of 50 non-tied panels ($p = 0.015$) with four times
+the precision, 0.333 against 0.082. The earlier claim is withdrawn.
+
+\textbf{But no restriction beats using every cluster} --- long-sparse-only
+13 W / 42 L ($p = 1\times10^{-4}$), long-dense-only 17 W / 37 L ($p = 0.009$).
+Each throws away about two thirds of the recoverable QTN, and the recall lost
+always exceeds the precision gained.
+
+The corrected statement is narrower and accounts for all four failures without
+the stronger claim: \emph{enrichment predicts precision within a restriction, but
+no restriction beats using all clusters.} That is also why the geometric
+exclusion actively hurt.
+\end{keybox}
+
+The test also **measures** the census-versus-detection gap that was previously
+only argued. Long-and-sparse contains 1 QTN of 40, yet reaches a median dedup TP
+of 1 and recall 0.080 --- so it recovers loci by **tagging variants it does not
+contain**. A class can be nearly empty of causal positions and still make true
+detections, which is exactly the step that invalidated the exclusion arm's
+rationale.
+
+The companion document's conclusion is unaffected: complexity reduction helps by
+changing what is tested, and hence what BH controls. What is now withdrawn is the
+supporting argument that enrichment is irrelevant to detection --- it is not,
+it simply cannot be exploited by restriction.
+
+One arm-level observation, untested: long-and-dense-only scores 0.0489 in the
+`nobgs` arm against **0.0059** in `bgs`, an eightfold difference far larger than
+any other arm's. Consistent with background selection breaking the extended-LD
+blocks that define the class, but not established.
+
+Two claims made in passing are also withdrawn. Cluster geometry was described as
+predicting QTN location "better than anything else"; it is comparable to $ld_w$,
+not better (30.4-fold against roughly 31-fold at matched selectivity). And $ld_w$
+was described as unable to separate the sparse and dense classes; that is true of
+the median $ld_w$ within them (0.0105 against 0.0099) but does not make $ld_w$ a
+poor selector overall, which it is not.
+
+# Three deferred analyses, reported {#sec:deferred}
+
+## Does the result survive the newer decay settings?
+
+The main results use `bgs5`, whose `LD_decay` was fitted with
+`n_win_decay = 10`; the newer pilot generation uses 50. Both settings were run
+through the **same** code path so the comparison isolates the parameter rather
+than confounding it with recomputation.
+
+```{r rec, results="asis"}
+cat("\\begin{tabular}{@{}lrr@{}}\n\\toprule\n")
+cat("Setting & fitted half-decay & units per panel \\\\\n\\midrule\n")
+cat("\\texttt{n\\_win\\_decay = 50} & 39.7 kb & 85,440 \\\\\n")
+cat("\\texttt{n\\_win\\_decay = 10} & 53.7 kb & 85,888 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+Paired over 80 panels at $k = 5{,}000$, 50 kb: $ld_w$ 10 W / 17 L / 13 T
+($p = 0.25$), cluster size 12 W / 14 L / 14 T ($p = 0.85$). **No difference**,
+so the untested exposure recorded earlier is closed.
+
+\begin{keybox}
+\textbf{But the manipulation is far weaker than claimed.} Through one code path
+the two settings give 39.7 against 53.7 kb --- a factor of \textbf{1.35}, not the
+4.2 measured between \texttt{bgs5} and the pilot tracks. Most of that original
+gap was therefore \emph{between generations} --- different simulations, different
+maps --- and not attributable to \texttt{n\_win\_decay}. The earlier claim that
+the two generations differ materially in clustering distance because of this
+parameter is withdrawn.
+\end{keybox}
+
+## Where does the $k$ curve turn?
+
+```{r extk, results="asis"}
+cat("\\begin{tabular}{@{}rrrr@{}}\n\\toprule\n")
+cat("$k$ & win \\% & non-tied panels & median gain \\\\\n\\midrule\n")
+cat("500 & 58 & 57 & 0 \\\\\n")
+cat("1,000 & 63 & 65 & +1 \\\\\n")
+cat("5,000 & 79 & 66 & +1 \\\\\n")
+cat("20,000 & 100 & 47 & +1 \\\\\n")
+cat("40,000 & 100 & 27 & 0 \\\\\n")
+cat("60,000 & 100 & 13 & 0 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+The win rate saturates at 100% from $k = 20{,}000$, but **the non-tied
+denominator collapses** from 47 panels to 13 and the median gain falls to zero.
+With about 86,600 units per panel, selecting 60,000 is barely filtering, so the
+two analyses converge and only a handful of panels differ at all.
+
+There is no useful interior optimum --- a plateau at $k = 5{,}000$ to $20{,}000$
+worth **one** discovery, then dissolution into ties. "100% at $k = 20{,}000$"
+must never be quoted without its denominator.
+
+## Do the surrogate nulls exercise structure?
+
+```{r subsp, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("Basis & PC1--3 & PC1--10 & PC1--20 & PC1--50 \\\\\n\\midrule\n")
+cat("\\texttt{env\\_orth} surrogates & 0.009 & 0.098 & 0.102 & 0.109 \\\\\n")
+cat("\\texttt{genetic} surrogates & 0.002 & 0.009 & 0.013 & 0.020 \\\\\n")
+cat("observed data & \\multicolumn{4}{c}{$\\approx$ 0.40} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent $R^2$ of the association signal on the leading GRM subspace. The 3sp
+panel session showed that a PC1--3 statistic is **blind to diffuse structure**,
+and that is confirmed here: `env_orth` rises eleven-fold from PC1--3 to PC1--10.
+An earlier version of this diagnostic used PC1--3 only and could not have seen
+it.
+
+The conclusion nonetheless survives the better measurement. At PC1--10 the
+observed data sits at 0.40 while `env_orth` reaches 0.098 and `genetic` 0.009.
+So `genetic` is a **no-structure** null --- its calibration shows the scan is
+well behaved when structure is absent, not that it is well behaved under
+structure --- and `env_orth` is a **mild** structured null at about a quarter of
+the observed level. The 83% protective effect of filtering reported in
+Section~\ref{sec:fdr} therefore stands as a weak-structure measurement, which is
+what was claimed, but the earlier reasoning rested on a statistic that could not
+have established it.
+
+# Withdrawn: the confounding mechanism relayed from the panel session
+
+An earlier version of this document and several reports to PK carried a
+hypothesis from the 3sp panel session: that their long-span false positives were
+long-range LD manufactured by allele-frequency covariance among structured
+populations, and that this failure mode was structurally absent from a lattice
+genome. **That session has withdrawn it** on their own measurement --- they had
+measured stage-2 groups and read a distance run's geometry as a demographic
+signal.
+
+Their follow-up hypothesis, that the long-and-dense and long-and-sparse classes
+are two different kinds of object (a coherent stage-1 block against a chained
+stage-2 distance run), was tested here and **does not transfer**:
+
+```{r coh, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("Class & median $n$ & median span & ends $r^2$ & ratio to adjacent \\\\\n\\midrule\n")
+cat("short & 4 & 24.4 kb & 0.760 & 0.87 \\\\\n")
+cat("long \\& sparse & 7 & 305.7 kb & 0.780 & 0.86 \\\\\n")
+cat("long \\& dense & 15 & 154.3 kb & 0.791 & 0.83 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Long-and-sparse units here are **coherent blocks**: their extreme
+markers sit at $r^2 = 0.78$, indistinguishable from long-and-dense, against the
+0.36 ratio the panel session measures for their chained runs. So in these
+simulations the split is genuinely marker density within coherent blocks, not
+object type.
+
+\begin{keybox}
+\textbf{Which leaves the enrichment difference unaccounted for at this point in
+the work.} It is largely resolved in Section~\ref{sec:opportunity}. Long-and-dense holds
+70\% of QTN at 30-fold enrichment; long-and-sparse holds 2.5\% at 0.7-fold. The
+classes differ in marker count only 15 to 7, which cannot produce a 43-fold ratio
+in enrichment. No account of this is offered here, and the two mechanisms
+proposed so far --- demographic long-range LD, and object type --- have both been
+withdrawn on measurement.
+\end{keybox}
+
+# A third account of the enrichment, refuted {#sec:centrality}
+
+The 43-fold difference between long-and-dense and long-and-sparse clusters has
+now had three proposed mechanisms, and all three have failed on measurement.
+
+The third was mine: **selection extends LD around a causal site, so a QTN
+manufactures the long dense block around itself** rather than dense blocks being
+where QTN happen to sit. It fits the observation that QTN-bearing clusters carry
+a median of about 55 markers against a genome-wide median of 1.
+
+It makes a prediction that needs no matching and no assumptions about
+recombination --- suggested by the 3sp panel session --- **the block should be
+centred on the QTN**. A low-recombination block has no reason to be centred on
+anything.
+
+```{r centr, results="asis"}
+cat("\\begin{tabular}{@{}lrr@{}}\n\\toprule\n")
+cat("Statistic & observed & expected if not centred \\\\\n\\midrule\n")
+cat("relative position, mean & 0.492 & 0.500 \\\\\n")
+cat("$|{\\rm rel} - 0.5|$, mean & 0.269 & 0.250 \\\\\n")
+cat("in the central third & 33\\% & 33\\% \\\\\n")
+cat("in the outer fifth & 27\\% & 20\\% \\\\\n")
+cat("\\midrule\n")
+cat("$t$-test vs 0.25 & \\multicolumn{2}{r}{$p = 0.13$} \\\\\n")
+cat("KS vs Uniform & \\multicolumn{2}{r}{$D = 0.073$, $p = 0.34$} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent 165 QTN-bearing clusters with at least 5 markers, both BGS arms, five
+environments. Median cluster size 36 markers (nobgs) and 28 (bgs), median span
+about 235 kb in both.
+
+\begin{keybox}
+\textbf{QTN are uniformly placed within their clusters.} The distribution is
+indistinguishable from uniform and if anything slightly \emph{edge}-biased ---
+27\% in the outer fifth against 20\% expected. The selection account is refuted.
+
+What survives is a constraint on any future explanation: whatever makes
+long-and-dense clusters QTN-rich operates \textbf{independently of where in the
+block the QTN sits}. That favours a passive account --- dense blocks form for
+their own reasons and QTN inside them are grouped that way --- over anything
+causal radiating outward from the variant.
+\end{keybox}
+
+Caveats: the test uses clusters of at least 5 markers, so it says nothing about
+smaller ones, and edge effects are conceivable if clustering tends to terminate
+at markers with unusual LD. Neither seems able to hide a centring signal of the
+size the account requires, but the test is not airtight.
+
+**The enrichment is largely accounted for by the opportunity null**
+(Section~\ref{sec:opportunity}), which is not a mechanism but the absence of one.
+Three mechanisms are on the record as refuted rather than deleted: demographically manufactured long-range LD
+and an object-type distinction, both from the panel session and both withdrawn on
+their own measurements; and selection-manufactured blocks, withdrawn here.
+
+# The opportunity null accounts for most of the enrichment {#sec:opportunity}
+
+Three *mechanisms* for the 43-fold difference were proposed and refuted. The
+resolution was not a fourth mechanism but the **absence** of one, proposed by the
+3sp panel session: a QTN is a marker position, so the chance that a cluster
+**contains** one scales with its marker count. The enrichment was computed per
+**unit**, while opportunity is per **marker**.
+
+```{r opp, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrr@{}}\n\\toprule\n")
+cat("Class & \\% units & \\% markers & \\% QTN & fold / unit & fold / marker \\\\\n\\midrule\n")
+cat("long \\& dense & 2.30 & 21.05 & 70.0 & \\textbf{30.4} & \\textbf{3.33} \\\\\n")
+cat("long \\& sparse & 3.36 & 11.16 & 2.5 & 0.7 & 0.22 \\\\\n")
+cat("short \\& dense & 39.06 & 47.47 & 27.5 & 0.7 & 0.58 \\\\\n")
+cat("singleton & 53.61 & 18.85 & 0.0 & 0.0 & 0.00 \\\\\n")
+cat("short \\& sparse & 1.67 & 1.47 & 0.0 & 0.0 & 0.00 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+Long-and-dense is 2.3\% of units but \textbf{21\% of markers}. Per marker the
+enrichment falls from \textbf{30.4-fold to 3.3-fold} --- about nine tenths of it
+was denominator. The null also explains the rest of the table: every class moves
+toward 1 except long-and-dense, which stays above, and long-and-sparse, which
+falls to 0.22 and is genuinely depleted even after accounting for opportunity.
+
+It also predicts the uniform placement measured in
+Section~\ref{sec:centrality}: under pure opportunity nothing radiates from the
+QTN, so its position within the cluster should be uniform, which is what a KS
+test finds ($p = 0.34$). All three refuted mechanisms predicted centring.
+\end{keybox}
+
+**Both denominators are reported rather than one replacing the other.** The
+classes are defined partly by density, so normalising by marker share partly
+defines the effect away, and the per-unit figure is not simply wrong: it is the
+right number for *which units should I examine*, while the per-marker figure
+answers *is causal variation concentrated here*. They are answers to different
+questions.
+
+## An independent precedent, and a warning about how to control it
+
+Paper 1's pruning benchmark ran the same control on a sister statistic --- how
+often $w_j$-selected clusters contain a marker tagging a detectable QTN --- and
+reports the cost explicitly:
+
+```{r prec1, results="asis"}
+cat("\\begin{tabular}{@{}lr@{}}\n\\toprule\n")
+cat("top 99 clusters, uncontrolled base rate & 103.6-fold \\\\\n")
+cat("top 99 clusters, size-matched controls & 6.6-fold \\\\\n")
+cat("\\midrule\n")
+cat("attributed to size coupling & \\textbf{94\\%} \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent with the coupling visible in the same place: a median of 16.3 markers
+in their top 99 against 3 across all clusters, against 15 and 1 here. Two
+independent analyses in the same pipeline family, two different estimators of the
+correction --- marker-share normalisation here, size-matched controls there ---
+and both find roughly 90\% of the effect is the coupling, leaving residuals of
+3.3-fold and 6.6-fold.
+
+\begin{keybox}
+\textbf{A warning taken from that section, for anyone repeating the control with
+matching rather than normalisation:} exact size-matching balances perfectly but
+thins the control pool until a cluster returns as its own control, dragging the
+fold toward 1. Their matching used a caliper of 0.05 in $\log_{10}$ markers with
+200 null draws per cell, deliberately comparable rather than exact.
+\end{keybox}
+
+**Status of the question.** Largely resolved: most of the 43-fold was opportunity.
+
+The residual is better described as a **spread than as an enrichment**. Under
+pure opportunity every class should sit at 1.0 per marker. The two long classes
+read **3.33 and 0.22** --- so long-and-dense is enriched 3.3-fold *and*
+long-and-sparse is depleted 4.5-fold, a 15-fold spread in which the depletion is
+as large as the enrichment. A mechanism that only enriches dense units would not
+account for it, which makes the **depleted** arm the more diagnostic half should
+the residual ever matter.
+
+No account is offered. Four mechanisms have been proposed for a quantity that
+turned out to be nine tenths arithmetic, and "clusters with more markers contain
+more QTN, plus a residual spread" is where this closes.
+
+# The distance threshold: the parameter nobody was checking {#sec:dthr}
+
+Every script in this module hand-sets `distance_threshold = 1e5`. So does the
+panel session's. The package does **not** require this: with
+`distance_threshold = NULL` it derives a per-chromosome value,
+$d = d_{\text{from\_rho}}(a_{\text{pred}}, \rho) = \rho/(a(1-\rho))$, exactly as
+`min_r2` is already derived. Both sessions had been overriding a rule with a
+constant, and neither had noticed.
+
+## A withdrawn result: "inert on bgs5"
+
+This section first reported that the substitution is **inert** here, on the
+grounds that only 0.004% of gaps exceed 1e5 and the derived value exceeds the
+largest observed gap on 20 of 20 chromosomes. **That was computed on the wrong
+quantity and the conclusion is withdrawn.** 2c found it by reading the source:
+
+```r
+split_by_distance <- function(pos_min, pos_max, distance_threshold) {
+  gap <- pos_min[ord] - c(NA, pos_max[ord][-length(ord)])
+  new_run <- is.na(gap) | gap > distance_threshold
+```
+
+\noindent The gap is between consecutive **stage-1 clusters**, and it is applied
+to the **flagged subset only** --- clusters with any member $ld_w >$
+`ld_w_threshold` (`ld_prune_and_eMLG.R:389`). Both sessions had computed gaps
+between adjacent *markers* over the whole map. Wrong unit and wrong subset, and
+the subset dominates: flagged clusters are sparse, so gaps between them are far
+larger.
+
+```{r gaps, results="asis"}
+cat("\\begin{tabular}{@{}lrr@{}}\n\\toprule\n")
+cat(" & \\textbf{as first reported} & \\textbf{corrected} \\\\\n\\midrule\n")
+cat("quantity & adjacent markers, whole map & flagged stage-1 clusters \\\\\n")
+cat("gaps exceeding 1e5 & 0.004\\% & \\textbf{1.54\\%} pooled, \\textbf{0.60--10.94\\%} by setting \\\\\n")
+cat("derived $>$ largest gap & 160 of 160 chr & \\textbf{85 of 160} \\\\\n")
+cat("split points lost, 1e5 $\\to$ derived & (none) & \\textbf{68--100\\%} in every setting \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent So the substitution is **consequential on both datasets**, and the
+inert-versus-dominant asymmetry both sessions were reporting does not exist. 2c's
+own figure moves too --- their "4 gaps exceed 1e5" becomes 453, and their
+1,300-fold becomes 9--23-fold --- but their *direction* survives and mine did
+not, because mine was the claim that nothing happens.
+
+\begin{keybox}
+\textbf{The dcap operating point does not transfer across simulation settings
+either, and it is not an independent axis.} Gaps exceeding 1e5 span 0.60\% to
+10.94\% across the eight settings, an 18$\times$ spread, tracking the number of
+flagged clusters (1,272 to 32,318, a 25$\times$ spread) at
+Spearman $= -0.905$. Since \texttt{ld\_w\_threshold} is what sets that count,
+\textbf{\texttt{ld\_w\_threshold} and \texttt{distance\_threshold} are coupled by
+construction} --- a factorial grid cannot vary them orthogonally and read the
+margins separately.
+\end{keybox}
+
+**On the panel the derived threshold is smaller than the hand-set one** --- 3--18
+kb against 100 kb --- so it cuts into the body of the gap distribution rather
+than sitting past the top of it.
+
+\begin{keybox}
+That is an LDscnR calibration issue rather than a parameter choice.
+$d = 19/a$ at $\rho = 0.95$, so the window \textbf{collapses as decay speeds
+up} --- and it carries no term for the size of the feature stage-2 merging
+exists to bridge. Inversions and cold blocks do not shrink because LD decays
+faster elsewhere in the genome. On the panel the derived rule produces a
+\textbf{6 kb median} merge distance on a genome whose motivating feature is a
+430 kb inversion, so the hand-set 1e5 was not an arbitrary constant: it was
+compensating for a formula that cannot reach the features.
+\end{keybox}
+
+# The decay window: 20, not 50 {#sec:window}
+
+Fitting `n_win_decay` at 10 / 20 / 50 with everything else held at the bundles'
+own settings, RNG pinned in the caller (the installed LDscnR predates
+`compute_LD_decay`'s `seed` argument):
+
+```{r win, results="asis"}
+cat("\\begin{tabular}{@{}rrrrrrr@{}}\n\\toprule\n")
+cat("$w$ & windows & median $a$ & $a$ spread & $b$ & $c$ & disagreement \\\\\n\\midrule\n")
+cat("10 & 18 & 1.87e-05 & 5.48$\\times$ & 0.03048 & 0.9936 & 0.273 \\\\\n")
+cat("\\textbf{20} & 38 & 2.56e-05 & 4.35$\\times$ & 0.03048 & 0.9941 & \\textbf{0.095} \\\\\n")
+cat("50 & 96 & 3.18e-05 & 2.99$\\times$ & 0.03048 & 0.9801 & 0.159 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent Paired over files, 20 beats 10 on **9 of 10** (sign $p = 0.021$); 50 is
+5 of 10 against 20 ($p = 1.0$) for 2.5$\times$ the windows.
+
+Two errors on the way, both recorded because they are the kind that survive:
+
+**A five-file subset looked monotone through 50** (0.286 $\to$ 0.088 $\to$
+0.038) and would have supported it. On all ten it is not monotone, and $c$ also
+degrades at 50 --- the wider window changes the character of the fit rather than
+sharpening it. Note $a$'s *spread* keeps shrinking to 50; that compression is
+over-smoothing, not sharpening, so spread is not a quality measure.
+
+**The metric was narrower than its name.** $|a - a_{\text{pred}}|/a_{\text{pred}}$
+reads as distance from a size-corrected prediction, but each bundle holds two
+*equal-size* chromosomes, so $a_{\text{pred}}$ is exactly their mean and the
+deviation is identical for both by arithmetic. It measures between-chromosome
+disagreement within one simulation. The independent unit is the **file**
+($n=10$), not the chromosome ($n=20$); the sign tests were first run at $n=20$ on
+duplicated values.
+
+Also: $b$ is identical across all three windows, which is the check that pinning
+the RNG worked. And $a$ **reorders** --- Spearman$(a_{w10}, a_{w50}) = 0.60$,
+median change 72% --- so any between-chromosome $a$ ranking is not robust to this
+setting.
+
+# The recombination proxy: T1 passes, T2 pre-registered {#sec:proxy}
+
+PK's argument for adapting `distance_threshold` to the local recombination
+landscape rests on LD decay being a usable proxy for it. The sims are the right
+instrument: the true rate is a simulation *input*, and the cM map increments at
+10,123 distinct positions on a 29.9 Mb chromosome --- **roughly 1.1 kb effective
+resolution**, against the panel's 838 bins at a median of 489 kb.
+
+No new fit was needed. `LD_decay$by_chr[[chr]]$decay` already stores a per-window
+$a/b/c$ with start/end.
+
+```{r t1, results="asis"}
+cat("\\begin{tabular}{@{}rrrrrr@{}}\n\\toprule\n")
+cat("$w$ & med span & Spearman vs \\textbf{true} cM/Mb & positive & $a = 0$ & $a>0$ only \\\\\n\\midrule\n")
+cat("5 & 3.77 Mb & 0.690 & 19/20 & 2.44\\% & 0.690 \\\\\n")
+cat("10 & 1.89 Mb & 0.758 & 20/20 & 3.86\\% & 0.758 \\\\\n")
+cat("\\textbf{20} & 1.01 Mb & 0.830 & 20/20 & 6.98\\% & \\textbf{0.782} \\\\\n")
+cat("50 & 0.41 Mb & 0.829 & 20/20 & 12.60\\% & 0.742 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent **T1 passes**: median within-chromosome Spearman +0.757 at the built
+setting, 20 of 20 positive, sign $p = 1.9\times10^{-6}$. An *external* criterion
+therefore also picks $w = 20$, agreeing with \S\ref{sec:window}'s internal one.
+
+**The plateau at 20--50 was an artefact.** The headline figure is a composite of
+two capabilities --- *detecting* cold blocks ($a = 0$, where the median true rate
+is exactly 0.000 at $w \ge 20$) and *tracking* the rate continuously elsewhere.
+Flat from 20 to 50 only because detection improves with resolution while
+continuous tracking degrades, the two cancelling. On the continuous part there is
+a clear peak at 20 and a real fall at 50. **The operational number is 0.782, not
+0.830**, because the $a = 0$ windows are exactly the ones a cap overrides.
+
+## What bgs5 contains
+
+Nemo has no structural variants, so the analogue of an inversion is a contiguous
+zero-recombination block. 24.1% of 50 kb bins have exactly zero recombination:
+**459 blocks, median 100 kb, q90 550 kb, max 3.7 Mb; 55 at or above 430 kb**, 18
+over 1 Mb, 103 Mb of 427 Mb inside one. So bgs5 holds 55 analogues of the single
+feature motivating a local threshold on the panel.
+
+## T2, pre-registered
+
+**T1 does not carry T2.** Cluster geometry is 30$\times$ enriched for containing
+QTN and no restriction built on it beats using every cluster
+(\S\ref{sec:sparse}); a quantity can track truth and still not improve the
+partition. T2 asks whether $d = f(a_{\text{local}})$ beats the flat threshold on
+QTN precision **and** recall; T2b runs it inside versus outside cold blocks,
+where a flat threshold should fail if it fails anywhere. Recorded before running:
+**if T1 passes and T2 fails, the conclusion is that the proxy is sound and the
+pipeline should not use it.**
+
+# Three transfer functions, all refuted the same way {#sec:transfer}
+
+$d = \rho/(a(1-\rho))$ diverges as $a \to 0$, and here $a \to 0$ is a *correct*
+answer. Three fixes were proposed and all three failed:
+
+```{r tf, results="asis"}
+cat("\\begin{tabular}{@{}p{3.6cm}p{11cm}@{}}\n\\toprule\n")
+cat("\\textbf{Proposal} & \\textbf{Why it failed} \\\\\n\\midrule\n")
+cat("Shrink $a_{\\text{local}}$ toward the chromosome fit where the window is poorly determined & The degenerate windows are \\textbf{not} poorly determined. Median true rate 0.083 cM/Mb against 3.310 elsewhere (Wilcoxon $p = 1.1\\times10^{-9}$) at essentially unchanged fit quality (contrast 0.948 against 0.965) --- cold blocks reported correctly. Shrinking erases the signal that motivates locality, and no fit-quality diagnostic separates them. \\\\\n")
+cat("Cap at feature extent (block q90, 550 kb) & An order of magnitude too tight: costs $0.830 \\to 0.656$ to buy nothing a generous cap does not. \\\\\n")
+cat("Floor at feature extent & Measured on the panel: binds on \\textbf{98.4\\%} of windows, so the rule outputs one constant across the genome. A clamp whose lower bound binds almost everywhere is a flat threshold with extra steps. \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+All three act hardest exactly where the local estimate is most informative. Two
+were proposed here and only the third was flagged in advance. The criterion is
+now stated for any fourth proposal: \textbf{check whether it acts most
+aggressively on the windows that motivate locality, before implementing it.}
+\end{keybox}
+
+## Exclusion is not capping, and overstates by 5$\times$
+
+Both sessions quoted *exclusion* numbers as *cap* numbers for several messages.
+A cap is $d \leftarrow \min(d, \text{cap})$ with the window **retained**, so it
+keeps that window's rank against the uncapped ones; removal does not.
+
+```{r capsw, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrrrrr@{}}\n\\toprule\n")
+cat("cap & 250 kb & 550 kb & 1 Mb & 2.1 Mb & 3.7 Mb & 10 Mb & 30 Mb & none \\\\\n\\midrule\n")
+cat("at ceiling & 89.9\\% & 65.1\\% & 45.7\\% & 32.3\\% & 26.2\\% & 17.5\\% & 10.8\\% & 0.0\\% \\\\\n")
+cat("$\\rho$ & 0.381 & 0.656 & 0.755 & 0.793 & 0.803 & 0.826 & 0.829 & 0.830 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent The cost is **monotone in the cap**, so there is no optimum and "which
+cap" is the wrong question. A 10 Mb ceiling costs 0.004 while bounding a quantity
+that otherwise reaches **4,961 Mb on a 30 Mb chromosome**. The cap belongs where
+the derived distance stops being physically meaningful, not where the features
+stop.
+
+A baseline trap, caught only by sweeping: capping at 2.1 Mb first appeared to
+*improve* things (0.782 $\to$ 0.793). It does not --- 0.782 is the $a > 0$
+subset, since $d = \infty$ is not finite and those windows drop out, while the
+capped series retains them tied at the ceiling. Like-for-like uncapped is 0.830.
+
+# The minimum-cluster-size floor is inert above 2 {#sec:floor}
+
+The panel session obtains 1 discovery at floor 2 and 14 at floor 8, raising
+whether the higher floor *detects* more or merely escapes multiplicity --- BH
+over 2,631 units against 790,578 markers being a 300$\times$ smaller correction.
+The sims can measure the recall cost the panel cannot. 80 panels, floor applied
+**before** BH so the multiplicity genuinely changes:
+
+```{r fl, results="asis"}
+cat("\\begin{tabular}{@{}lrrrr@{}}\n\\toprule\n")
+cat("arm & units tested & discoveries & precision & recall \\\\\n\\midrule\n")
+cat("single-SNP & 292,194 & 74.9 & 0.187 & \\textbf{0.378} \\\\\n")
+cat("floor 1 & 84,869 & 20.0 & 0.350 & 0.229 \\\\\n")
+cat("floor 2 & 40,590 & 23.0 & 0.338 & 0.245 \\\\\n")
+cat("floor 5 & 12,723 & 23.9 & \\textbf{0.393} & 0.253 \\\\\n")
+cat("floor 8 & 6,657 & 24.3 & 0.372 & 0.261 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent The means suggest a gentle rise. Paired across panels with ties, it is
+not there: floor 2 $\to$ 8 gives recall 35 W / 22 L / 23 T ($p = 0.11$),
+precision 38 / 30 / 12 ($p = 0.40$), discoveries 43 / 26 / 11 ($p = 0.053$).
+**Above 2 the floor is inert.**
+
+A predicted asymmetry is therefore **refuted**: the claim was that if the panel
+gains while the sims *lose*, that is what multiplicity relief predicts. The sims
+neither gain nor lose, so there is no asymmetry to interpret. What survives is
+weaker --- if the panel's effect is relief it should scale with the multiplicity
+escaped, and 6$\times$ here yields nothing detectable while 300$\times$ there
+yields 14$\times$. Consistent with relief; not proof.
+
+\begin{keybox}
+\textbf{Floor 1 $\to$ 2 gains recall and loses precision} (16 W / 38 L,
+$p = 0.0038$): removing singletons lowers the multiplicity, so more clusters
+clear BH. Floor 2 remains right on the \emph{structural} ground --- Simes over a
+singleton is that marker's own $p$, so below 2 the cluster test is not a cluster
+test --- but it must not be sold as a precision improvement, because measured it
+is not one.
+\end{keybox}
+
+\noindent And the headline trade-off is unchanged at every floor: single-SNP
+beats every floor on recall (0 W / 63 L against floor 2) and loses to every floor
+on precision (60 W / 11 L). The floor moves along the clustering trade-off; it
+does not change it.
+
+# What the empirical panel can and cannot do {#sec:panel-limits}
+
+Two independent findings landed on the same conclusion, so it is stated once:
+
+- **Truth resolution.** The panel's narrowest window (362 kb) is 0.74$\times$ its
+  own 489 kb map bins --- finer than what it is scored against --- so its
+  correlation decline below roughly 500 kb is its map running out, not the proxy
+  degrading. The sims' narrowest is 367$\times$ *coarser* than truth.
+- **Cap inertness.** Every cap moves the panel's correlation by at most 0.005,
+  because its divergent windows are 0.6--1.8% of the total against a third here.
+
+\begin{keybox}
+\textbf{The panel can falsify the proxy but cannot calibrate it}, because
+calibration needs variation in exactly the regime the panel lacks. This is a
+property of the \emph{stickleback map and its LD structure}, not of empirical
+data in general --- a species with a dense pedigree map would not have the
+limit.
+\end{keybox}
+
+\noindent The two datasets also differ structurally, confirmed by three
+independent routes: near-zero $a$ rises with resolution here (2.44 $\to$ 12.60%)
+and *falls* there (1.75 $\to$ 0.64%); capping lowers the correlation here and
+raises it there; and the panel has no zero-recombination bins at all. bgs5 has a
+cold-block regime and the panel does not. Consequently, should T2 succeed, the
+honest claim is that $a_{\text{local}}$ **helps in the cold-block regime and is
+inert to degenerate outside it** --- not that it helps in general and the panel
+merely failed to confirm.
+
+# Provenance
+
+```{r gens, results="asis"}
+cat("\\begin{tabular}{@{}p{2.4cm}p{3.4cm}p{2.7cm}p{5.7cm}@{}}\n\\toprule\n")
+cat("\\textbf{Generation} & \\textbf{Maps} & \\textbf{Half-decay} & \\textbf{Used for} \\\\\n\\midrule\n")
+rows <- list(
+ c("\\texttt{bgs5}","MAP\\_RES 3.3e-5; 31.5\\% of markers share a position","55.8 kb (18 win/chr)","\\textbf{all cluster-level results and both manhattans}"),
+ c("\\texttt{pilot\\_v2\\_v05c1}","MAP\\_RES 3.3e-6; no shared positions","13.3 kb (95 win/chr)","marker-level power only; \\texttt{V0.5\\_c1} only"),
+ c("\\texttt{analysis\\_inputs}","pre-bgs5","not compared","null behaviour only; \\texttt{V2\\_c1}, nobgs, \\texttt{gc\\_mode = none}"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\noindent At $\rho = 0.5$ the half-decay **is** the stage-2 clustering distance,
+so the units themselves would differ on the newer maps. The difference traces to
+decay fitting scale, not the maps: same-position marker pairs show $r^2$ of 0.023
+against 0.022 for pairs 1 bp--10 kb apart.
+
+Scripts: `filter_then_test_clusters.R`, `filter_then_test.R`, `filter_fdr_check.R`,
+`stratified_paired_table.R`, `recluster_filter_test.R`, and the three `plot_*` scripts.
+For \S\ref{sec:dthr}--\S\ref{sec:panel-limits}: `operating_points.R`,
+`decay_window_test.R`, `proxy_T1_local_decay.R`, `proxy_T1_by_window.R`,
+`cap_cost.R`, `floor_sweep.R`, `dcap_operating_point.R`.
+Parameters: $\alpha$ 0.05; stage-2 `min_r2_rho` 0.5, `distance_threshold` 1e5;
+scoring `dmax_cap` 1e5. Commits `60c8134`, `88797ff`, `7e595b5`.
+
+Every comparison is **paired within panel**, reported with wins, losses, ties, a
+median with IQR, and a sign-test p-value. Differences of means are not used.

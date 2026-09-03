@@ -1,0 +1,5 @@
+rule,spearman_vs_prototype,mean_S_G
+any,0.372,0.2353
+ovl50,0.372,0.2353
+rec50,0.065,0.0871
+span,0.372,0.2353

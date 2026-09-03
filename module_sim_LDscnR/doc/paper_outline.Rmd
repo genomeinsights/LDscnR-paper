@@ -1,0 +1,351 @@
+---
+title: "Paper outline"
+subtitle: "Testing LD clusters instead of SNPs --- structure, evidence inventory, and gaps"
+author: "module_sim_LDscnR"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  pdf_document:
+    number_sections: true
+    toc: true
+    toc_depth: 2
+    latex_engine: pdflatex
+geometry: margin=2.4cm
+fontsize: 10pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage[table]{xcolor}
+  - \definecolor{shade}{HTML}{F2F5F6}
+  - \definecolor{gapc}{HTML}{FBF3EE}
+  - \usepackage{mdframed}
+  - \newmdenv[backgroundcolor=shade,linewidth=0pt,skipabove=8pt,skipbelow=8pt]{keybox}
+  - \newmdenv[backgroundcolor=gapc,linewidth=0pt,skipabove=8pt,skipbelow=8pt]{gapbox}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+suppressMessages({library(knitr)})
+```
+
+# The argument in one paragraph
+
+A genome scan tests SNPs; the object of interest is a locus. Benjamini--Hochberg
+controls the false discovery proportion **among the units tested**, so a
+single-SNP scan controls it among SNPs while being judged against a locus-level
+truth. On one simulated panel, 2,467 significant SNPs were **132 distinct LD
+clusters**, with the rejected set 6.3 times more redundant than the genome as a
+whole --- so "5% FDR over 2,467 discoveries" is a guarantee about a different
+object from the one being counted. Testing near-independent LD clusters aligns
+the two. The paper is that argument plus a pipeline that derives its units from
+the data's own LD decay rather than from chosen constants.
+
+\begin{keybox}
+\textbf{The central claim requires no simulation.} It follows from what BH
+controls. Everything measured below is supporting evidence for a claim that
+stands on its own, which is an unusual and exploitable position: the simulations
+show the size of the effect, not whether it exists.
+\end{keybox}
+
+# Why it is one paper and not four
+
+Each link is load-bearing rather than merely sequential. Remove any one and the
+argument fails at a specific point.
+
+```{r chain, results="asis"}
+cat("\\begin{tabular}{@{}p{3.4cm}p{10.8cm}@{}}\n\\toprule\n")
+cat("\\textbf{Link} & \\textbf{What fails without it} \\\\\n\\midrule\n")
+rows <- list(
+ c("LD-decay estimation","The clustering thresholds become chosen constants. The decay fit derives \\texttt{min\\_r2} and the merge distance \\emph{per chromosome}, so a threshold means the same thing on chromosomes with different recombination."),
+ c("$ld_w$","No units. $ld_w$ is what makes a cluster a cluster --- and, separately, is shown \\emph{not} to work as a filter within them, a negative that earns its place by ruling out the obvious alternative use."),
+ c("Two-stage reduction","The reported FDR is over SNPs. This is the claim."),
+ c("Association test","Nothing --- and that is the point. EMMAX and LFMM give the same conclusions, which is what shows the result is a property of the units rather than of any test."),
+ c("Consistency analysis","No guidance on which derived thresholds the answer depends on, so the pipeline is not usable by anyone else."))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+# Proposed structure
+
+## 1. Introduction
+
+The redundancy problem, stated as an FDR-target mismatch rather than as a
+multiple-testing complaint. Existing LD-aware scans mostly prune or clump *after*
+testing; this reverses the order and makes the correction match the unit.
+
+## 2. Methods
+
+2.1 Decay estimation and the derived thresholds. 2.2 $ld_w$. 2.3 Two-stage
+complexity reduction. 2.4 Cluster-level testing --- **Simes over members**, which
+beat every single-marker summary tested. 2.5 The consistency analysis.
+
+## 3. Results
+
+```{r res, results="asis"}
+cat("\\begin{tabular}{@{}p{4.4cm}p{6.4cm}p{3.2cm}@{}}\n\\toprule\n")
+cat("\\textbf{Section} & \\textbf{Headline} & \\textbf{Status} \\\\\n\\midrule\n")
+rows <- list(
+ c("3.1 The redundancy problem","2,467 significant SNPs are 132 clusters; small-$p$ tail 6.3$\\times$ more redundant than the genome","\\textbf{done}"),
+ c("3.2 What clustering buys","Precision 2$\\times$ higher (62 of 71 panels). A median 51 of 67 single-SNP flags tag no QTN, against 7 of 10","\\textbf{done}"),
+ c("3.3 How to summarise a cluster","Simes $>$ eMLG $>$ representative $>$ min-$p$ $>$ highest-$ld_w$","\\textbf{done}"),
+ c("3.4 The metric is a claim","$F_\\beta$ crossover at $\\beta \\approx 2$; below it clustering wins, above it does not","\\textbf{done}"),
+ c("3.5 Engine replication","EMMAX and LFMM: same composition result, same crossover","\\textbf{done}"),
+ c("3.6 Sensitivity","Two axes --- selection (27-cell grid) and test (engine) --- reported separately","\\textbf{not run}"),
+ c("3.7 Empirical demonstration","---","\\textbf{missing}"))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+## 4. What does not work
+
+Short, and it earns its place by ruling out the obvious things a reader will
+propose. The C-score as a ranking statistic; four filters ($ld_w$ top-$k$, MAF,
+cluster size, geometric exclusion) all strongly enriched for QTN-bearing units
+and none improving precision-recall. **Enrichment predicts precision within a
+restriction, but no restriction beats using every cluster** --- the recall lost
+always exceeds the precision gained.
+
+## 5. Limitations
+
+
+# Parameters that transfer, and the currency each transfers in
+
+The pipeline has three tunable thresholds. All three were being quoted as
+*numbers*, and measuring what each number actually does --- across the eight
+simulation settings, and against the stickleback panel --- shows that **each
+transfers in a different currency, and for two of them the naive choice is
+wrong.**
+
+```{r transfer, results="asis"}
+cat("\\begin{tabular}{@{}p{2.5cm}p{4.1cm}p{3.5cm}p{4.0cm}@{}}\n\\toprule\n")
+cat("\\textbf{Parameter} & \\textbf{Across sim settings} & \\textbf{To the panel} & \\textbf{Transfers as} \\\\\n\\midrule\n")
+cat("\\texttt{distance\\_} \\texttt{threshold} 1e5 & \\textbf{fails}: 0.60--10.94\\% of flagged-cluster gaps exceed it, an 18$\\times$ spread; switching to the derived value removes \\textbf{68--100\\%} of split points in every setting & \\textbf{also consequential}, in the opposite direction: derived is 3--18 kb, \\emph{below} the hand-set value & an \\textbf{operating point} (gap exceedance), never a bp value --- but the operating point itself does not transfer \\\\\n\\addlinespace\n")
+cat("size floor 2 & \\textbf{stable}: retains 46.0--51.2\\% of clusters across all eight settings, a 1.1$\\times$ spread & \\textbf{does not}: 17.0\\%, a 2.8$\\times$ gap & a \\textbf{structural value} --- Simes over a singleton \\emph{is} that marker's $p$ --- with the differing retention reported as a result \\\\\n\\addlinespace\n")
+cat("\\texttt{ld\\_w\\_} \\texttt{threshold} 0.025 & \\textbf{fails}: retains 5.1\\% to 48.1\\% of markers, a 9.4$\\times$ spread & panel's 28\\% sits \\emph{inside} the simulation range & \\textbf{marker retention}, matched per dataset; the numeric value carries no meaning \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{Only the size floor transfers, and pooling hid both failures.} Averaged
+over cells, \texttt{ld\_w} retention reads 55/20/5\% against the panel's
+54/28/13\% --- close enough to call the axis well matched, which is what was
+reported to the panel session. Broken out, that 20\% is the average of 5.1\% and
+48.1\%.
+
+\textbf{The two failing axes are also not independent, and this is a package
+property.} Gaps exceeding the distance threshold track the number of flagged
+stage-1 clusters (Spearman $-0.905$), and \texttt{ld\_w\_threshold} is what sets
+that count. Sweeping \texttt{ld\_w\_threshold} alone moves the
+\texttt{distance\_threshold} operating point \textbf{37-fold} here (0.73\% to
+27.0\% of gaps splitting) and \textbf{2,000-fold} on the panel --- monotone and
+in the same direction on both. So a factorial grid cannot vary these two
+orthogonally and read the margins separately.
+\end{keybox}
+
+\begin{keybox}
+\textbf{And parts of the proposed grid are degenerate, not merely
+non-orthogonal.} A chromosome with no gap above \texttt{distance\_threshold}
+becomes a single run, so stage 2 cannot preserve any structure on it.
+
+\vspace{2pt}\noindent
+\begin{tabular}{@{}lrrrr@{}}
+\texttt{ld\_w\_threshold} & 0.0125 & \textbf{0.025} & 0.05 & 0.10 \\
+degenerate chromosomes (of 160) & 5 & \textbf{0} & 6 & 21 \\
+chromosomes with $<2$ flagged clusters & 0 & 0 & 2 & 44 \\
+\end{tabular}
+
+\vspace{3pt}\noindent Degeneracy appears at \emph{both} ends, and the canonical
+0.025 is the only level tested with none. On the panel the low cell is
+degenerate on the chromosome carrying \emph{Eda}, which dissolves whatever
+\texttt{distance\_threshold} is set to.
+\end{keybox}
+
+## The region, mapped
+
+Two degeneracies bound it, and they are failures of stage 2 rather than poor
+settings: **under-splitting** (no gap exceeds the threshold, so the chromosome
+is one run and whatever stage 2 exists to preserve dissolves) and
+**over-splitting** (every gap exceeds it, so no merge is possible and stage 2 is
+a no-op). A third state, **dropped**, is a chromosome retaining fewer than two
+flagged clusters, which leaves the analysis silently.
+
+```{r admis, results="asis"}
+cat("\\begin{tabular}{@{}lrrrrr@{}}\n\\toprule\n")
+cat("\\multicolumn{6}{@{}l}{\\textbf{chromosomes admissible (\\%)} --- 160 chromosomes, 8 simulation settings} \\\\\n")
+cat("\\texttt{ld\\_w} $\\backslash$ dcap & 10 kb & 50 kb & \\textbf{100 kb} & 500 kb & 5 Mb \\\\\n\\midrule\n")
+cat("0.00625 & 100 & 100 & 95 & 26 & 0 \\\\\n")
+cat("0.0125 & 100 & 100 & 97 & 57 & 4 \\\\\n")
+cat("\\textbf{0.025} & 100 & 100 & \\textbf{100} & 64 & 29 \\\\\n")
+cat("0.05 & 96 & 96 & 95 & 81 & 26 \\\\\n")
+cat("0.10 & 53 & 54 & 53 & 45 & 21 \\\\\n")
+cat("\\midrule\n\\multicolumn{6}{@{}l}{\\textbf{merge opportunity (\\% of flagged clusters in a run with another)}} \\\\\n\\midrule\n")
+cat("0.00625 & 98 & 100 & 100 & 100 & 100 \\\\\n")
+cat("\\textbf{0.025} & 89 & 97 & \\textbf{98} & 100 & 100 \\\\\n")
+cat("0.10 & 70 & 77 & 80 & 88 & 93 \\\\\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+\begin{keybox}
+\textbf{The two criteria pull in opposite directions, which is why the region
+has an interior rather than an edge.} Admissibility wants \emph{small} dcap;
+merge opportunity wants \emph{large} dcap. The canonical point sits near the
+corner --- 100\% admissible at 98\% merge opportunity --- which is a
+justification it did not previously have, since it was chosen before either
+quantity was measured.
+
+\textbf{And the region moves between simulation settings of the same
+simulator.} The widest dcap holding 95\% of chromosomes spans 50--1,000 kb
+across the four cells at \texttt{ld\_w} 0.0125, and 25--1,000 kb at 0.05, where
+one cell has \emph{no} admissible dcap at all. Only \texttt{ld\_w} = 0.025 is
+100\% admissible in all four. So this is not a sims-versus-panel property: it
+varies within one simulator under one demographic model.
+\end{keybox}
+
+\noindent **Under-splitting is the only degeneracy that matters in practice** ---
+21--46% of chromosome-cells against 0--6% over-split. Stage 2 becoming a no-op
+is a theoretical risk; a chromosome dissolving into a single run is a real one.
+And `ld_w` = 0.10 is inadmissible everywhere (35--72% by cell) because 27.5% of
+chromosomes fall below two flagged clusters and leave without an error.
+
+\begin{keybox}
+\textbf{A withdrawn claim, and how it was caught.} This table first read
+"\texttt{distance\_threshold} inert everywhere, derived exceeds the largest gap
+on 160 of 160 chromosomes". That was computed on adjacent-marker gaps over the
+whole map; \texttt{split\_by\_distance()} uses gaps between consecutive
+\emph{flagged stage-1 clusters}. Wrong unit, wrong subset, and the correct
+quantity reverses the conclusion. How it was found matters more than that it was found. The panel session did not
+read the source out of rigour: they went to it because two of their own numbers
+could not be reconciled --- a chromosome with zero split points at both 1e5 and
+5e5, which made a known result impossible. \textbf{The trigger was an
+irreconcilable pair of their own numbers, not suspicion of the method.} Neither
+session checked the source until something failed to add up, and both had been
+running the same wrong analysis for a day.
+\end{keybox}
+
+\noindent The practical rule that follows is **different invariants for
+different axes** --- match marker retention on `ld_w`, hold the size floor at an
+identical value and report the differing retention, and specify
+`distance_threshold` by what fraction of gaps it splits rather than in bp. A
+grid whose three axes all read as matched numbers would be comparing three
+different things.
+
+## Why this is a result and not housekeeping
+
+The `distance_threshold` case is the sharpest. The package derives it as
+$d = \rho/(a(1-\rho))$, so the window **collapses as decay speeds up** and
+carries no term for the size of the feature stage-2 merging exists to bridge. On
+the panel that yields a 6 kb median merge distance on a genome whose motivating
+feature is a 430 kb inversion. Here it yields roughly 1 Mb --- which is *not*
+past the top of the flagged-cluster gap distribution, and adopting it would
+remove 68--100% of split points depending on the setting. Identical rule,
+consequential on both datasets, and in opposite directions: too small to span
+the features there, and physically meaningless in its tail here (4,961 Mb
+derived on a 30 Mb chromosome). Three fixes were proposed and all three refuted,
+each acting hardest exactly where the local estimate is most informative.
+
+# What still needs to be done {#sec:todo}
+
+Ordered by what blocks what.
+
+```{r todo, results="asis"}
+cat("\\begin{tabular}{@{}p{0.4cm}p{5.2cm}p{8.4cm}@{}}\n\\toprule\n")
+rows <- list(
+ c("1","\\textbf{Check whether the cells are comparable at all}","\\texttt{ld\\_w\\_threshold} 0.025 retains 5--6\\% of markers in \\texttt{V0.5\\_c1} and 26--48\\% in \\texttt{V0.5\\_c2}. The cell where clustering wins 19/19 is at the most aggressive end. This does not invalidate anything --- unflagged markers are still clustered and tested --- but the cross-cell comparison carrying the headline result has not been checked at matched operating points. \\textbf{Newly surfaced; do this before the sensitivity grid.}"),
+ c("2","\\textbf{The factorial sensitivity grid}","$3\\times3\\times3$, 9 re-clusterings. Now constrained rather than merely specified: the proposed \\texttt{ld\\_w} levels 0.0125/0.025/0.05 are 95--100\\% admissible at dcap 100 kb, so the grid \\emph{is} runnable --- but its cells are not exchangeable, the region moves by simulation cell, and 0.10 must not be added. Report operating points rather than values, never pool across cells, and report the two axes separately."),
+ c("3","$T_2$ / $T_2$b for the local threshold","Scoped down: since the local rule collapses to a flat threshold on the panel, the most $T_2$ can support is \\emph{helps in the cold-block regime, inert to degenerate outside it}. Worth deciding whether that claim is wanted before spending the time."),
+ c("4","\\textbf{An empirical demonstration}","Unchanged and still the largest gap. See below."),
+ c("5","\\textbf{Decide what to do about the hardcoded 1e5}","It appears in roughly 20 scripts. It is \\emph{not} inert -- that claim was withdrawn -- so this is a live choice rather than documentation: adopting the derived rule would remove 68--100\\% of split points and repartition every result. Nothing needs re-running to keep the current results valid, but the choice has to be argued rather than inherited."))
+for (r in rows) cat(paste(r, collapse=" & "), "\\\\\n\\addlinespace\n")
+cat("\\bottomrule\n\\end{tabular}\n")
+```
+
+## Settled since the first draft of this outline
+
+- **`n_win_decay` = 20**, by two independent criteria --- an internal consistency
+  measure and an external one scored against the simulation's true recombination
+  rate. Not 50, which buys nothing for 2.5 times the windows.
+- **The recombination proxy is real**: Spearman +0.757 against exact truth, 20 of
+  20 chromosomes. The operational figure is **0.782** at $w = 20$, not the 0.830
+  headline, which was a composite of cold-block *detection* and continuous
+  *tracking*.
+- **The cap is generous or nothing**: the cost is monotone, so there is no
+  optimum; 10 Mb costs 0.004 and bounds a quantity that otherwise reaches
+  4,961 Mb.
+- **The size floor is inert above 2** ($p = 0.11$, 0.40, 0.053 for floor 2 to 8),
+  and floor 1 to 2 *gains* recall while *losing* precision --- so floor 2 keeps
+  its structural justification but not the performance gloss.
+- **The panel can falsify the proxy but cannot calibrate it**, because
+  calibration needs variation in the cold-block regime it lacks. A property of
+  the stickleback map, not of empirical data in general.
+
+# Evidence inventory: what would a referee ask for?
+
+\begin{gapbox}
+\textbf{Gap 1 --- no empirical demonstration.} Everything is simulated. The
+natural companion is the 3sp panel, but its support statistic currently measures
+the \emph{filter} rather than the test (units the filter selected but the test did
+not reject overlap peaks at 69.2\% against the discoveries' 78.2\%, $p = 0.18$),
+so it cannot carry a validation claim as it stands. \textbf{This is the largest
+gap.}
+\end{gapbox}
+
+\begin{gapbox}
+\textbf{Gap 2 --- the advantage is concentrated in one simulation cell.} Simes
+beats the single-SNP scan in 19 of 19 panels in \texttt{V0.5\_c1} and the paired
+tests in the other three cells are \textbf{null, not adverse} (26 W / 22 L, all
+$p > 0.4$) --- several panels are ties in which neither analysis recovers
+anything. Must be stated in the Results, not a supplement: \emph{decisive where
+there is signal, indistinguishable where there is not.}
+\end{gapbox}
+
+\begin{gapbox}
+\textbf{Gap 3 --- the sensitivity analysis is planned, not run}, and it now has
+a prerequisite it did not have: the four cells sit at very different
+\texttt{ld\_w} operating points (item 1, \S\ref{sec:todo}), so a grid run over
+them would inherit that. Design is in \texttt{TODO\_sensitivity.md}, amended to
+report operating points rather than values and never to pool across cells.
+\end{gapbox}
+
+\begin{gapbox}
+\textbf{Gap 4 --- one simulation generation.} Re-clustering at the newer decay
+settings changes nothing ($p = 0.25$ and $0.85$), so this is closed for the decay
+parameter --- but all results come from one simulator under one demographic
+model.
+\end{gapbox}
+
+# Claims the paper should not make
+
+- That clustering finds more loci. It finds **fewer** and is right more often.
+- That $ld_w$ filtering helps. Four variants, none did.
+- That any performance number transfers. The **ratios** are the transferable
+  part; absolute precision is a property of this signal-to-noise regime.
+- That a threshold is recommended for the consistency score. Every threshold
+  tried on a C-like quantity failed, including the one that looked principled.
+- That enrichment for containing a QTN is irrelevant to detection. It predicts
+  precision; it just cannot be exploited by restriction.
+- That a threshold means the same thing on two datasets because it is the same
+  number. Measured, one of the three transfers, one does not, and one fails even
+  across simulation settings.
+- That raising the minimum cluster size improves precision. Measured, floor 1 to
+  2 *lowers* it.
+
+# Two methodological findings that may be worth their own space
+
+\begin{keybox}
+\textbf{Name the axis a stability measure is on.} A consistency score computed
+over parameters that move only the selection measures how stable the
+\emph{selection} is. "Called under every setting" reads as a claim about the
+finding. The second association engine is the missing test-side axis, which makes
+the engine sweep and the sensitivity analysis one design rather than two.
+
+\textbf{Replicate specifically where nobody doubts the result.} The LFMM
+replication on the panel side surfaced two sampler defects that had been sitting
+in the original arm for a day with a manuscript being written around them. A
+replication that \emph{agrees} leaves such defects in place; the disagreement is
+the diagnostic.
+\end{keybox}
+
+# Provenance
+
+Result document: `ld_clustering_result.pdf`. Full record including everything
+withdrawn: `development_history.pdf`. Both build from committed CSVs. Branch
+`null-rework-two-basis`.

@@ -1,0 +1,16 @@
+[1] 5 whole-genome LFMM scans (observed + 4 null types) on 5 cores...
+[2] scans done in 520.9 min
+
+=== LFMM background per null type (tau=0.05, l_min=3) ===
+Index: <type>
+            type n_Cgt0 n_regions frac_of_obs_regions
+          <char>  <int>     <int>               <num>
+1:      observed   1125        90                1.00
+2:       genetic      0         0                0.00
+3:   global_perm      1         0                0.00
+4: regional_perm    581         7                0.08
+5:       spatial    129         4                0.04
+
+INTERPRETATION: observed = 90 regions / 1125 C>0. If a surrogate's counts approach these,
+the null reproduces the observed 'signal' -> LFMM inflated, regions will not clear it.
+If surrogates are near zero (as EMMAX's genetic null was), the observed LFMM regions are real.

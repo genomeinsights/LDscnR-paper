@@ -1,0 +1,2 @@
+[LFMM] peaks=193 ; F1-optimal cell: tau=0.05 l_min=5 (n_reg=91, prop=0.24, recall=0.20, fold=1.2)
+[LFMM] wrote figures/kingman_sweep_LFMM_c150specific.png

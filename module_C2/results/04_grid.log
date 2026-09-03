@@ -1,0 +1,82 @@
+[1] breakpoint tau axis: 25 of 25 tau values change the region set: 0.02 0.04 0.06 0.08 0.10 0.12 0.14 0.16 0.18 0.20 0.22 0.24 0.26 0.28 0.30 0.32 0.34 0.36 0.38 0.40 0.42 0.44 0.46 0.48 0.50
+
+[2] S_G under six grids (fixed anchors):
+                         label G1_original G2_coarse G3_breakpoint G4_tau_low
+                        <char>       <num>     <num>         <num>      <num>
+ 1:     A06_Chr4:27.55-27.55Mb       0.171      0.12         0.240      0.330
+ 2:       A08_Chr5:2.48-2.50Mb       0.149      0.00         0.160      0.286
+ 3:     A04_Chr4:22.51-22.51Mb       0.143      0.12         0.200      0.275
+ 4: A02_Chr1:21.50-21.93Mb*inv       0.120      0.00         0.120      0.231
+ 5:      A15_Chr20:0.18-0.26Mb       0.120      0.00         0.120      0.231
+ 6:      A14_Chr18:5.61-5.61Mb       0.109      0.12         0.152      0.209
+ 7:     A09_Chr7:11.55-11.66Mb       0.091      0.00         0.112      0.176
+ 8:    A11_Chr12:16.52-16.55Mb       0.074      0.00         0.104      0.143
+ 9:      A13_Chr17:9.94-9.94Mb       0.074      0.00         0.104      0.143
+10: A07_Chr4:12.81-12.81Mb*Eda       0.069      0.00         0.080      0.132
+11:      A12_Chr17:6.55-6.77Mb       0.069      0.00         0.096      0.132
+12:     A01_Chr1:27.28-27.28Mb       0.063      0.00         0.088      0.121
+13:    A10_Chr12:15.55-15.55Mb       0.057      0.00         0.080      0.110
+14:      A16_Chr20:3.67-3.67Mb       0.051      0.00         0.072      0.099
+15:      A17_Chr20:8.89-8.90Mb       0.051      0.00         0.064      0.099
+16:     A03_Chr3:13.03-13.03Mb       0.034      0.00         0.048      0.066
+17:     A05_Chr4:25.67-25.99Mb       0.034      0.00         0.048      0.066
+    G5_tau_high G6_tau_sparse
+          <num>         <num>
+ 1:           0         0.159
+ 2:           0         0.190
+ 3:           0         0.159
+ 4:           0         0.111
+ 5:           0         0.111
+ 6:           0         0.111
+ 7:           0         0.111
+ 8:           0         0.079
+ 9:           0         0.079
+10:           0         0.111
+11:           0         0.063
+12:           0         0.079
+13:           0         0.063
+14:           0         0.048
+15:           0         0.095
+16:           0         0.048
+17:           0         0.048
+
+[3] agreement with the original grid:
+Warning message:
+In stats::cor(vv("G1_original"), vv(n)[GR$G1_original$label]) :
+  the standard deviation is zero
+            grid spearman top5_overlap pearson
+          <char>    <num>        <num>   <num>
+1:     G2_coarse    0.537          0.6   0.623
+2: G3_breakpoint    0.983          0.8   0.948
+3:    G4_tau_low    1.000          1.0   1.000
+4:   G5_tau_high       NA          0.4      NA
+5: G6_tau_sparse    0.894          0.8   0.906
+
+[4] ranks of the named / small loci under each grid (1 = most stable):
+                         label G1_original G2_coarse G3_breakpoint G4_tau_low
+                        <char>       <int>     <int>         <int>      <int>
+ 1:     A04_Chr4:22.51-22.51Mb           3         1             2          3
+ 2: A02_Chr1:21.50-21.93Mb*inv           4         4             5          4
+ 3:      A14_Chr18:5.61-5.61Mb           6         1             4          6
+ 4: A07_Chr4:12.81-12.81Mb*Eda          10         4            12         10
+ 5:     A01_Chr1:27.28-27.28Mb          12         4            11         12
+ 6:    A10_Chr12:15.55-15.55Mb          13         4            12         13
+ 7:      A16_Chr20:3.67-3.67Mb          14         4            14         14
+ 8:      A17_Chr20:8.89-8.90Mb          14         4            15         14
+ 9:     A03_Chr3:13.03-13.03Mb          16         4            16         16
+10:     A05_Chr4:25.67-25.99Mb          16         4            16         16
+    G5_tau_high G6_tau_sparse
+          <int>         <int>
+ 1:           1             2
+ 2:           1             4
+ 3:           1             4
+ 4:           1             4
+ 5:           1            10
+ 6:           1            13
+ 7:           1            15
+ 8:           1             9
+ 9:           1            15
+10:           1            15
+
+[4] (small = anchors with <= 4 SNPs: 9 of 17)
+[4] wrote results/grid_sensitivity.csv + grid_sensitivity_agreement.csv
