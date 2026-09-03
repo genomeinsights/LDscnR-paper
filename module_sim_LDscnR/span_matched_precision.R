@@ -37,13 +37,17 @@
 ## discoveries are megabase-scale chained objects that are mostly false, so the
 ## headline precision is an average over a good component and a bad one.
 suppressMessages({library(data.table); library(LDscnR)})
-SIM <- "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs5"
+SIM   <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs5")
+CELLS <- strsplit(Sys.getenv("CELLS", "V0.5_c1,V0.5_c2"), ",")[[1]]
+TAGS  <- strsplit(Sys.getenv("TAGS", "nobgs"), ",")[[1]]
+ENVS  <- as.integer(strsplit(Sys.getenv("ENVS", "1,2,3"), ",")[[1]])
+OUTF  <- Sys.getenv("OUT", "")
 simes <- function(p){p<-sort(p[is.finite(p)]);n<-length(p);if(!n) NA_real_ else min(n*p/seq_len(n))}
 allr <- list()
-for (CELL in c("V0.5_c1","V0.5_c2")) for (ENV in 1:3) {
+for (CELL in CELLS) for (TAG in TAGS) for (ENV in ENVS) {
   D <- list(); LK <- list()
   for (i in 1:10) {
-    f <- sprintf("%s/adapt_nobgs_chr%d_%s_env%d.rds", SIM, i, CELL, ENV)
+    f <- sprintf("%s/adapt_%s_chr%d_%s_env%d.rds", SIM, TAG, i, CELL, ENV)
     if (!file.exists(f)) next
     x <- readRDS(f); m <- flag_true_qtns(as.data.table(x$map))
     s1 <- as.data.table(x$complexity_reduction$stage1$map_snp)[, .(marker, CL1=CL_id)]
@@ -73,11 +77,12 @@ for (CELL in c("V0.5_c1","V0.5_c2")) for (ENV in 1:3) {
     rs <- if (nm=="stage 2") r2set else r1set
     if (!length(rs)) next
     sp <- spans[CL2 %in% rs]
-    allr[[length(allr)+1]] <- data.table(cell=CELL, env=ENV, arm=nm, CL2=sp$CL2,
+    allr[[length(allr)+1]] <- data.table(cell=CELL, tag=TAG, env=ENV, arm=nm, CL2=sp$CL2,
       span=sp$span, n=sp$n, tp=sp$CL2 %in% tagged)
   }
 }
 R <- rbindlist(allr)
+if (nzchar(OUTF)) fwrite(R, OUTF)
 cat("== region spans and precision by arm\n")
 print(R[, .(regions=.N, median_span_kb=round(median(span)/1e3,1), median_markers=median(n),
             precision=round(mean(tp),3)), by=arm])
