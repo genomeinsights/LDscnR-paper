@@ -58,6 +58,30 @@ it was never traced: it writes its outputs as `"pv_$s.bed"` from a loop variable
 for `.specific.bed` finds no producer and the BEDs look like unregenerable supplied
 artefacts. They are not. Provenance is `doc/00_PROVENANCE.md` §11.
 
+**Regeneration verified 2026-09-03 — this is no longer an assertion.** The UCSC toolchain
+(`bigBedToBed`, `liftOver`, `chainSwap`) was absent from this machine; it is now installed
+in `~/bin`, and `08_liftover.sh` was run end to end from a clean tree. All **11 of 11**
+BEDs it writes came back byte-identical to their committed copies by SHA-256, 0 failed.
+The chain rebuilt to the same 1,095 chains / 19,851 blocks, and the documented lift losses
+reproduced exactly — `c150.sensitive` 212 → 210, the 3sp LFMM set 40 → 39, all four `pv_*`
+peak sets at 100%. `git status` independently reported no tracked file modified. Running
+it in place was safe *because* the BEDs are tracked: drift would have appeared as a diff
+rather than as silence.
+
+Two limits survive that verification, and are recorded in §11 rather than dropped because
+the result was good:
+
+* the toolchain is **outside this repository**, so a different machine needs it installed
+  before the script will run — it fails at its first stage without it, which is at least
+  the loud failure mode;
+* the rebuild **fetches two objects from FigShare 162634 at run time**, and §11 already
+  records that the `sbwdev.stanford.edu` host in the paper's own Data Availability
+  statement is dead. So the path depends on a mirror outliving the original.
+
+Reproducibility is therefore demonstrated **as of that date, not guaranteed forward** —
+which is why the tracked BEDs matter more than the recipe, and why the entry above says
+they are load-bearing rather than merely regenerable.
+
 **Three kingman2021 figures are in the manuscript right now** —
 `fig5_venn_emmax17.png` (14), `kingman_cscore_enrichment.png` (18),
 `kingman_sweep_EMMAX_c155specific.png` (17).
