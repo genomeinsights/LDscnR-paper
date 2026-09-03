@@ -70,8 +70,13 @@ PAR <- list(
   lmin_grid = c(1L, 2L, 4L, 8L),
   alpha_single = c(0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1)  # single-SNP BH cutoffs
 )
-gcta_grm <- function(X) { p <- colMeans(X)/2; k <- p>0 & p<1; X <- X[,k,drop=FALSE]; p <- p[k]
-  Z <- sweep(sweep(X,2,2*p,"-"),2,sqrt(2*p*(1-p)),"/"); tcrossprod(Z)/ncol(Z) }
+## KINSHIP: this script uses the bundle's SAVED GCTA kinship (d$GRM) throughout.
+## A local gcta_grm() rebuild was defined here and never called; removed
+## 2026-09-03. Do not reintroduce one. Mixing a rebuilt kinship with the saved
+## one inside a single comparison confounds ESTIMATOR with MARKER SET -- on the
+## 3sp panel GCTA and centred-only give 79 vs 59 discoveries on identical
+## markers (ldscnr-2c, R_3sp/143_grm_construction.R). Rebuild every arm or reuse
+## every arm, never both.
 
 ## ---- 1. pool one (V, c, env) cell ------------------------------------
 ## Pools 10 chromosome files (R1_.. prefixes) and keeps each file's SAVED GRM +

@@ -52,8 +52,13 @@ PAR <- list(qstar = seq(0, 0.95, by = 0.05), alpha = c(0.001, 0.01, 0.05, 0.1),
             rho_ld = 0.75, rho_d = 0.95, dcap = 1e5, B = 100L, seed = 1L,
             lmin = c(1L, 2L, 4L), fdr = 0.05, lmin_q = 0.99, lmin_tau = 0.05,
             tau_grid = seq(0.02, 1, by = 0.02))
-gcta_grm <- function(X) { p <- colMeans(X)/2; k <- p>0 & p<1; X <- X[,k,drop=FALSE]; p <- p[k]
-  Z <- sweep(sweep(X,2,2*p,"-"),2,sqrt(2*p*(1-p)),"/"); tcrossprod(Z)/ncol(Z) }
+## KINSHIP: this script uses the bundle's SAVED GCTA kinship (d$GRM) throughout.
+## A local gcta_grm() rebuild was defined here and never called; removed
+## 2026-09-03. Do not reintroduce one. Mixing a rebuilt kinship with the saved
+## one inside a single comparison confounds ESTIMATOR with MARKER SET -- on the
+## 3sp panel GCTA and centred-only give 79 vs 59 discoveries on identical
+## markers (ldscnr-2c, R_3sp/143_grm_construction.R). Rebuild every arm or reuse
+## every arm, never both.
 
 ## pool a (V,c,env): per-file EMMAX engine on the saved GRM, pooled ld_ws/map/lfmm_p
 pool_cell <- function(env) {
