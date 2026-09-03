@@ -9,33 +9,35 @@
 ## tagging counts a region true if ANY member is in LD with a QTN, and a wider
 ## region has more members and more chances.
 ##
-## IT DOES NOT HOLD FOR THIS METRIC, and the reason is informative. Precision by
-## span quintile, pooled over 6 panels:
+## IT DOES NOT HOLD FOR THIS METRIC, and the shape is not what six panels showed.
+## Precision by span quintile, 72 panels (8 of 80 gave no discoveries in one or
+## both arms):
 ##
-##   quintile   median span   precision
-##   Q1            15.6 kb      0.284
-##   Q2           432.0 kb      0.357
-##   Q3          2123.2 kb      0.296
-##   Q4          8474.2 kb      0.103
-##   Q5         14631.9 kb      0.132
+##   quintile   median span   precision      six-panel version
+##   Q1            ~0            0.155            0.284
+##   Q2            93 kb         0.311            0.357
+##   Q3           854 kb         0.284            0.296
+##   Q4           5.7 Mb         0.222            0.103
+##   Q5          14.7 Mb         0.149            0.132
 ##
-## Non-monotone, and the WIDEST regions are the WORST. Tagging is not inflated by
-## width here because the widest regions are the chained low-occupancy objects,
-## which do not tag a QTN at all. That is the opposite behaviour to peak-overlap,
-## which a wide region satisfies by covering more sequence, and it explains why
-## the two datasets disagree about consensus: the panel's metric rewards width
-## and this one penalises it.
+## AN INVERTED U. Both extremes are about half as precise as the middle, and the
+## NARROWEST quintile -- effectively single-marker regions -- is as weak as the
+## widest. The six-panel table showed only the upper fall and was written up as
+## evidence that WIDE regions are the problem; the lower tail was simply too
+## thinly populated to see. The finding is about EXTREMES, not width.
 ##
-## AND THE STAGE-2 ADVANTAGE SURVIVES SPAN MATCHING. Within span quintiles,
-## stage 2 beats stage 1 in four of five (0.333/0.250, 0.417/0.313, 0.312/0.284,
-## 0.102/0.104, 0.146/0.121), and the median spans are nearly identical between
-## arms (2179 vs 2055 kb) so the matching changes little.
+## Tagging is still not inflated by span: precision FALLS in the widest quintile,
+## the opposite of an annotation-overlap rate, which a wide region satisfies by
+## covering more sequence. That difference is why the two datasets disagree about
+## the consensus statistic -- the panel's metric rewards width and this one
+## penalises it.
 ##
-## WHAT IT DOES EXPOSE is the size of the chaining problem on this side: median
-## discovered-region span is 2.2 Mb, and the top two quintiles -- 8.5 and 14.6 Mb
-## -- run at 0.10-0.13 precision against 0.28-0.36 below. A substantial share of
-## discoveries are megabase-scale chained objects that are mostly false, so the
-## headline precision is an average over a good component and a bad one.
+## AND THE STAGE-2 ADVANTAGE STRENGTHENS UNDER MATCHING: five of five quintiles
+## (0.173/0.142, 0.342/0.287, 0.313/0.263, 0.230/0.216, 0.161/0.141), and
+## stage-2 regions are slightly NARROWER in median (788 against 946 kb) where the
+## six-panel version had them wider. Overall precision 0.244 against 0.210. So
+## the advantage rests on a reversal rather than a near-tie.
+##
 suppressMessages({library(data.table); library(LDscnR)})
 SIM   <- Sys.getenv("SIM_DATA", "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs5")
 CELLS <- strsplit(Sys.getenv("CELLS", "V0.5_c1,V0.5_c2"), ",")[[1]]
