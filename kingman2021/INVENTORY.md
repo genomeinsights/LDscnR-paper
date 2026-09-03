@@ -1,5 +1,17 @@
 # kingman2021 — liveness inventory
 
+> **Ownership.** Written and maintained by the `ldscnr-22` session, which ended
+> 2026-09-03 around 12:30. PK reassigned this folder to the simulations session the same
+> day. The handover is recorded because the previous owner's judgements are throughout
+> this file and I have not re-derived them — where I have checked something myself since,
+> it says so and gives the date.
+>
+> One consequence worth stating: `ldscnr-2c` declined this folder on the grounds that
+> their half *consumes* the EcoPeak BEDs, and a consumer owning the producer is how you
+> stop noticing the producer changed. That reasoning applies to me only for the sims,
+> which have no dependency on these BEDs — so the separation their argument protects is
+> preserved, not waived.
+
 My half of the union needed before the consolidation deletes anything. Scope: everything
 under `LDscnR-paper/kingman2021/` plus the bulk data at
 `~/gitlab/LD-scaling-genome-scans/empirical_data/kingman2021/`.

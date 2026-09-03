@@ -341,6 +341,18 @@ tracks (1,095 chains / 19,851 blocks) and validated: every peak set lifts at ~10
 preserved span, chromosome assignment is preserved, and the *Eda* peak moves 12 kb. See
 `data/liftover/README.md` and §4.
 
+**Regeneration status, checked 2026-09-03.** The BEDs are all 13 tracked in git, so
+their integrity does not depend on anyone's disk. They are **not, however, rebuildable
+on this machine**: `08_liftover.sh` needs `bigBedToBed`, `liftOver` and `chainSwap` on
+`PATH` and none of the three is installed anywhere under `~`, `/usr/local` or `/opt`.
+The script would fail at its first pipeline stage. Install from
+<http://hgdownload.soe.ucsc.edu/admin/exe/> before attempting any re-derivation, and
+note the script also fetches two FigShare objects at run time, so it needs network.
+
+This is recorded rather than fixed because the BEDs are tracked and no re-derivation is
+pending. It matters only if the peaks are ever questioned: the answer to “can you
+regenerate these?” is currently “yes, after installing three tools”, not “yes”.
+
 **What the cohort labels denote** (§3, from Table S2): `c155` = the **global** cohort, 84
 genomes, 28 marine / 56 freshwater, one genome per population. `c150` = the **N.E.
 Pacific** cohort, 68 genomes, 11 marine / 57 freshwater. Both are one-genome-per-population
