@@ -309,3 +309,86 @@ dissociate — LFMM could pass its negative control while failing the positive o
 would mean it detects something real and structured that is not marine–freshwater
 adaptation. `module_sticklebacks_LDscnR/lfmm_permutation_null_3sp.R` exists but has never
 produced output; B ≈ 5–10 would settle the direction.
+
+
+## 11. Provenance of `data/liftover/pv_*.specific.bed` (cite this section)
+
+These four BEDs are the paper's external validation set. Three facts about them are asked
+often enough to answer in one place.
+
+**They are grep-invisible.** `R/08_liftover.sh` line 59 writes them as
+`liftOver -minMatch=0.5 pin.bed gasAcu1-4ToGasAcu1.chain "pv_$s.bed" "pv_un_$s.bed"`
+inside a loop over `c155.specific c155.sensitive c150.specific c150.sensitive`. The
+filename is **constructed from a loop variable**, so grepping either repository for
+`.specific.bed` returns nothing. That is not evidence of missing provenance.
+
+**We did not call these peaks.** They are Roberts Kingman *et al.* 2021's published
+EcoPeaks, downloaded as bigBed from the FigShare mirror of the authors' UCSC assembly hub
+(project 162634; the `sbwdev.stanford.edu` host in the paper's Data Availability statement
+is dead), converted with `bigBedToBed`, and lifted. So there is no threshold of ours to
+report. **The authors' thresholds** (their §"EcoPeak identification"): two methods — a
+CSS/genetic-distance test on 2500 bp windows and a per-base multivariate-hypergeometric
+allele-count test — with *specific* = both agreeing at 1% FDR and *sensitive* = either at
+5% FDR, then merged at 50 kb. Cols 4–5 of each BED carry the published SNP-based and
+window-based p-values. Counts and spans were checked against the paper and match exactly
+(§2).
+
+**Chain and assembly.** Source `gasAcu1-4`; target `gasAcu1`, because the 3sp panel is in
+gasAcu1 (`Chr1..Chr21`, arabic) while everything Kingman is gasAcu1-4 (`chrI..chrXXI`,
+roman). The published chains sit behind Dryad's anti-bot gate, so
+`gasAcu1-4ToGasAcu1.chain` was **reconstructed** from the hub's bigChain + bigChain.link
+tracks (1,095 chains / 19,851 blocks) and validated: every peak set lifts at ~100% with
+preserved span, chromosome assignment is preserved, and the *Eda* peak moves 12 kb. See
+`data/liftover/README.md` and §4.
+
+**What the cohort labels denote** (§3, from Table S2): `c155` = the **global** cohort, 84
+genomes, 28 marine / 56 freshwater, one genome per population. `c150` = the **N.E.
+Pacific** cohort, 68 genomes, 11 marine / 57 freshwater. Both are one-genome-per-population
+designs, which is why they are panels rather than population samples.
+
+**Note for anyone summing peak widths across both cohort BEDs:** the two sets are largely
+nested, not independent — §9 measures 95% of the Global-specific sequence lying inside the
+Pacific-specific set. Summing unmerged widths across both therefore double-counts. Merge
+within chromosome first.
+
+
+## 12. Do the uncorroborated regions carry signal? (`R/19`, `R/20`)
+
+Tests the reading that LFMM's surplus regions are real Atlantic loci the Kingman cohorts
+cannot see. c151 (Northern Europe, 9 M / 18 F) is geography-matched to the 3sp panel and was
+not used to call the published EcoPeaks.
+
+| Classified by | Group | n | Span | Fold | p |
+|---|---|---|---|---|---|
+| c155+c150 (deflationary) | EMMAX corroborated | 7 | 0.87 Mb | 23.6× | 0.002 |
+| | EMMAX novel | 10 | 0.33 Mb | 2.02× | 0.072 |
+| | LFMM corroborated | 27 | 14.72 Mb | 4.33× | 0.016 |
+| | **LFMM novel** | 107 | 20.98 Mb | **0.98×** | 0.27 |
+| c150 only (inflationary) | EMMAX novel | 11 | 0.41 Mb | 62.5× | 0.002 |
+| | **LFMM novel** | 107 | 20.98 Mb | **0.98×** | 0.27 |
+
+**Circularity is unavoidable**: all 27 c151 samples are a subset of c155's 84, so
+classifying by c155 is deflationary for the novel class and classifying by c150 alone is
+inflationary. Both reported. The LFMM novel result is **identical under both**, which is
+what makes it usable; the EMMAX novel figure is not, so 62.5× is not quoted (one region
+crossing the boundary moves it from 2.02×).
+
+The corroborated groups are the internal positive control and both are significant, so c151
+has the power and a flat result is a real negative.
+
+**Limits.** Zero c151 signal is equally consistent with false positives and with real
+structure that is not marine–freshwater (ecotype-correlated demography). Only "carries no
+detectable marine–freshwater signal" is established. Says nothing about whether those
+regions clear their own structure null (§10, still open).
+
+**Reconciliation with the sims.** LFMM buys recall at ~20% precision cost in simulation
+(recall 0.325 vs 0.231; precision 0.291–0.337 vs 0.351–0.359) but its real-genome surplus
+carries no signal at all. The gap between regimes is the structure-model-dependence
+evidence: latent factors capture simple simulated structure, not continental IBD.
+
+## 13. Tooling note
+
+`R/08`, `R/13`, `R/19` require UCSC `liftOver` (plus `bigBedToBed`, `chainSwap` for `08`).
+These were originally only in a session scratch directory under `/tmp`, which was cleared
+between sessions — the scripts then failed with "liftOver not on PATH". Now installed
+durably at `empirical_data/kingman2021/tools/`; add to `PATH` before running.

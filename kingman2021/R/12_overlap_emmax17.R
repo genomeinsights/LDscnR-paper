@@ -14,9 +14,9 @@ rn <- function(x) match(sub("^chr", "", x), ROMAN)
 B  <- 2000L; set.seed(1)
 
 ## ---- generate the exact 17 EMMAX regions (tau=0.05, l_min=3, rho_ld=0.60) -----------
-d  <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"))
+d  <- readRDS(path.expand("~/gitlab/LDscnR-paper/3sp_data/3sp_LDscnR_data.rds"))
 m3 <- as.data.table(d$map)
-nl <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_sticklebacks_LDscnR/results/null_popperm_3sp.rds"))
+nl <- readRDS(path.expand("~/gitlab/LDscnR-paper/kingman2021/data/inputs/null_popperm_3sp.rds"))
 C  <- nl$C_obs
 edges <- ld_edges(nl$universe, d$GTs, m3[, .(marker, Chr, Pos)],
                   as.data.table(d$LD_decay$decay_sum), rho_ld = 0.60, dcap = 1e5)

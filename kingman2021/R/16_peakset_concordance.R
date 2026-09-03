@@ -24,7 +24,7 @@ ROMAN <- c("I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII",
            "XVI","XVII","XVIII","XIX","XX","XXI")
 B <- 2000L; set.seed(1)
 
-d  <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"))
+d  <- readRDS(path.expand("~/gitlab/LDscnR-paper/3sp_data/3sp_LDscnR_data.rds"))
 m3 <- as.data.table(d$map); m3[, chr_num := as.integer(gsub("Chr","",Chr))]
 rng <- m3[, .(lo=min(Pos), hi=max(Pos)), by=chr_num]; setkey(rng, chr_num); rm(d, m3); gc()
 

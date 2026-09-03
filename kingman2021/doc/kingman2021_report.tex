@@ -1,6 +1,6 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=2.4cm]{geometry}
-\usepackage{booktabs,graphicx,xcolor,amsmath,amssymb,longtable}
+\usepackage{booktabs,graphicx,xcolor,amsmath,amssymb,longtable,multirow}
 \usepackage[hidelinks]{hyperref}
 \usepackage{sectsty}
 \definecolor{acc}{HTML}{2C7FB8}
@@ -577,6 +577,102 @@ would settle the direction, since what matters first is whether the null $C$ dis
 piles up near $1$ or collapses toward $0$; a full $B$ is only needed for per-region
 $p$-values.
 
+\section{Are the uncorroborated regions still real?}\label{sec:novel}
+
+Absence from the EcoPeaks is not by itself falsification. The EcoPeaks are an incomplete
+truth --- one paper's cohorts, one-genome-per-population panels, and only the SNP-based
+half of their caller reproduced here (\S\ref{sec:calib}) --- so a 3sp region that hits none
+of them might be a false positive, or might be a real Atlantic locus their cohorts cannot
+see. That second reading is the one that matters, because it is what would explain the LFMM
+surplus: $107$ of its $136$ regions overlap no specific EcoPeak, and if those are genuine
+panel-specific loci then LFMM is simply the more sensitive scan.
+
+That reading makes a checkable prediction. If the uncorroborated regions are real
+marine--freshwater loci in a north-European Atlantic panel, then a north-European Atlantic
+cohort should see them. \texttt{c151} is exactly that (\S\ref{sec:lfmmnull}: 9 marine, 18
+freshwater, Iceland to Germany), and it was \emph{not} used to call the published
+EcoPeaks --- only \texttt{c150} and \texttt{c155} were.
+
+\subsection{Design, and an unavoidable circularity}
+
+Each engine's $\ell_{\min} = 3$ regions were split into \textbf{corroborated} (overlapping a
+specific EcoPeak) and \textbf{novel} (overlapping none), and each group tested for
+enrichment of low \texttt{c151} $p$-values against a within-chromosome rotation null. The
+corroborated group is the \textbf{internal positive control}: \texttt{c151} cannot reach
+genome-wide significance on its own (\S\ref{sec:lfmmnull}), so if the corroborated regions
+were also flat the test would be uninformative rather than negative.
+
+No cohort in this VCF is independent of \texttt{c155} --- all $27$ \texttt{c151} samples are
+a subset of its $84$ --- so the split is circular whichever way it is cut, in opposite
+directions. Classifying by both peak sets is \emph{deflationary} for the novel class: a
+locus where the \texttt{c151} samples carry signal is likelier to have been called a
+\texttt{c155} peak and so labelled corroborated. Classifying by \texttt{c150} alone (which
+shares no samples with \texttt{c151}) is \emph{inflationary}: \texttt{c155}-only regions
+fall into ``novel'' carrying circular signal. Both are therefore reported.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{llrrrrrr}\toprule
+Classified by & Group & $n$ & Span & rate & null & Fold & $p$ \\ \midrule
+\multirow{4}{*}{c155 + c150 \emph{(defl.)}}
+ & EMMAX corroborated & 7   & 0.87\,Mb  & 0.518  & 0.022  & 23.6$\times$ & 0.002 \\
+ & EMMAX \textbf{novel} & 10  & 0.33\,Mb  & 0.0117 & 0.0058 & 2.02$\times$ & 0.072 \\
+ & LFMM corroborated  & 27  & 14.72\,Mb & 0.077  & 0.018  & 4.33$\times$ & 0.016 \\
+ & LFMM \textbf{novel}  & 107 & 20.98\,Mb & 0.0100 & 0.0102 & \textbf{0.98$\times$} & 0.27 \\ \midrule
+\multirow{2}{*}{c150 only \emph{(infl.)}}
+ & EMMAX \textbf{novel} & 11  & 0.41\,Mb  & 0.395  & 0.0063 & 62.5$\times$ & 0.002 \\
+ & LFMM \textbf{novel}  & 107 & 20.98\,Mb & 0.0100 & 0.0102 & \textbf{0.98$\times$} & 0.27 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]\centering
+\includegraphics[width=\textwidth]{../figures/fig9_novel_c151.png}
+\caption{c151 enrichment by corroboration status, under both classifications.}
+\end{figure}
+
+\subsection{What it shows}
+
+\textbf{The positive control works.} Both engines' corroborated regions light up strongly
+and significantly ($23.6\times$ EMMAX, $4.33\times$ LFMM), so \texttt{c151} has the power
+for this design despite having no FDR-significant SNP of its own. A flat result here is a
+real negative.
+
+\textbf{LFMM's $107$ novel regions sit exactly on the null: $0.98\times$, $p = 0.27$,
+identical under both classifications.} That invariance is what makes it usable --- it cannot
+be an artefact of either circularity direction. With $85{,}951$ SNPs the estimate is precise
+rather than noisy (rate $0.0100$ against an expectation of $0.0102$). Nearly $21$\,Mb of
+putatively novel Atlantic marine--freshwater sequence, tested in the one cohort matched to
+the panel that produced it, shows nothing.
+
+EMMAX's novel regions do carry something, but the $62.5\times$ should not be quoted: it
+comes from the inflationary split, and a single region crossing the boundary moves the
+estimate from $2.02\times$ to $62.5\times$ on $11$ regions. The defensible figure is the
+deflationary one, $2.02\times$ at $p = 0.072$ --- a positive hint, not significance, on
+$0.33$\,Mb, i.e.\ on $64\times$ less sequence than LFMM's null result covers.
+
+\subsection{What it does not show}
+
+Two limits. First, zero \texttt{c151} signal is consistent with the novel regions being
+false positives, but equally with their being \emph{real structure that is not
+marine--freshwater} --- ecotype-correlated demography would look the same. This test cannot
+separate those, so ``the LFMM surplus is false positives'' is not established here; only
+``the surplus carries no detectable marine--freshwater signal'' is. Second, it says nothing
+about whether those regions clear their own structure null, which is a separate question
+(\S\ref{sec:lfmmnull}) still awaiting the full permutation run.
+
+It does, however, close the specific escape route that the incompleteness of the EcoPeaks
+opens. Panel-specific Atlantic loci are precisely what \texttt{c151} is positioned to
+detect, and the same argument was the remaining explanation for the declining per-SNP
+C-score gradient (\S\ref{sec:calib}).
+
+\textbf{A reconciliation with the simulations.} On coalescent simulations LFMM buys recall
+at a modest precision cost (recall $0.325$ vs $0.231$; precision $0.291$--$0.337$ vs
+$0.351$--$0.359$ depending on the grid) --- a genuine sensitivity advantage. On the real
+genome the extra regions carry no signal at all. A precision cost of order $20\%$ in
+simulation does not predict a total absence, and \emph{the gap between the two regimes is
+itself the evidence} for the structure-model dependence: a handful of latent factors
+captures the simulations' simple structure and does not capture continental-scale
+isolation-by-distance in the real panel.
+
 \section{Caveats}
 
 \begin{itemize}\itemsep2pt
@@ -592,6 +688,9 @@ $p$-values.
       pragmatic choice, not a derived threshold.
 \item LFMM has no structure-aware null here, so the engine comparison is confounded
       (\S\ref{sec:lfmmnull}).
+\item No cohort in this VCF is independent of \texttt{c155}, so the corroborated/novel
+      split of \S\ref{sec:novel} is circular in one direction or the other; only results
+      invariant to the choice should be relied on.
 \item Fold enrichments are not comparable between region sets of different total span
       (1.21\,Mb for EMMAX $l_{\min}{=}3$ vs 21.13\,Mb for LFMM $l_{\min}{=}10$); compare
       $p$-values and hit counts, not folds.

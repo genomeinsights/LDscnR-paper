@@ -28,7 +28,7 @@
 ## =====================================================================
 suppressMessages({ library(data.table); library(LDscnR); library(ggplot2); library(patchwork) })
 
-BND  <- "module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"
+BND  <- "3sp_data/3sp_LDscnR_data.rds"
 PEAK <- "kingman2021/data/liftover/pv_c155.specific.bed"       # global-specific EcoPeaks (gasAcu1)
 OUT  <- "kingman2021"; ROMAN <- c("I","II","III","IV","V","VI","VII","VIII","IX","X","XI",
         "XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX","XXI")

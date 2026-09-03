@@ -38,7 +38,7 @@ a       <- commandArgs(trailingOnly = TRUE)
 METHOD  <- if (length(a) >= 1) toupper(a[1]) else "EMMAX"       # EMMAX | LFMM
 PEAKSET <- if (length(a) >= 2) a[2] else "c155.specific"        # c155.specific | c150.specific | c155.sensitive | c150.sensitive
 TAG     <- sprintf("%s_%s", METHOD, gsub("[.]", "", PEAKSET))
-BND     <- "module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"   # read-only
+BND     <- "3sp_data/3sp_LDscnR_data.rds"   # read-only
 PEAK    <- sprintf("kingman2021/data/liftover/pv_%s.bed", PEAKSET)   # lifted EcoPeaks (gasAcu1), read-only
 OUTFIG  <- "kingman2021/figures"; OUTRES <- "kingman2021/data"
 for (p in c(OUTFIG, OUTRES)) if (!dir.exists(p)) dir.create(p, recursive = TRUE)

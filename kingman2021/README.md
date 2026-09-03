@@ -42,6 +42,12 @@ EcoPeaks, extreme |ΔAF| is enriched **298×** over background.
    Pacific-specific set. Our best cross-dataset agreement is 0.44, less than half of that.
    So the 3sp regions are **not** reproducing Kingman at the achievable limit; the gap is
    real, and §"geographic gradient" argues it is largely geographic.
+8. **The uncorroborated LFMM regions carry no signal in a matched cohort.** LFMM's 107
+   regions overlapping no EcoPeak sit at **0.98×, p=0.27** in the geography-matched c151
+   Northern-European cohort — over 21 Mb, invariant to how the split is cut — while both
+   engines' corroborated regions light up (23.6× / 4.33×), so the cohort has the power.
+   That closes the "novel Atlantic loci" reading of the LFMM surplus. It does **not** show
+   they are false positives — real non-marine-freshwater structure looks the same.
 7. **The EcoPeaks also calibrate, not just score.** Sweeping the τ_C × l_min grid against
    them: precision/fold are *not estimable* in most cells (a lone region that hits gives
    precision 1.0), and masking below 5 regions leaves **33 of 270 cells for EMMAX but 247
@@ -84,6 +90,8 @@ git-ignored there.
 | `R/16_peakset_concordance.R` | pairwise concordance incl. Kingman-vs-Kingman as the ceiling |
 | `R/17_overlap_sweep.R` | τ_C × l_min sweep vs the EcoPeaks, with region-floor masking (`REPLOT=1` re-renders from the saved grid) |
 | `R/18_cscore_enrichment.R` | per-SNP C-score vs EcoPeak membership, EMMAX and LFMM |
+| `R/19_novel_regions_c151.R` | do the regions overlapping no EcoPeak carry c151 signal? (`PEAKSET=both\|c150`) |
+| `R/20_fig_novel_c151.R` | figure for the above |
 | `R/run_all.sh` | waits for the VCF download, then builds both cohorts end to end |
 
 ## Run
@@ -111,6 +119,14 @@ everything here is **gasAcu1-4** (`chrI..chrXXI`, roman). `R/08_liftover.sh` rec
 the chain from the hub's bigChain tracks (the published chains are behind Dryad's anti-bot
 gate) and validates it: peaks lift at ~100% with preserved span, and the *Eda* peak shifts
 by 12 kb.
+
+## Tooling
+
+`R/08`, `R/13` and `R/19` need UCSC `liftOver` (and `08` also `bigBedToBed`, `chainSwap`).
+These now live durably at
+`~/gitlab/LD-scaling-genome-scans/empirical_data/kingman2021/tools/` — add that to `PATH`
+before running them. They were previously only in a session scratch directory, which was
+cleared; that was a reproducibility gap, now closed.
 
 ## Report
 

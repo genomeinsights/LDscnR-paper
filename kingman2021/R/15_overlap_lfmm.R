@@ -12,7 +12,7 @@ rn <- function(x) match(sub("^chr", "", x), ROMAN)
 B  <- 2000L; set.seed(1)
 
 ## ---- LFMM regions at tau=0.05, l_min=3, rho_ld=0.60 --------------------------------
-d  <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"))
+d  <- readRDS(path.expand("~/gitlab/LDscnR-paper/3sp_data/3sp_LDscnR_data.rds"))
 m3 <- as.data.table(d$map)
 C  <- ld_cscore(m3$lfmm_p, d$ld_ws, alpha = 0.05, qstar = seq(0, 0.95, by = 0.05)); names(C) <- m3$marker
 uni <- names(C)[C > 0]

@@ -15,7 +15,7 @@ B  <- 2000L; set.seed(1)
 ## ---------- (a) region-level overlap, gasAcu1 ----------------------------------------
 L <- fread(file.path(P,"data","regions_tau0.05_lmin10_rho0.60.csv"))[method=="LFMM"]
 L[, chr_num := as.integer(gsub("Chr","",Chr))]
-d3 <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_sticklebacks_LDscnR/data/3sp_LDscnR_data.rds"))
+d3 <- readRDS(path.expand("~/gitlab/LDscnR-paper/3sp_data/3sp_LDscnR_data.rds"))
 m3 <- as.data.table(d3$map); m3[, chr_num := as.integer(gsub("Chr","",Chr))]
 rng <- m3[, .(lo=min(Pos), hi=max(Pos)), by=chr_num]; setkey(rng, chr_num); rm(d3, m3); gc()
 
