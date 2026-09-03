@@ -38,6 +38,27 @@
 ## Both routes are invisible in the symptom, which is what makes the sigma_e^2
 ## pre-flight check worth having: it fires either way without needing the cause.
 ##
+## THE CAUSE, ADDED AFTER PK IDENTIFIED THE PARAMETER. `c` in the cell names is
+## the DISPERSAL KERNEL, and its effect is visible in background LD:
+##
+##   cell       c    background LD b   eff.rank/pops   precision   tail excess
+##   V0.5_c1   1.0        0.030            1.53          0.550       0.096
+##   V2_c1     1.0        0.030            1.51          0.512       0.119
+##   V1_c1.5   1.5        0.130            0.54          0.214       0.187
+##   V0.5_c2   2.0        0.434            0.29          0.126       0.338
+##
+## Spearman(c, background LD) = +0.95 over a 14-fold range. So effective rank is
+## a CORRELATE and the dispersal kernel is the cause: restricted dispersal raises
+## background LD, which collapses the kinship toward population identity, which
+## leaves the mixed model no residual variance, which makes the cluster-level
+## tail too heavy, which costs precision. The selection parameter V orders none
+## of it -- V = 0.5 appears at both ends of the range.
+##
+## This also explains why the panel session's counterexample stands without
+## contradicting the ordering here: their panel has ONE fixed demography rather
+## than a dispersal gradient, so nothing moves along the axis that generates the
+## ordering. What generalises is the chain, not the ranking.
+##
 ## Run from the LDscnR-paper root:
 ##   Rscript module_sim_LDscnR/kinship_rank_diagnostic.R
 ## =============================================================================
