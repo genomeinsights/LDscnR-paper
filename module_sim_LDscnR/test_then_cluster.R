@@ -155,7 +155,10 @@ R <- rbindlist(Filter(Negate(is.null),
        lapply(seq_len(nrow(G)), function(k) one_env(G$cell[k], G$env[k]))))
 OUT <- Sys.getenv("OUT", "module_sim_LDscnR/results/test_then_cluster.csv")
 dir.create(dirname(OUT), recursive = TRUE, showWarnings = FALSE)
+source("module_sim_LDscnR/prov.R")
 fwrite(R, OUT)
+write_prov(OUT, list(SIM_DATA = SIM, CELLS = CELLS, TAG = TAG, ENVS = ENVS,
+                    FILES = FILES, ALPHA = ALPHA))
 cat(sprintf("%s %s | %d envs\n\n", paste(CELLS, collapse=","), TAG, uniqueN(R$env)))
 print(R[, .(envs = .N, n_test = round(mean(n_test)), regions = round(mean(regions), 1),
             tp = round(mean(tp), 1), precision = round(mean(precision), 3),

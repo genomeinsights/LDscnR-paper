@@ -1,0 +1,18 @@
+# provenance stamp -- see module_sim_LDscnR/prov.R
+output    module_sim_LDscnR/results/grm_comparison_prauc_10env.csv
+script    (interactive)
+git       c0804ff  WORKING TREE DIRTY -- stamp may not match any commit
+when      2026-09-03 11:36:08 EEST
+R         4.6.1
+LDscnR    0.0.0.9000
+params
+  SIM_DATA  /Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs
+  TAG       nobgs
+  V         2
+  c         1
+  LAM_W     0.008
+  CORES     5
+  rho_ld    0.75
+  dcap      1e+05
+  ENVS      1,2,3,4,5,6,7,8,9,10
+  note      PK: run over all 10 environments on disk

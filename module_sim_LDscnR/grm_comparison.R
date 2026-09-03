@@ -139,6 +139,10 @@ summ <- auc[, .(gif = round(mean(gif), 3), PR_AUC = round(mean(PR_AUC, na.rm = T
             by = .(method, l_min)][order(method, l_min)]
 fwrite(auc[order(method, env, l_min)], file.path(OUTRES, sprintf("grm_comparison_prauc_perenv_%s.csv", paste0("V", V, "_c", CC))))
 fwrite(summ, file.path(OUTRES, "grm_comparison_prauc.csv"))
+source("module_sim_LDscnR/prov.R")
+write_prov(file.path(OUTRES, "grm_comparison_prauc.csv"),
+           list(SIM_DATA = SIM_DATA, TAG = TAG, V = V, c = CC, ENVS = ENVS,
+                LAM_W = LAM_W, CORES = CORES, rho_ld = PAR, dcap = PAR))
 cat("\n=== PR-AUC (mean +/- SE, adaptive tau) ===\n"); print(summ)
 
 ## ---- 2. ld_w_095 Manhattan (mechanism figure) ------------------------

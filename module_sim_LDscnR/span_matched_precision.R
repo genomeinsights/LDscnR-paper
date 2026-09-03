@@ -84,7 +84,9 @@ for (CELL in CELLS) for (TAG in TAGS) for (ENV in ENVS) {
   }
 }
 R <- rbindlist(allr)
-if (nzchar(OUTF)) fwrite(R, OUTF)
+source("module_sim_LDscnR/prov.R")
+if (nzchar(OUTF)) { fwrite(R, OUTF)
+  write_prov(OUTF, list(SIM_DATA = SIM, CELLS = CELLS, TAGS = TAGS, ENVS = ENVS)) }
 cat("== region spans and precision by arm\n")
 print(R[, .(regions=.N, median_span_kb=round(median(span)/1e3,1), median_markers=median(n),
             precision=round(mean(tp),3)), by=arm])

@@ -151,7 +151,10 @@ R <- rbindlist(Filter(Negate(is.null), mclapply(seq_len(nrow(G)),
          cat("FAIL", G$cell[k], G$env[k], conditionMessage(e), "\n"); NULL }),
        mc.cores = CORES)))
 OUTF <- Sys.getenv("OUT", "module_sim_LDscnR/results/engine_x_statistic.csv")
+source("module_sim_LDscnR/prov.R")
 fwrite(R, OUTF)
+write_prov(OUTF, list(SIM_DATA = SIM, CELLS = CELLS, TAG = TAG, ENVS = ENVS,
+                     FILES = FILES, ALPHA = ALPHA, LFMM_K = LFMM_K, CORES = CORES))
 cat(sprintf("\n%d panels\n\n", uniqueN(R[, .(cell, env)])))
 print(R[, .(panels = .N, regions = round(mean(regions), 1), tp = round(mean(tp), 1),
             precision = round(mean(precision), 3), recall = round(mean(recall), 3),

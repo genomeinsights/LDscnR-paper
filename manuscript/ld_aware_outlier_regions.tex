@@ -833,41 +833,13 @@ We validate the $\lambda \ge 1$ rule of Section~\ref{sec:grm} on the forward-in-
 simulations, where the causal variants are known and---because the simulated
 genomes carry weak linkage---the QTN themselves have \emph{low} local LD, the
 regime in which a permissive $w_j$ cutoff is most at risk of over-parameterising
-the kinship. Sweeping the cutoff $\omega$ and reading off the genomic inflation
-factor $\lambda$ (Table~\ref{tab:lambda-sweep}) shows $\lambda$ crossing one near
-$\omega \approx 0.008$; the permissive ``below background LD'' cutoff
-($\omega \approx b = 0.029$, retaining $96\%$ of markers) sits below one
-($\lambda = 0.93$), i.e.\ deflated.
-
-\begin{table}[h]
-  \centering
-  \begin{tabular}{lcc}
-    \hline
-    $w_j$ cutoff $\omega$ & markers kept & $\lambda$ \\
-    \hline
-    $0.006$          & $0.38$ & $1.19$ \\
-    $0.008$          & $0.66$ & $1.04$ \\
-    $0.010$          & $0.79$ & $1.00$ \\
-    $0.014$          & $0.89$ & $0.97$ \\
-    $0.020$          & $0.94$ & $0.95$ \\
-    $0.028\,(\approx b)$ & $0.96$ & $0.93$ \\
-    \hline
-    complexity-reduction default & $0.35$ & $1.06$ \\
-    \hline
-  \end{tabular}
-  \caption{Genomic inflation factor $\lambda$ and fraction of markers retained as
-  the local-LD cutoff $\omega$ is tightened (mean over five environments,
-  V2\_c1). $\lambda$ rises as the kinship is built from fewer, more independent
-  markers, crossing one near $\omega \approx 0.008$. The complexity-reduction
-  default reaches the same $\lambda \approx 1$ at a different marker count---%
-  $\lambda$ calibrates the correction, not the number of markers.}
-  \label{tab:lambda-sweep}
-\end{table}
+the kinship. The two cutoffs behave as the rule predicts: the
+complexity-reduction kinship is calibrated ($\lambda = 1.04$), while the
+permissive ``below background LD'' cutoff ($\omega \approx b$, retaining $96\%$
+of markers) sits below one ($\lambda = 0.93$), i.e.\ deflated.
 
 The choice of kinship basis has little effect on region detection once the
-kinship is pruned at all. Across region-size filters $\ell_{\min}$, the
-complexity-reduction kinship and the deflated below-background kinship
-($\lambda = 1.04$ and $0.93$ respectively, over the same ten environments)
+kinship is pruned at all. Across region-size filters $\ell_{\min}$, these two kinships
 return region-detection PR-AUC within one standard error of each other at every
 $\ell_{\min}$ ($0.220$ vs $0.210$, $0.235$ vs
 $0.227$, $0.274$ vs $0.282$, $0.248$ vs $0.250$; SE $\approx 0.06$, V2\_c1), with no consistent ordering---the deflated kinship is
