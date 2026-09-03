@@ -1,0 +1,34 @@
+  [envs] using 10 env cell(s): 1,2,3,4,5,6,7,8,9,10
+V2_c1 (nobgs): GRM comparison over env 1,2,3,4,5,6,7,8,9,10
+env3: chain gif=1.024 maxC=0.998 | ldw_b gif=0.939 maxC=0.998 | ldw_008 gif=1.137 maxC=0.998 | chain_centred gif=1.010 maxC=0.998 ; |tau|=50
+env5: chain gif=1.094 maxC=0.049 | ldw_b gif=0.968 maxC=0.132 | ldw_008 gif=1.190 maxC=0.134 | chain_centred gif=1.108 maxC=0.021 ; |tau|=50
+env1: chain gif=1.050 maxC=0.659 | ldw_b gif=0.932 maxC=0.562 | ldw_008 gif=1.166 maxC=0.670 | chain_centred gif=1.051 maxC=0.685 ; |tau|=50
+env2: chain gif=1.093 maxC=1.000 | ldw_b gif=0.963 maxC=1.000 | ldw_008 gif=1.251 maxC=1.000 | chain_centred gif=1.086 maxC=1.000 ; |tau|=50
+env4: chain gif=1.074 maxC=0.990 | ldw_b gif=0.916 maxC=0.990 | ldw_008 gif=1.207 maxC=1.000 | chain_centred gif=1.074 maxC=0.990 ; |tau|=50
+env10: chain gif=1.034 maxC=0.965 | ldw_b gif=0.942 maxC=0.965 | ldw_008 gif=1.115 maxC=0.965 | chain_centred gif=1.030 maxC=0.965 ; |tau|=50
+env6: chain gif=1.046 maxC=0.576 | ldw_b gif=0.957 maxC=0.554 | ldw_008 gif=1.199 maxC=0.781 | chain_centred gif=1.054 maxC=0.517 ; |tau|=50
+env9: chain gif=0.953 maxC=0.000 | ldw_b gif=0.889 maxC=0.000 | ldw_008 gif=1.019 maxC=0.005 | chain_centred gif=0.969 maxC=0.003 ; |tau|=8
+env8: chain gif=1.019 maxC=0.864 | ldw_b gif=0.911 maxC=0.943 | ldw_008 gif=1.138 maxC=0.992 | chain_centred gif=1.044 maxC=0.762 ; |tau|=50
+env7: chain gif=1.019 maxC=0.801 | ldw_b gif=0.915 maxC=0.601 | ldw_008 gif=1.086 maxC=0.876 | chain_centred gif=1.016 maxC=0.822 ; |tau|=50
+
+=== PR-AUC (mean +/- SE, adaptive tau) ===
+           method l_min   gif PR_AUC    SE
+           <char> <int> <num>  <num> <num>
+ 1:         chain     1 1.041  0.226 0.056
+ 2:         chain     2 1.041  0.243 0.052
+ 3:         chain     4 1.041  0.271 0.061
+ 4:         chain     8 1.041  0.247 0.060
+ 5: chain_centred     1 1.044  0.204 0.056
+ 6: chain_centred     2 1.044  0.212 0.051
+ 7: chain_centred     4 1.044  0.232 0.059
+ 8: chain_centred     8 1.044  0.216 0.057
+ 9:       ldw_008     1 1.151  0.200 0.054
+10:       ldw_008     2 1.151  0.211 0.050
+11:       ldw_008     4 1.151  0.246 0.055
+12:       ldw_008     8 1.151  0.232 0.054
+13:         ldw_b     1 0.933  0.211 0.059
+14:         ldw_b     2 0.933  0.231 0.057
+15:         ldw_b     4 0.933  0.282 0.063
+16:         ldw_b     8 0.933  0.256 0.058
+
+wrote module_sim_LDscnR/results/grm_comparison_prauc.csv and module_sim_LDscnR/figures/grm_ldw095_manhattan.png

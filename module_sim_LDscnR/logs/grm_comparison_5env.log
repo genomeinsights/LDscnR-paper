@@ -1,0 +1,25 @@
+  [envs] using 5 env cell(s): 1,2,3,4,5
+V2_c1 (nobgs): GRM comparison over env 1,2,3,4,5
+env5: chain gif=1.094 maxC=0.049 | ldw_b gif=0.968 maxC=0.132 | ldw_008 gif=1.190 maxC=0.134 ; |tau|=50
+env1: chain gif=1.050 maxC=0.659 | ldw_b gif=0.932 maxC=0.562 | ldw_008 gif=1.166 maxC=0.670 ; |tau|=50
+env3: chain gif=1.024 maxC=0.998 | ldw_b gif=0.939 maxC=0.998 | ldw_008 gif=1.137 maxC=0.998 ; |tau|=50
+env2: chain gif=1.093 maxC=1.000 | ldw_b gif=0.963 maxC=1.000 | ldw_008 gif=1.251 maxC=1.000 ; |tau|=50
+env4: chain gif=1.074 maxC=0.990 | ldw_b gif=0.916 maxC=0.990 | ldw_008 gif=1.207 maxC=1.000 ; |tau|=50
+
+=== PR-AUC (mean +/- SE, adaptive tau) ===
+     method l_min   gif PR_AUC    SE
+     <char> <int> <num>  <num> <num>
+ 1:   chain     1 1.067  0.304 0.078
+ 2:   chain     2 1.067  0.323 0.050
+ 3:   chain     4 1.067  0.378 0.063
+ 4:   chain     8 1.067  0.333 0.083
+ 5: ldw_008     1 1.190  0.298 0.074
+ 6: ldw_008     2 1.190  0.317 0.056
+ 7: ldw_008     4 1.190  0.377 0.045
+ 8: ldw_008     8 1.190  0.343 0.067
+ 9:   ldw_b     1 0.944  0.285 0.084
+10:   ldw_b     2 0.944  0.320 0.065
+11:   ldw_b     4 0.944  0.389 0.062
+12:   ldw_b     8 0.944  0.365 0.060
+
+wrote module_sim_LDscnR/results/grm_comparison_prauc.csv and module_sim_LDscnR/figures/grm_ldw095_manhattan.png
