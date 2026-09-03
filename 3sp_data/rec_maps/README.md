@@ -41,7 +41,7 @@ revised assembly (gasAcu1-4). Bins come from Glazer File S3, which carries both.
 | `rel_sd` | raw spread of `rel_*` across crosses. Descriptive only — **do not filter on it**, see below |
 | `rank_sd` | spread of each cross's genome-wide *percentile* for this bin |
 | `disagree` | `rank_sd` ranked **within rate decile**; uniform on [0,1] and orthogonal to rate. 0 = the crosses agree about this bin relative to others of similar rate |
-| `concordant` | ≥2 crosses **and** `disagree` ≤ 0.75 (655 of 880 bins) |
+| `concordant` | ≥2 crosses **and** `disagree` ≤ 0.75 (655 of 880 bins). ⚠️ **Redefined in `d74fdc7`** — previously thresholded `rel_sd`; **206 of 880 bins flipped**, so any conclusion recorded against the earlier flag is stale and needs recomputing. [Why](#why-concordant-is-not-built-on-rel_sd) |
 | `rate_consensus_cMperMb` | `rel_consensus × 3.11`, i.e. the consensus landscape on Roesti's published absolute scale |
 
 Rates are the slope of cM against Mb over each marker's two flanking markers, taken in
