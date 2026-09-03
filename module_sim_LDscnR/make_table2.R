@@ -36,13 +36,29 @@ sims_nhigh <- sum(w$recall_stage2 >  w$recall_stage1)   # better -- expected 0
 pan <- list(s1_units = 1305L, s2_units = 2631L, s1_cons_disc = 79L, s2_cons_disc = 5L)
 pan_mult <- pan$s2_units / pan$s1_units
 
+## ---- item 2 (part): stage-2 distance threshold ------------------------
+## Read from the bundle builder rather than retyped, so the table cannot drift
+## from what the analyses actually ran with.
+src  <- readLines("module_sim_LDscnR/regen_sim_data.R")
+dt   <- sub(".*distance_threshold *= *([0-9.e+]+).*", "\\1",
+            grep("distance_threshold *=", src, value = TRUE)[1])
+scor <- vapply(c("engine_x_statistic.R","test_then_cluster.R","span_matched_precision.R",
+                 "stage1_vs_stage2_units.R"),
+       function(f) { l <- grep("distance_threshold *=", readLines(file.path("module_sim_LDscnR", f)), value = TRUE)
+                     sub(".*distance_threshold *= *([0-9.e+]+).*", "\\1", l[1]) }, character(1))
+stopifnot(length(unique(c(dt, scor))) == 1L)   # builder and every scoring script agree
+
 rows <- list(c(
   "Inferential unit",
   "Stage-1 coherent clusters are tested; Stage-2 regions are assembled \\emph{post hoc}",
   sprintf("$%.2f\\times$ tests; recall $%+.3f$, never higher (%d worse, %d tied, %d better of %d)",
           sims_mult, sims_drec, sims_nlow, sims_ntie, sims_nhigh, nrow(w)),
   sprintf("$%.2f\\times$ tests; consensus discoveries $%d \\to %d$, Chr1 lost",
-          pan_mult, pan$s1_cons_disc, pan$s2_cons_disc)))
+          pan_mult, pan$s1_cons_disc, pan$s2_cons_disc)),
+  c("Stage-2 distance threshold",
+    sprintf("\\texttt{distance\\_threshold} $=$ %s bp in \\texttt{ld\\_prune\\_and\\_eMLG}; identical in the bundle builder and all four scoring scripts", dt),
+    "Nearly inert: LD blocks are short relative to either $1$e$5$ or $5$e$5$, so the simulations cannot discriminate",
+    "Binds: at $5$e$5$, $120$ of $165$ \\emph{Eda} markers collapse into one $821$-marker, $18.4$~Mb group"))
 
 ## ---- emit --------------------------------------------------------------
 hdr <- c(
