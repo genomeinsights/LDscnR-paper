@@ -1,0 +1,2 @@
+[EMMAX] peaks=193 ; F1-optimal cell: tau=0.05 l_min=1 (n_reg=72, prop=0.18, recall=0.06, fold=2.4)
+[EMMAX] wrote figures/kingman_sweep_EMMAX_c150specific.png
