@@ -65,8 +65,8 @@ survive; both **producers were deleted** in commit `3cb47ba`.
 
 | Input | Read by | Producer | Status |
 |---|---|---|---|
-| `data/inputs/null_popperm_3sp.rds` | `R/12` → the **17 EMMAX regions**, the manuscript's headline set | `module_sticklebacks_LDscnR/permutation_null_3sp.R` | producer deleted; file **vendored** into `data/inputs/` and `R/12` repointed |
-| `data/regions_tau0.05_lmin10_rho0.60.csv` | `R/08`, `R/09`, `R/16` | `module_sticklebacks_LDscnR/manhattan_regions.R` | producer deleted; CSV survives in `data/` |
+| `data/inputs/null_popperm_3sp.rds` | `R/12` → the **17 EMMAX regions**, the manuscript's headline set | `module_sticklebacks_LDscnR/superseded/permutation_null_3sp.R` | **producer restored** (5deed5e). Regenerate from the repo root with `Rscript module_sticklebacks_LDscnR/superseded/permutation_null_3sp.R none` — **`none` is not the default**; a bare run uses `pop_locality` and writes `null_regionperm_3sp.rds` instead. File stays **vendored** in `data/inputs/`; `R/12` still repointed. |
+| `data/regions_tau0.05_lmin10_rho0.60.csv` | `R/08`, `R/09`, `R/16` | `module_sticklebacks_LDscnR/superseded/manhattan_regions.R` | **producer restored** (5deed5e). `Rscript module_sticklebacks_LDscnR/superseded/manhattan_regions.R 0.05 10 0.60` (these are its defaults) writes `results/regions_tau0.05_lmin10_rho0.60.csv`. CSV also survives in `data/`. |
 
 Both producers are recoverable: `git show 3cb47ba^:module_sticklebacks_LDscnR/<file>`.
 Neither input is regenerable from anything now on disk, so restore the producer first if
