@@ -146,6 +146,27 @@ per_env <- function(env) {
       rbindlist(lapply(PAR$lmin, function(lm) { ev <- evaluate_ors(reg[lengths(reg) >= lm], map, qtab, th$r2min, th$dmax)
         data.table(l_min = lm, recall = ev$Recall, precision = ev$Precision) })) }
     rbindlist(lapply(TAUC, function(t) sc(names(C)[C >= t])))[, .(PR_AUC = pr_auc(recall, precision)), by = l_min] }
+  ## WHERE DO THE DROPPED CALLS SIT IN THE RANKING? ldscnr-2c's question: the
+  ## centred estimator finds a SUBSET of GCTA's calls on both datasets, but the
+  ## panel finds the dropped ones MORE enriched while these sims find them mostly
+  ## false. If the dropped markers are low-ranked under GCTA, "finds a subset" is
+  ## a threshold effect and the same phenomenon in both; if they are spread
+  ## through the ranking, it is not.
+  drop_rank <- function(Ca, Cb) {          # Ca = GCTA, Cb = centred
+    pos <- names(Ca)[Ca > 0]
+    if (!length(pos)) return(data.table(set = character(), n = integer(), med_pctile = numeric()))
+    pct <- stats::ecdf(Ca[pos])            # percentile within GCTA's own C>0 scores
+    a <- names(Ca)[Ca >= TAU_FIX]
+    b <- names(Cb)[Cb >= TAU_FIX]
+    shared <- intersect(a, b); only <- setdiff(a, b)
+    rbindlist(list(
+      data.table(set = "shared",    n = length(shared),
+                 med_pctile = if (length(shared)) stats::median(pct(Ca[shared])) else NA_real_),
+      data.table(set = "gcta_only", n = length(only),
+                 med_pctile = if (length(only))   stats::median(pct(Ca[only]))   else NA_real_)))
+  }
+  dr <- drop_rank(Cs[["chain"]], Cs[["chain_centred"]])[, env := env]
+  fwrite(dr, file.path(OUTRES, "estimator_drop_rank.csv"), append = file.exists(file.path(OUTRES, "estimator_drop_rank.csv")))
   ## discovery COUNT at the pre-nominated fixed tau (2c's quantity)
   ndisc <- function(C) { mk <- names(C)[C >= TAU_FIX]
     reg <- if (length(mk)) ld_regions(mk, edges) else list()
