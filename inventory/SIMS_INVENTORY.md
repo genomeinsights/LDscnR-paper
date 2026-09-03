@@ -29,6 +29,27 @@ Built backwards, from `synthesis/sec_sims.tex` to code.
 > revisiting, not just a note. The boundary in the other direction is already fixed — if
 > the BEDs ever need rebuilding, the request comes to this session and the result is
 > diffed against the committed copies rather than swapped under anyone's analyses.
+>
+> **The kingman facts are NOT duplicated here, deliberately.** The BED provenance, the
+> 2026-09-03 regeneration verification and its two surviving limits live in
+> `kingman2021/doc/00_PROVENANCE.md` §11, with pointers from `kingman2021/INVENTORY.md`
+> and `LD-pruning-paper/inventory/PANEL_INVENTORY.md`. That is already three copies of one
+> dated result; a fourth would be four places to drift. Follow the pointer.
+>
+> **What this arrangement costs, recorded because it is not visible from either file
+> alone.** This session now maintains the simulation half *and* owns the producer of the
+> BEDs the panel half's external validation rests on. The separation still holds where it
+> matters — the sims consume nothing from `kingman2021/` — but the *checking* has become
+> one-way. `ldscnr-2c` can re-derive claims made here about those BEDs; the session that
+> would have checked theirs from the other side was `ldscnr-22`, which ended on
+> 2026-09-03. Three sessions became two and the redundancy went with them.
+>
+> 2c's stated mitigations, so a reader can hold both halves to them: they will re-derive
+> the 11-of-11 SHA-256 result themselves the next time those BEDs carry a claim rather
+> than citing it, and will record which session verified what whenever a claim depends on
+> them. **Neither party can fix the asymmetry by being careful** — it is structural, and
+> the record should say so rather than let a reader infer independence that no longer
+> exists.
 
 ---
 
