@@ -57,22 +57,37 @@ re-run — but they are the provenance of figures that were in the manuscript un
 and report §10 records what was wrong with them. Move to a `superseded/` directory; do not
 delete.
 
-## Second-form dependencies — inputs whose PRODUCERS are gone
+## Second-form dependencies — inputs whose producers were deleted, and are now back
 
 Applying ldscnr-2c's corrected rule (trace one level *past* each claim's producing script,
 to what that script reads) to my own inventory found two I had missed. Both data files
-survive; both **producers were deleted** in commit `3cb47ba`.
+survive; both producers were deleted in commit `3cb47ba` and have since been
+**restored** under `module_sticklebacks_LDscnR/superseded/` (`5deed5e`).
 
 | Input | Read by | Producer | Status |
 |---|---|---|---|
 | `data/inputs/null_popperm_3sp.rds` | `R/12` → the **17 EMMAX regions**, the manuscript's headline set | `module_sticklebacks_LDscnR/superseded/permutation_null_3sp.R` | **producer restored** (5deed5e). Regenerate from the repo root with `Rscript module_sticklebacks_LDscnR/superseded/permutation_null_3sp.R none` — **`none` is not the default**; a bare run uses `pop_locality` and writes `null_regionperm_3sp.rds` instead. File stays **vendored** in `data/inputs/`; `R/12` still repointed. |
 | `data/regions_tau0.05_lmin10_rho0.60.csv` | `R/08`, `R/09`, `R/16` | `module_sticklebacks_LDscnR/superseded/manhattan_regions.R` | **producer restored** (5deed5e). `Rscript module_sticklebacks_LDscnR/superseded/manhattan_regions.R 0.05 10 0.60` (these are its defaults) writes `results/regions_tau0.05_lmin10_rho0.60.csv`. CSV also survives in `data/`. |
 
-Both producers are recoverable: `git show 3cb47ba^:module_sticklebacks_LDscnR/<file>`.
-Neither input is regenerable from anything now on disk, so restore the producer first if
-either ever needs re-deriving. This is the same blind spot as `08_liftover.sh`, one level
-further out: a backwards trace from claims stops at the script producing the cited output
-and never asks what that script *read*.
+Both producers are now in the working tree and need no recovery from history. Between
+`3cb47ba` and `5deed5e` they existed only as blobs in `3cb47ba^` and neither input was
+regenerable from anything on disk; that window is closed, but it lasted a day and nobody
+noticed while it was open.
+
+What made them hard to find is unchanged, and is the reason this section exists: each
+writes its output through a `sprintf()`-built name, so the filename never appears at the
+write site. A plain grep *does* find these files — `permutation_null_3sp.R` names its
+output in a header comment — but any test that pairs a filename with a write call **on the
+same line** discards them, which is what both audits did. Two independent audits
+concluded `null_popperm_3sp.rds` had no producer anywhere — in any branch, in any
+repository — before one was found in a script that had been sitting in `3cb47ba^` the
+whole time. This inventory's hand-built entry was right while both automated traces were
+wrong.
+
+That is the same blind spot as `08_liftover.sh`, one level further out: a backwards trace
+from claims stops at the script producing the cited output and never asks what that script
+*read* — and a forwards trace by filename never finds a producer that constructs its own
+output name.
 
 ## External inputs this folder depends on
 
