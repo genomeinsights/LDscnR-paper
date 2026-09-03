@@ -769,9 +769,10 @@ forecloses regional signal absorption.}
 
 This structure-model dependence has a sharp empirical consequence that reconciles the
 simulated and the real analyses. On the forward-in-time individual-based simulations, where population
-structure is simple and well captured by a handful of latent factors, LFMM is at least
-as powerful as EMMAX---a marginally higher region-detection PR-AUC---and its heavier
-score tail is genuine power. On the real stickleback genome the ranking reverses:
+structure is simple and well captured by a handful of latent factors, LFMM recovers markedly
+more true regions than EMMAX (recall $0.325$ vs $0.231$ across the $27$ operating
+points) at essentially equal precision ($0.337$ vs $0.351$), and its heavier score tail
+is genuine sensitivity. On the real stickleback genome the ranking reverses:
 against the independent Kingman EcoPeaks the EMMAX regions are far more concentrated
 (a $19.5\times$ region-level overlap, and a per-SNP C-score whose bins predict EcoPeak
 membership monotonically, Spearman $\rho = 0.21$), whereas LFMM casts a wider, noisier
@@ -799,9 +800,10 @@ between-region structure fixed and so isolates parallel marine--freshwater signa
 cleared by \emph{all} $90$ LFMM regions (location-matched region-level $q_R < 0.05$;
 permuted surrogates reconstruct the observed loci with median frequency $0$), the Chr1
 inversion ($p = 0.03$) and the \emph{Eda} region ($p = 0.01$) included. Second, on the
-forward-in-time individual-based simulations---where truth is known---LFMM's region-detection PR-AUC is
-marginally \emph{higher} than EMMAX's, so a genuine sensitivity advantage is expected to
-carry over. Third, the genomic inflation of the LFMM scan is elevated but \emph{not} in
+forward-in-time individual-based simulations---where truth is known---LFMM recovers markedly \emph{more} true
+regions than EMMAX (recall $0.325$ vs $0.231$) at essentially equal precision ($0.337$
+vs $0.351$), so a genuine sensitivity advantage---not a uniform superiority---is
+expected to carry over. Third, the genomic inflation of the LFMM scan is elevated but \emph{not} in
 the manner of unmodelled structure: on the raw statistics $\lambda \approx 1.7$, yet it is
 essentially \emph{insensitive to the number of latent factors} ($\lambda \approx
 1.6$--$1.9$ for $K = 1$ to $12$). Structure the factors fail to capture would be absorbed
@@ -862,36 +864,26 @@ $\omega \approx 0.008$; the permissive ``below background LD'' cutoff
   \label{tab:lambda-sweep}
 \end{table}
 
-The $\lambda$-calibrated kinship ($\omega = 0.008$) matches the
-complexity-reduction default on region-detection PR-AUC across region-size
-filters $\ell_{\min}$ (Table~\ref{tab:grm-prauc}, within one standard error),
-while the deflated below-background kinship trails by $0.05$--$0.08$, the gap
-widest at small $\ell_{\min}$ where deflation costs recall. This confirms
-empirically that (i) the failure of a permissive $w_j$ cutoff on weak-LD data is
-\emph{global deflation}, not signal loss---the low-LD QTN are harmless in the
-kinship, as argued in Section~\ref{sec:grm}---and (ii) tightening the cutoff to
-$\lambda \ge 1$ recovers a kinship equivalent to the complexity-reduction default,
-the same data-driven rule that yields the high-LD-excluding cutoff on the real
-stickleback genome.
+The choice of kinship basis has little effect on region detection once the
+kinship is pruned at all. Across region-size filters $\ell_{\min}$, the
+complexity-reduction kinship and the deflated below-background kinship
+($\lambda = 1.04$ and $0.93$ respectively, over the same ten environments)
+return region-detection PR-AUC within one standard error of each other at every
+$\ell_{\min}$ ($0.220$ vs $0.210$, $0.235$ vs
+$0.227$, $0.274$ vs $0.282$, $0.248$ vs $0.250$; SE $\approx 0.06$, V2\_c1), with no consistent ordering---the deflated kinship is
+marginally behind at small $\ell_{\min}$ and marginally ahead at large. The same
+inertness appears independently on the stickleback panel, where kinships built
+from seven different bases spanning a sevenfold range in marker count give
+comparable discovery counts and permutation significance throughout, with a
+sharp loss only when the kinship is left unpruned.
 
-\begin{table}[h]
-  \centering
-  \begin{tabular}{lccccc}
-    \hline
-    kinship & $\lambda$ & $\ell_{\min}{=}1$ & $\ell_{\min}{=}2$ & $\ell_{\min}{=}4$ & $\ell_{\min}{=}8$ \\
-    \hline
-    complexity-reduction   & $1.06$ & $0.448$ & $0.453$ & $0.460$ & $0.397$ \\
-    $w_j < 0.008$ ($\lambda{\approx}1$) & $1.04$ & $0.439$ & $0.464$ & $0.467$ & $0.433$ \\
-    $w_j < b$ (deflated)   & $0.93$ & $0.369$ & $0.389$ & $0.412$ & $0.398$ \\
-    \hline
-  \end{tabular}
-  \caption{Region-detection PR-AUC (mean over five environments, V2\_c1) under
-  three EMMAX kinships, by region-size filter $\ell_{\min}$. The
-  $\lambda$-calibrated $w_j$-pruned kinship matches the complexity-reduction
-  default; the deflated below-background kinship ($\lambda = 0.93$) trails,
-  especially at small $\ell_{\min}$.}
-  \label{tab:grm-prauc}
-\end{table}
+This is the expected consequence of the mechanism argued in
+Section~\ref{sec:grm}: on weak-LD data a permissive $w_j$ cutoff causes
+\emph{global deflation} rather than signal loss---the low-LD QTN are harmless in
+the kinship---and global deflation is largely absorbed by the region-size filter.
+The practical recommendation is therefore to prune the kinship, not to prune it
+in one particular way; $\lambda$ remains the useful diagnostic, since it detects
+the global deflation that a marker count alone does not.
 
 \subsection{Cross-set corroboration of the stickleback outlier regions}
 \label{sec:supp-crossset}
