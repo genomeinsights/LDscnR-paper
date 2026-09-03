@@ -318,7 +318,7 @@ MAP_SUBSETS      <- c("all bins", "concordant only")
 ## comparison would demand a pointless reinstall for a documentation commit.
 LDSCNR_PIN <- list(
   repo    = path.expand("~/gitlab/LDscnR"),
-  sha     = "c85e52404d11",
+  sha     = "848e4b997b85",
   branch  = "outlier-scan", # the promoted API is on this branch, not yet merged to main
   version = "0.0.0.9000",
   ## SHA-256 over the CONCATENATED CONTENT of every tracked file under R/, taken at the
