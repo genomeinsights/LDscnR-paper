@@ -15,6 +15,27 @@ have them on disk.
 
 It follows symlinks, so it checks the bytes a script would actually read.
 
+### Verification record, 2026-09-03
+
+The checker was tested in both directions before being relied on:
+
+| test | result |
+|---|---|
+| all 18 files, in-session | `0 mismatched, 0 missing`, exit 0 |
+| one hash deliberately corrupted | `MISMATCH grm_null.rds`, exit 1 |
+| clean shell, absolute path, cwd `/` | `0 mismatched, 0 missing`, exit 0 |
+| clean shell, cwd `/tmp`, `HOME` unset | `0 mismatched, 0 missing`, exit 0 |
+
+Clean-shell runs used `env -i PATH=/usr/bin:/bin bash --noprofile --norc`, so the
+script depends on nothing from an interactive environment and works with `HOME`
+unset (a fresh machine or CI). `cd "$(dirname "$0")"` resolves correctly when
+invoked from an unrelated working directory.
+
+The corrupted-hash test matters more than the passing ones: a checker that cannot
+fail would pass all of the others too. `3sp_LDscnR_data.rds` is validated THROUGH
+the symlink, so these runs confirm the 846 MB now in `LD-scaling-genome-scans` is
+the file this manifest describes.
+
 ## Where the bundle lives
 
 `3sp_LDscnR_data.rds` was moved out of the repository on 2026-09-03 and a symlink
