@@ -12,6 +12,24 @@ overturned the sweep's interpretation. What matches is the granularity.
 
 Built backwards, from `synthesis/sec_sims.tex` to code.
 
+> **Scope note, 2026-09-03.** The session that maintains this inventory also owns
+> `kingman2021/` from this date, reassigned by PK when the `ldscnr-22` session ended.
+> That folder has its own `INVENTORY.md` and is not covered here.
+>
+> **The two are disjoint, and I checked rather than assuming**: no script in
+> `module_sim_LDscnR/` reads or writes anything under `kingman2021/`, and this file has no
+> entry there. That disjointness is the reason the arrangement is sound rather than merely
+> convenient. `ldscnr-2c` declined `kingman2021/` because their half *consumes* the EcoPeak
+> BEDs it produces, and a consumer owning the producer is how you stop noticing the
+> producer changed. The simulations consume nothing from it, so the separation that
+> argument protects is preserved.
+>
+> **What would break it:** any sims analysis coming to depend on the EcoPeak BEDs, or on
+> anything else produced under `kingman2021/`. If that happens the ownership needs
+> revisiting, not just a note. The boundary in the other direction is already fixed — if
+> the BEDs ever need rebuilding, the request comes to this session and the result is
+> diffed against the committed copies rather than swapped under anyone's analyses.
+
 ---
 
 ## Claim-to-block map
