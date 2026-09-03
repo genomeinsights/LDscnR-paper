@@ -1,0 +1,3 @@
+name,file,bytes,sha256,origin_repo,origin_path,copied_utc
+raw_3sp,3sp_data.RData,166846879,811f7c8128c4aba7cdea9e9d4da00cc21904976f4218eb5d5046c6d6032e6417,LD-scaling-genome-scans,empirical_data/3sp/3sp_data.RData,2026-09-03T13:20:56Z
+lfmm_F,lfmm_F.rds,6732324,8ad2029c4b3487430111a2bbb4b4bd4bc443cba26bd5adae19a26f455abb82f4,LD-scaling-genome-scans,empirical_data/3sp/lfmm_F.rds,2026-09-03T13:20:56Z

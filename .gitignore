@@ -114,3 +114,17 @@ manuscript/*.fdb_latexmk
 # 3sp_data/ is untracked bulk input, but its manifest and checker are not
 !3sp_data/MANIFEST.md
 !3sp_data/verify_manifest.sh
+
+# ---- module_3sp -------------------------------------------------------------
+# Raw inputs copied in so the module is self-contained ON THIS FILESYSTEM (PK's call).
+# 3sp_data.RData is 159 MB, over GitHub's 100 MB hard limit, so it cannot be tracked;
+# lfmm_F.rds could be but is kept beside it rather than split across two regimes.
+# Their SHA-256s are recorded by R/01_inputs.R in out/01_inputs/inputs.csv, which IS
+# tracked -- so the repository carries proof of which bytes were used without the bytes.
+module_3sp/cache/
+module_3sp/data/*
+!module_3sp/data/PROVENANCE.csv
+!module_3sp/data/README.md
+module_3sp/out/**/*.rds
+!module_3sp/out/**/_receipt.rds
+module_3sp/out/run*.log   # ad hoc debug redirects, not designed pipeline output
