@@ -1,0 +1,12 @@
+# Regenerable intermediates of 08_liftover.sh. The BEDs it produces ARE tracked;
+# these are the scaffolding, re-fetched or rebuilt on every run.
+g14ToG1.bigChain.bb
+g14ToG1.bigChain.link.bb
+chain.bed
+link.bed
+# liftOver writes an "unmapped" file per input, empty when everything lifted.
+# The two non-empty ones are tracked deliberately -- they record real lift losses
+# (c150.sensitive 212->210, 3sp LFMM 40->39). Empty ones carry no information.
+pv_un_c150.specific.bed
+pv_un_c155.sensitive.bed
+pv_un_c155.specific.bed
