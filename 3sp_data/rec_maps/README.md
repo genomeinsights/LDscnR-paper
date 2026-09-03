@@ -49,6 +49,38 @@ the **revised** assembly order (the order these studies corrected). Roesti's mar
 rates are carried back to their gasAcu1 positions and averaged into the Glazer bins by
 overlap length.
 
+## Re-fetching the source files
+
+`source/` is gitignored, so **a fresh clone will not have it** and neither build script
+will run. The four files are all published supplementary material and are recoverable by
+hand, but read this first.
+
+> **The obvious way to fetch them fails silently.** Wiley — and to a lesser extent the PMC
+> file endpoint — sits behind Cloudflare, which answers a scripted `curl`/`wget` with
+> **HTTP 200 and a ~6 KB HTML interstitial**, not an error. That lands on disk under the
+> name you asked for and parses as *something*, so the failure presents as a corrupt or
+> truncated download rather than as an access block, and a rebuild can half-succeed.
+> `roesti_AppendixS4.txt` in particular must be retrieved through a browser.
+
+| file | source |
+|---|---|
+| `supp_g3.115.017905_FileS{1,2,3}.xlsx` | Glazer et al. 2015, G3 5:1463–1472, doi:[10.1534/g3.115.017905](https://doi.org/10.1534/g3.115.017905), Files S1–S3 (CC-BY). Also mirrored in the Europe PMC supplementary package for PMC4502380, which does allow scripted download. |
+| `roesti_AppendixS4.txt` | Roesti, Moser & Berner 2013, Mol Ecol 22:3014–3027, doi:[10.1111/mec.12322](https://doi.org/10.1111/mec.12322), Appendix S4. Wiley only — browser required. |
+
+Both scripts verify size and hash before doing any work and **refuse to proceed** on a
+file that is absent, truncated, or not what it claims, naming the Cloudflare case
+explicitly when the size looks like an interstitial:
+
+| file | bytes | |
+|---|---|---|
+| `roesti_AppendixS4.txt` | 120,011 | md5 `255a8f02adc2bed9993c5284edfe3e0c` |
+| `supp_g3.115.017905_FileS1.xlsx` | 1,342,078 | sha256 `f8bd177572bf8c2b…` |
+| `supp_g3.115.017905_FileS2.xlsx` | 1,857,861 | sha256 `c695fca8dbe02dda…` |
+| `supp_g3.115.017905_FileS3.xlsx` | 244,412 | sha256 `d3cc2fb083fd1efc…` |
+
+If a hash mismatches at full size, the file was revised upstream or edited locally — do
+not build on it without deciding which you have.
+
 ## Agreement between crosses
 
 Local rate, across bins scored by both:

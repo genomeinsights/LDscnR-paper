@@ -6,7 +6,24 @@
 suppressMessages(library(data.table))
 
 ## ---- Roesti: local rate per marker, then intervals in gasAcu1 coordinates ----
-ro <- fread("source/roesti_AppendixS4.txt")
+## Precondition on the Roesti input. Checked, not merely documented: Wiley is behind
+## Cloudflare, which answers a scripted curl with HTTP 200 and a ~6 KB HTML interstitial
+## rather than an error, so a failed fetch looks like a truncated file rather than an
+## access block. See README.md, "Re-fetching the source files".
+ROESTI_SRC  <- "source/roesti_AppendixS4.txt"
+ROESTI_SIZE <- 120011
+ROESTI_MD5  <- "255a8f02adc2bed9993c5284edfe3e0c"
+if (!file.exists(ROESTI_SRC))
+  stop(sprintf("MISSING: %s\n  source/ is gitignored, so a fresh clone will not have it.\n  README.md gives the DOI and says why a scripted fetch will not work.", ROESTI_SRC))
+.sz <- file.size(ROESTI_SRC); .md5 <- unname(tools::md5sum(ROESTI_SRC))
+if (!identical(.md5, ROESTI_MD5))
+  stop(sprintf(paste0("WRONG CONTENT: %s\n  expected %d bytes, md5 %s\n  got      %d bytes, md5 %s\n  %s"),
+       ROESTI_SRC, ROESTI_SIZE, ROESTI_MD5, .sz, .md5,
+       if (.sz < 50000) "That size is in the range of a Cloudflare interstitial -- you have an HTML block page, not the file. Fetch it through a browser."
+       else "Size plausible but content differs: revised upstream, or edited locally. Do not build on it silently."))
+cat(sprintf("source file verified: %s (%d bytes)\n", ROESTI_SRC, .sz))
+
+ro <- fread(ROESTI_SRC)
 setnames(ro, c("chromosome_BroadS1", "position_BroadS1",
                "chromosome_reassembled", "position_reassembled"),
              c("old_chr", "old_pos", "new_chr", "new_pos"))

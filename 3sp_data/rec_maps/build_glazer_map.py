@@ -6,8 +6,48 @@ Outputs, in BOTH gasAcu1 ("old") and Glazer revised gasAcu1-4 ("new") coordinate
   glazer2015_markers.tsv    marker-level: cM in each of the two F2 crosses + bin coords
   glazer2015_rate_bins.tsv  per-bin local recombination rate (cM/Mb), per cross + mean
 """
-import csv, openpyxl
+import csv, hashlib, os, sys, openpyxl
 from collections import defaultdict
+
+# Preconditions on the published inputs. These are checked rather than documented
+# because the natural way to re-fetch them FAILS SILENTLY: Wiley (and to a lesser
+# extent the PMC file endpoint) sit behind Cloudflare, which answers a scripted
+# curl/wget with HTTP 200 and a ~6 KB HTML interstitial. That lands on disk with a
+# plausible name and parses as "something", so a rebuild can half-succeed and
+# produce a map that looks fine. See README.md, "Re-fetching the source files".
+SOURCES = {
+    "source/supp_g3.115.017905_FileS1.xlsx":
+        (1342078, "f8bd177572bf8c2b8388455357bc4f5faa05f35d1fe92b6180b6684a983888bb"),
+    "source/supp_g3.115.017905_FileS2.xlsx":
+        (1857861, "c695fca8dbe02dda1f430f0c5b390d59b18ae6c0d60562fe6eeb258a97aef07a"),
+    "source/supp_g3.115.017905_FileS3.xlsx":
+        (244412,  "d3cc2fb083fd1efcb068ad65394b4be57f4e2c6d627e9b03193cabbfde50e273"),
+}
+
+
+def check_sources():
+    """Refuse to build on inputs that are absent, truncated, or not what they claim."""
+    for path, (want_size, want_sha) in sorted(SOURCES.items()):
+        if not os.path.exists(path):
+            sys.exit(f"MISSING: {path}\n"
+                     f"  source/ is gitignored, so a fresh clone will not have it.\n"
+                     f"  README.md gives the DOI and says why a scripted fetch will not work.")
+        size = os.path.getsize(path)
+        with open(path, "rb") as fh:
+            got = hashlib.sha256(fh.read()).hexdigest()
+        if got != want_sha:
+            hint = ("  That size is in the range of a Cloudflare interstitial -- you have "
+                    "an HTML\n  block page, not the file. Fetch it through a browser."
+                    if size < 50_000 else
+                    "  Size matches but the hash does not: the file was revised upstream, or "
+                    "edited\n  locally. Do not build on it silently.")
+            sys.exit(f"WRONG CONTENT: {path}\n"
+                     f"  expected {want_size:,} bytes  sha256 {want_sha[:16]}...\n"
+                     f"  got      {size:,} bytes  sha256 {got[:16]}...\n{hint}")
+    print(f"source files verified: {len(SOURCES)} of {len(SOURCES)}")
+
+
+check_sources()
 
 def genetic_map(path):
     wb = openpyxl.load_workbook(path, read_only=True)
