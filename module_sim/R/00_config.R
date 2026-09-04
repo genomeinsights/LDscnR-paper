@@ -66,7 +66,7 @@ PATHS$untar  <- file.path(PATHS$cache, "untar")   # scratch for unpacked .tgz; n
 ## ---- 2. WHICH SLICE OF THE GRID THIS BUILD TARGETS -----------------------------
 ## [!] OPEN DECISION, FLAGGED RATHER THAN GUESSED. The full grid is 4 selection
 ## cells (V0.5_c1, V0.5_c2, V1_c1.5, V2_c1) x 2 BGS arms x 10 environments x 10
-## chromosomes -- module_3sp has exactly one dataset; this module does not.
+## REPLICATES -- module_3sp has exactly one dataset; this module does not.
 ## Building the whole grid through every stage before anything is verified would
 ## repeat today's module_3sp lesson (rebuild small, verify, then scale) in the
 ## worst possible way -- hours of compute before a single number can be checked.
@@ -76,7 +76,18 @@ PATHS$untar  <- file.path(PATHS$cache, "untar")   # scratch for unpacked .tgz; n
 CELLS <- "V2_c1"          # widen to c("V0.5_c1","V0.5_c2","V1_c1.5","V2_c1") once verified
 TAGS  <- "nobgs"          # widen to c("nobgs","bgs5") once verified -- see RAW_SCORING below
 ENVS  <- 1L                # widen once verified
-CHRS  <- 1:10               # all 10 chromosome files pool into one per-(cell,tag,env) unit
+## [!] RENAMED FROM "CHRS" 2026-09-04 (PK). "chr1".."chr10" in NEMO's own
+## filenames are not ten genomic chromosomes to pool -- they are ten
+## INDEPENDENT SIMULATION REPLICATES, each already containing its own two
+## chromosomes (sharing one recombination map; confirmed directly, rec_map1.rds
+## has rows Chr %in% c(1,2), same bp range for both, and rec_map2.rds is a
+## genuinely different map -- one per replicate, not one per chromosome). A
+## replicate's parsed file therefore already IS a complete two-chromosome
+## bundle; there is no cross-replicate pooling to do before 02_bundle.R.
+## Analyses run PER REPLICATE (PK); only the final PR/recall scoring pools
+## across all ten (20 chromosomes total) -- that pooling is a later stage, not
+## R_parsing/ or 02_bundle.R.
+REPS <- 1L                  # widen to 1:10 once this one replicate is verified end to end
 
 ## ---- 3. SEEDS -------------------------------------------------------------------
 SEEDS <- c(bundle = 1L, clusters = 11L, nulls = 41L, sensitivity = 41L)
