@@ -105,8 +105,16 @@ files <- list.files(untar_dir, recursive = TRUE, full.names = TRUE)
 ## found 2026-09-04 launching the grid, 5 of 70 bgs archives affected, 0 of
 ## 70 nobgs. Filter to TARGET_ENV explicitly rather than assuming "env1.tgz"
 ## means only-env1 inside; env%d(?!\\d) avoids env1 matching env10's files.
+##
+## [!] MATCH basename(files), NOT files (full paths). Regression found
+## 2026-09-05: once combo_id started including env (crossing reps x envs),
+## untar_dir itself became ".../bgs_V0.5_c1_rep2_env1/...", so env1's OWN
+## directory segment satisfied "env1(?!\\d)" for every file underneath it
+## regardless of that file's real env -- silently defeating the filter for
+## every combo whose combo_id's own env happened to match the pattern
+## (i.e. every combo), reintroducing the exact bug this was meant to fix.
 env_pat <- sprintf("env%d(?!\\d)", TARGET_ENV)
-files <- files[grepl(env_pat, files, perl = TRUE)]
+files <- files[grepl(env_pat, basename(files), perl = TRUE)]
 map_file  <- files[grepl("\\.map$", files)]
 geno_file <- files[grepl("snp_geno", files, fixed = TRUE)]
 stopifnot("expected exactly one .map file" = length(map_file) == 1L,

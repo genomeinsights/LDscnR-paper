@@ -88,6 +88,22 @@ qtab <- qtn_ld_table(GTs, map, candidate_markers, max_bp = 2e6)
 th <- score_thresholds(as.data.table(LD_decay$decay_sum), rho_r2 = RHO_R2, rho_d = RHO_D, dmax_cap = DMAX_CAP)
 say("    r2min = %.4f, dmax = %s bp\n", th$r2min, format(round(th$dmax), big.mark = ","))
 
+## [!] NO QTN WITHIN max_bp OF ANY CANDIDATE MARKER -- a real edge case, not
+## a bug: found on a V2 (weak selection) replicate whose one QTN existed but
+## fell below the MAF>0.1 detectability filter, leaving true_pos_QTN entirely
+## empty. qtn_ld_table() then returns a genuinely EMPTY, COLUMNLESS
+## data.table (rbindlist() of an all-NULL list has no r2/dist_bp columns at
+## all), and both evaluate_ors() and .diagnose_ors() crash trying to filter
+## a column that does not exist -- as soon as ANY arm has >=1 significant
+## region (the two zero-significant arms upstream of the crash short-circuit
+## before ever touching qtab). No possible TP can exist in this case by
+## construction (nothing is in LD with a QTN), so every significant region
+## is trivially FP; handled directly here rather than by patching the
+## package for a table shape it was never designed to receive.
+NO_QTN_POSSIBLE <- nrow(qtab) == 0
+if (NO_QTN_POSSIBLE) say("    [!] qtn_ld_table is empty (no QTN within max_bp of any candidate marker) -- every significant region will score as FP\n")
+N_TRUE <- sum(map$true_pos_QTN, na.rm = TRUE)
+
 ## ---- 4. score one arm: aggregate (evaluate_ors) + per-cluster detail ----------
 ## PK: also want FP proportion as a function of cluster size -- evaluate_ors()
 ## alone only returns the aggregate TP/FP/FN, discarding which SIGNIFICANT
@@ -99,22 +115,33 @@ say("    r2min = %.4f, dmax = %s bp\n", th$r2min, format(round(th$dmax), big.mar
 ## dedup-neutral "extra" (neither TP nor FP) exactly. Called once per arm
 ## here instead of building the aggregate a second, differently-scoped way.
 .score_arm <- function(sig_regions, nm) {
-  ev <- evaluate_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
+  if (NO_QTN_POSSIBLE) {
+    n_sig <- length(sig_regions)
+    ev <- list(TP = 0L, FP = n_sig, FN = N_TRUE,
+               Precision = if (n_sig > 0) 0 else NA_real_,
+               Recall = if (N_TRUE > 0) 0 else NA_real_, PR = NA_real_)
+    detail <- data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
+                         n_loci = vapply(sig_regions, length, integer(1)),
+                         is_TP = rep(FALSE, n_sig), is_FP = rep(TRUE, n_sig))
+  } else {
+    ev <- evaluate_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
+    detail <- if (length(sig_regions)) {
+      dg <- .diagnose_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
+      extra <- dg$dropped_by_dedup == TRUE & dg$candidate_qtn_is_true_positive %in% TRUE
+      data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
+                 n_loci = dg$n_loci, is_TP = dg$is_TP, is_FP = !dg$is_TP & !extra)
+    } else {
+      data.table(tag = character(), cell = character(), rep = integer(), env = integer(), arm = character(),
+                 n_loci = integer(), is_TP = logical(), is_FP = logical())
+    }
+  }
   agg <- data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
                     n_sig = length(sig_regions), TP = ev$TP, FP = ev$FP, FN = ev$FN,
                     Precision = ev$Precision, Recall = ev$Recall, PR = ev$PR)
-  detail <- if (length(sig_regions)) {
-    dg <- .diagnose_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
-    extra <- dg$dropped_by_dedup == TRUE & dg$candidate_qtn_is_true_positive %in% TRUE
-    data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
-               n_loci = dg$n_loci, is_TP = dg$is_TP, is_FP = !dg$is_TP & !extra)
-  } else {
-    data.table(tag = character(), cell = character(), rep = integer(), env = integer(), arm = character(),
-               n_loci = integer(), is_TP = logical(), is_FP = logical())
-  }
-  say("    %-16s sig=%-4d TP=%-3d FP=%-3d FN=%-3d Precision=%s Recall=%.3f\n",
+  say("    %-16s sig=%-4d TP=%-3d FP=%-3d FN=%-3d Precision=%s Recall=%s\n",
       nm, length(sig_regions), ev$TP, ev$FP, ev$FN,
-      if (is.na(ev$Precision)) "  NA" else sprintf("%.3f", ev$Precision), ev$Recall)
+      if (is.na(ev$Precision)) "  NA" else sprintf("%.3f", ev$Precision),
+      if (is.na(ev$Recall)) "  NA" else sprintf("%.3f", ev$Recall))
   list(agg = agg, detail = detail)
 }
 
