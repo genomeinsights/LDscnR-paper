@@ -51,7 +51,17 @@ PARAMS <- list(tag = TARGET_TAG, cell = TARGET_CELL, env = TARGET_ENV, chr = TAR
 say("[0] target: tag=%s cell=%s env=%d chr=%d\n", TARGET_TAG, TARGET_CELL, TARGET_ENV, TARGET_CHR)
 for (nm in names(INPUTS)) say("    %-8s %s  (%s)\n", nm, INPUTS[[nm]],
                               if (file.exists(INPUTS[[nm]])) "exists" else "MISSING")
-if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
+## [!] BUG, FOUND 2026-09-04: stage_stale() here was called with the NAMED
+## INPUTS vector (kept named for the logging loop above), while write_receipt()
+## below uses unname(INPUTS) -- matching module_3sp/01_inputs.R's own
+## convention. vapply() over a NAMED vector returns a result named by THOSE
+## names ("archive"/"recmap"/"env"); the receipt stores hashes keyed by the
+## actual PATH strings. stage_stale()'s lookup (old[names(now)]) then compared
+## against names that never existed in the receipt, so it reported every input
+## "changed" on every run regardless of whether anything had. Confirmed: a
+## rerun immediately after a successful one still said "inputs changed: archive,
+## recmap, env". Both calls now use unname(INPUTS), matching write_receipt.
+if (!stage_stale(STAGE, unname(INPUTS), PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
 if (any(!file.exists(INPUTS))) stop("missing input(s): ",
