@@ -155,11 +155,25 @@ RESULTS$lfmm$simes <- list(test = test_lf_sim, gif_precorrection = lf_sim$gif_pr
 ## this is a cheap, immediate check that the pipeline is pointed at something
 ## real before ten replicates' worth of compute goes into it. A region "hits" a
 ## true QTN if the QTN's marker falls within the region's [Chr, from, to] span.
+##
+## [!] VECTORISED, NOT LOOPED. The first version was a per-truth-row vapply
+## re-scanning the full regions table on every iteration -- O(n_truth x
+## n_regions), harmless only because both are tiny here (single digits: 2-9
+## true QTN, 0-9 regions per replicate seen so far). Checked before deciding it
+## was fine to leave: the final cross-replicate PR-scoring stage PK described
+## will pool ~10x the QTN and ~10x the regions, and this exact shape is the one
+## kind of "small enough today" loop that turns into a real cost once copied
+## into that stage. Replaced with data.table::foverlaps(), the same tool
+## ld_outlier_test()'s own physical-merge branch uses for an identical
+## Chr/from/to range join -- one vectorised join instead of a loop, and it
+## scales the same way regardless of how large truth or regions gets.
 .hits_truth <- function(regions, map) {
   truth <- map[true_QTN == TRUE, .(Chr, Pos)]
   if (!nrow(regions) || !nrow(truth)) return(0L)
-  sum(vapply(seq_len(nrow(truth)), function(i)
-    any(regions$Chr == truth$Chr[i] & regions$from <= truth$Pos[i] & regions$to >= truth$Pos[i]), logical(1)))
+  truth[, `:=`(from = Pos, to = Pos)]
+  rg <- data.table::copy(regions); data.table::setkey(rg, Chr, from, to)
+  ov <- data.table::foverlaps(truth, rg, by.x = c("Chr", "from", "to"), type = "within", nomatch = NULL)
+  data.table::uniqueN(ov, by = c("Chr", "Pos"))
 }
 n_truth <- sum(map$true_QTN)
 hits <- list(emmax_consensus = .hits_truth(test_emx_con$regions, map),
