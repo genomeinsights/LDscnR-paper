@@ -34,13 +34,34 @@ PATHS <- list(
   ## verifies presence and hashes what it reads, same discipline as module_3sp,
   ## so the dependency is at least VISIBLE and CHECKED rather than assumed.
   raw_root = "/Volumes/Nemo/Nemo_sim",
-  ## Per-(V,c,env,chr) bundles: raw genotypes, map (architecture + ground truth),
-  ## phenotype. TAGS below selects which arm.
-  raw_nobgs = "/Volumes/Nemo/Nemo_sim/regen_sim_data_nobgs",
-  raw_bgs5  = "/Volumes/Nemo/Nemo_sim/regen_sim_data_bgs5",
-  cache = file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "cache")
+  ## [!] CORRECTED 2026-09-04. Originally pointed at regen_sim_data_{nobgs,bgs5}
+  ## -- traced those on PK's instruction and they are NOT raw: every bundle
+  ## already carries emx_p/emx_F/lfmm_p/lfmm_F, a GRM and grm_markers built via
+  ## GRM_METHOD="complexity_chain" (regen_sim_data.R:43) -- which is
+  ## ld_prune_and_eMLG()'s stage-2 group representatives, the SAME set
+  ## module_3sp's 02_bundle.R explicitly calls out as "a DIFFERENT set...
+  ## deliberately not used" for the kinship basis. Their own upstream,
+  ## parsed_sim_data2, is ALSO already scored (same columns). The true raw
+  ## source is NEMO's own native per-file output, one tgz per (tag,chr,V,c,env):
+  raw_nemo_nobgs = "/Volumes/Nemo/Nemo_sim/Nemo_out_nobgs",
+  raw_nemo_bgs5  = "/Volumes/Nemo/Nemo_sim/Nemo_out_bgs",
+  ## Reference chromosome maps (position, type, allelic_values -- the genome
+  ## MODEL, shared across every simulation replicate) and the spatial
+  ## environment surfaces (one file per env index, shared across V/c/chr).
+  ## Neither is a simulation OUTPUT; both are simulation INPUT that every
+  ## replicate reads. Verified present for chr1/env1 (2026-09-04).
+  raw_recmap_dir = "/Volumes/Nemo/Nemo_sim/maps_500kb_with_allelic_values/chromosome_maps_500kb_rds",
+  raw_env_dir    = "/Volumes/Nemo/Nemo_sim/env",
+  ## R_parsing/'s output: the clean, unscored bundle (GTs + map architecture/
+  ## truth + env), one file per (tag,chr,V,c,env) -- the sim-side equivalent of
+  ## module_3sp's raw_3sp.RData, and what 02_bundle.R in R/ will read as ITS raw
+  ## input. Same external-volume reasoning as raw_root: too large for git or for
+  ## a full local copy once this widens past one file.
+  parsed = "/Volumes/Nemo/Nemo_sim/module_sim_parsed",
+  cache  = file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "cache")
 )
 PATHS$el_dir <- file.path(PATHS$cache, "edge_lists")
+PATHS$untar  <- file.path(PATHS$cache, "untar")   # scratch for unpacked .tgz; not an output
 
 ## ---- 2. WHICH SLICE OF THE GRID THIS BUILD TARGETS -----------------------------
 ## [!] OPEN DECISION, FLAGGED RATHER THAN GUESSED. The full grid is 4 selection
@@ -64,35 +85,57 @@ SEEDS <- c(bundle = 1L, clusters = 11L, nulls = 41L, sensitivity = 41L)
 ## [!] THE SINGLE BIGGEST ASSUMPTION IN THIS FILE, stated plainly so PK can
 ## override it in one line.
 ##
-## Every bundle under regen_sim_data_* already carries emx_p/emx_F, lfmm_p/lfmm_F,
-## a GRM, grm_markers, and a complexity_reduction object -- method OUTPUTS baked
-## in by the superseded regen_sim_data.R pipeline at parse time. Checked directly
-## (2026-09-04): that GRM's grm_method is "complexity_chain" over 13,963 of
-## 30,922 markers, NOT the stage-1-representatives basis module_3sp settled on,
-## and complexity_reduction$params$rho is EMPTY -- unseeded, unrecorded, exactly
-## the "cannot be reproduced even in principle" problem module_3sp's own header
-## describes for its superseded bundle.
+## Traced one level further than the first version of this file (2026-09-04,
+## PK): regen_sim_data_* is not raw (previous paragraph in git history), and
+## neither is ITS OWN input parsed_sim_data2 -- checked directly, that also
+## already carries emx_p/emx_F/lfmm_p/lfmm_F/ld_w_095 baked into the map. The
+## true raw substrate is NEMO's own native output (raw_nemo_nobgs/raw_nemo_bgs5
+## above), one .tgz per (tag,chr,V,c,env) holding a .map + .snp_geno pair.
+## R_parsing/ reads THAT directly. Confirmed by extracting one archive: exactly
+## a .map, a .snp_geno, a run log and a stats file, nothing else.
 ##
-## RAW_SCORING = "rebuild": treat the bundle's GTs, map's ARCHITECTURE/TRUTH
-## columns (Chr, Pos, marker, type, chr_type, true_QTN, focal_QTN,
-## max_LD_with_QTN, MAF, Va) and env as the raw substrate -- the sim-side
-## equivalent of module_3sp's raw_3sp.RData -- and recompute decay, ld_w,
-## stage-1 clustering, the kinship basis, and both engine scans fresh, in this
-## module's own stages, under this file's own seeds. Discard emx_p, emx_F,
-## lfmm_p (see below), GRM, grm_markers, complexity_reduction from the bundle.
-## The alternative, "inherit", would carry the same unreproducibility into every
-## downstream number that module_3sp was rebuilt specifically to remove.
+## RAW_SCORING = "rebuild": R_parsing/ produces a bundle carrying only what NEMO
+## actually simulated -- GTs, Chr/Pos/marker, per-marker type (ntrl/QTN/delet),
+## allelic_values, true_QTN, MAF, and env (spatial position + environmental
+## value) -- and R/ (02_bundle.R onward) recomputes decay, ld_w, stage-1
+## clustering, the kinship basis and both engine scans fresh from that, under
+## this file's own seeds. Nothing scored is inherited from any prior parse.
+##
+## [!] chr_type / max_LD_with_QTN / focal_QTN / bp_to_focal_QTN are DELIBERATELY
+## NOT part of the raw parse, though the old Parse_sim_data.R computed something
+## with those names at parse time. Read directly (2026-09-04): that script
+## assigned chr_type by `ifelse(Chr==1,"QTN","ntrl")` -- a hardcoded per-FILE
+## label, wrong on its face once a chromosome other than 1 carries a QTN, which
+## checked bundles show every chromosome does (chr1..chr10 each have 1-3 QTN
+## markers in V2_c1/env1). Whatever produced the CURRENT bundles' genuinely
+## per-marker chr_type (QTN and ntrl values within every chromosome, matching
+## the "53.4% of markers are neutral-region" finding this project already
+## validated) is not this script, or not this version of it. Rather than
+## inherit an unverified derivation, these are left as method-scored quantities
+## for R/ to compute properly (LD-distance-to-nearest-QTN, a real choice with a
+## threshold, same status as dmax/r2min) -- not raw truth.
 RAW_SCORING <- "rebuild"
 
-## LFMM. [!] NOT YET CONFIRMED reproducible from raw genotypes within this
-## codebase -- unlike EMMAX, no function here computes it, matching module_3sp's
-## LFMM_SOURCE situation exactly. UNLIKE module_3sp, this data is entirely ours
-## (not an external panel from another lab), so "was the bundle's lfmm_p/lfmm_F
-## computed reproducibly by regen_sim_data.R itself" is an answerable question,
-## not an inherited unknown -- it has not been answered yet. Defaulting to
-## "inherit" (module_3sp's honest default) until that is checked; do not read
-## this as a claim that it IS reproducible.
-LFMM_SOURCE <- "inherit"
+## Individual subsampling. keep_inds <- seq(1, 320, by = 2) in the old parser --
+## every other individual, 160 of 320. PK has confirmed this is deliberate
+## project policy, not a parsing artefact: "The reason I'm subsampling is
+## because in a situation where the signal is clear, any method will do." Kept
+## as the SAME rule, moved here so it is a config value rather than a number
+## inline in a parsing script.
+SUBSAMPLE_STEP <- 2L    # keep_inds <- seq(1, 320, by = SUBSAMPLE_STEP)
+
+## MAF filter. [!] CONFLICT, NOT RESOLVED. This file inherited MAF_KEEP = 0.1
+## from module_3sp on the assumption "same convention" -- never independently
+## confirmed for sims. The old Parse_sim_data.R used min_maf = 0.05. Left at 0.1
+## below because that is what was already committed, but flagged here rather
+## than silently kept: this needs a sim-specific decision, not an inherited one.
+
+## LFMM. [!] The bundle this pipeline now parses from (NEMO's own output) has NO
+## lfmm_p at all -- unlike module_3sp's inherited lfmm_F.rds, there is nothing
+## to inherit at the raw-parse stage. If LFMM is wanted, it needs its own
+## reproducible computation step, not yet designed. EMMAX only until that
+## exists; do not silently fall back to any bundle's old lfmm_p.
+LFMM_SOURCE <- "not_yet_available"
 
 ## ---- 5. STAGE 02: THE BUNDLE (decay, ld_w, stage-1 clustering, kinship) --------
 ## n_win_decay = 20 is canonical independently on BOTH halves of this project --
