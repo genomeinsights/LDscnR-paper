@@ -52,7 +52,8 @@ RHO_R2 <- 0.75; RHO_D <- 0.95   ## score_thresholds()'s own defaults -- PK confi
 INPUTS <- c(BUNDLE_PATH, SCAN_PATH)
 PARAMS <- list(size_floor = SIZE_FLOOR, dmax_cap = DMAX_CAP, rho_r2 = RHO_R2, rho_d = RHO_D,
                maf_min = 0.1, p_va_min = 0.05, max_bp = 2e6,
-               single_snp_arms = TRUE, single_snp_bh_alpha = ALPHA, lfmm_consensus_arm = FALSE)
+               single_snp_arms = TRUE, single_snp_bh_alpha = ALPHA, lfmm_consensus_arm = FALSE,
+               cluster_detail = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -87,24 +88,47 @@ qtab <- qtn_ld_table(GTs, map, candidate_markers, max_bp = 2e6)
 th <- score_thresholds(as.data.table(LD_decay$decay_sum), rho_r2 = RHO_R2, rho_d = RHO_D, dmax_cap = DMAX_CAP)
 say("    r2min = %.4f, dmax = %s bp\n", th$r2min, format(round(th$dmax), big.mark = ","))
 
-## ---- 4. evaluate_ors() per engine/arm, significant units only -----------------
-ARMS <- list(emmax_consensus = sc$results$emmax$consensus$test,
-            emmax_simes     = sc$results$emmax$simes$test,
-            lfmm_simes      = sc$results$lfmm$simes$test)
-say("\n[4] evaluate_ors() per engine/arm\n")
-scored <- rbindlist(lapply(names(ARMS), function(nm) {
-  t <- ARMS[[nm]]
-  stopifnot("unit_id must align by position between R/03_scan.R and .ld_outlier_units() here" =
-              nrow(t$units) == nrow(units), identical(t$units$unit_id, units$unit_id))
-  sig_regions <- units$members[t$units$significant]
+## ---- 4. score one arm: aggregate (evaluate_ors) + per-cluster detail ----------
+## PK: also want FP proportion as a function of cluster size -- evaluate_ors()
+## alone only returns the aggregate TP/FP/FN, discarding which SIGNIFICANT
+## cluster was which size and TP/FP. .diagnose_ors() is the internal function
+## evaluate_ors() itself calls (~/gitlab/LDscnR/R/ld_benchmark.R) -- same
+## dedup logic, same TP/FP definition, but keeps one row per region with
+## n_loci (cluster size) and is_TP, plus dropped_by_dedup/
+## candidate_qtn_is_true_positive to reconstruct evaluate_ors()'s
+## dedup-neutral "extra" (neither TP nor FP) exactly. Called once per arm
+## here instead of building the aggregate a second, differently-scoped way.
+.score_arm <- function(sig_regions, nm) {
   ev <- evaluate_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
+  agg <- data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
+                    n_sig = length(sig_regions), TP = ev$TP, FP = ev$FP, FN = ev$FN,
+                    Precision = ev$Precision, Recall = ev$Recall, PR = ev$PR)
+  detail <- if (length(sig_regions)) {
+    dg <- .diagnose_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
+    extra <- dg$dropped_by_dedup == TRUE & dg$candidate_qtn_is_true_positive %in% TRUE
+    data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
+               n_loci = dg$n_loci, is_TP = dg$is_TP, is_FP = !dg$is_TP & !extra)
+  } else {
+    data.table(tag = character(), cell = character(), rep = integer(), env = integer(), arm = character(),
+               n_loci = integer(), is_TP = logical(), is_FP = logical())
+  }
   say("    %-16s sig=%-4d TP=%-3d FP=%-3d FN=%-3d Precision=%s Recall=%.3f\n",
       nm, length(sig_regions), ev$TP, ev$FP, ev$FN,
       if (is.na(ev$Precision)) "  NA" else sprintf("%.3f", ev$Precision), ev$Recall)
-  data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, arm = nm,
-             n_sig = length(sig_regions), TP = ev$TP, FP = ev$FP, FN = ev$FN,
-             Precision = ev$Precision, Recall = ev$Recall, PR = ev$PR)
-}))
+  list(agg = agg, detail = detail)
+}
+
+## ---- 4a. cluster-based arms, significant units only ---------------------------
+ARMS <- list(emmax_consensus = sc$results$emmax$consensus$test,
+            emmax_simes     = sc$results$emmax$simes$test,
+            lfmm_simes      = sc$results$lfmm$simes$test)
+say("\n[4] cluster-based arms\n")
+res_cluster <- lapply(names(ARMS), function(nm) {
+  t <- ARMS[[nm]]
+  stopifnot("unit_id must align by position between R/03_scan.R and .ld_outlier_units() here" =
+              nrow(t$units) == nrow(units), identical(t$units$unit_id, units$unit_id))
+  .score_arm(units$members[t$units$significant], nm)
+})
 
 ## ---- 4b. single-SNP arms: same machinery, ground truth from the SNP's OWN unit --
 ## PK: compare against single-SNP analyses using the same machinery, scoring a
@@ -112,33 +136,30 @@ scored <- rbindlist(lapply(names(ARMS), function(nm) {
 ## to. Implemented as: BH-correct the single-marker p-values genome-wide (not
 ## per-unit -- there is no unit combination here, that is the whole point of
 ## "single-SNP"), then a unit counts as a discovered region iff it contains at
-## least one significant marker. Feeding that region set through the same
-## evaluate_ors() the other three arms use keeps the TP/FP definition (and its
+## least one significant marker. Feeding that region set through the SAME
+## .score_arm() the cluster-based arms use keeps the TP/FP definition (and its
 ## dedup-neutral handling of duplicate claims) identical across all five arms --
 ## the comparison is single-SNP vs complexity-reduced significance calling,
 ## not two different scoring rules.
 say("\n[4b] single-SNP arms (BH genome-wide, unit = discovered iff it contains a significant SNP)\n")
-score_single_snp <- function(p_vec, nm) {
+res_snp <- lapply(list(emmax_snp = sc$results$single_snp$emmax_p, lfmm_snp = sc$results$single_snp$lfmm_p),
+  function(p_vec) NULL)
+res_snp <- Map(function(p_vec, nm) {
   q <- stats::p.adjust(p_vec, method = "BH")
   sig_markers <- names(q)[!is.na(q) & q <= ALPHA]
   sig_regions <- units$members[vapply(units$members, function(mk) any(mk %in% sig_markers), logical(1))]
-  ev <- evaluate_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
-  say("    %-16s sig_snp=%-5d sig_units=%-4d TP=%-3d FP=%-3d FN=%-3d Precision=%s Recall=%.3f\n",
-      nm, length(sig_markers), length(sig_regions), ev$TP, ev$FP, ev$FN,
-      if (is.na(ev$Precision)) "  NA" else sprintf("%.3f", ev$Precision), ev$Recall)
-  data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, arm = nm,
-             n_sig = length(sig_regions), TP = ev$TP, FP = ev$FP, FN = ev$FN,
-             Precision = ev$Precision, Recall = ev$Recall, PR = ev$PR)
-}
-scored_snp <- rbindlist(list(
-  score_single_snp(sc$results$single_snp$emmax_p, "emmax_snp"),
-  score_single_snp(sc$results$single_snp$lfmm_p,  "lfmm_snp")
-))
-scored <- rbind(scored, scored_snp)
+  .score_arm(sig_regions, nm)
+}, list(sc$results$single_snp$emmax_p, sc$results$single_snp$lfmm_p), list("emmax_snp", "lfmm_snp"))
+
+res_all <- c(res_cluster, res_snp)
+scored         <- rbindlist(lapply(res_all, `[[`, "agg"))
+cluster_detail <- rbindlist(lapply(res_all, `[[`, "detail"))
+say("\n[4c] %d significant clusters/units captured across %d arms for FP-vs-size analysis\n",
+    nrow(cluster_detail), length(res_all))
 
 OUT <- file.path(stage_dir(STAGE), sprintf("score_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
-saveRDS(scored, OUT)
+saveRDS(list(scored = scored, cluster_detail = cluster_detail), OUT)
 invisible(check_ldscnr())
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT, target = combo_id)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE, combo_id))

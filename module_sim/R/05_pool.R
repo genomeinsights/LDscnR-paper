@@ -52,13 +52,16 @@ if (any(!score_files$exists)) {
 }
 
 INPUTS <- score_files[exists == TRUE, path]
-PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENVS_N, pooling = "counts")
+PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENVS_N, pooling = "counts",
+               fp_by_size = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
 
 say("\n[1] reading %d score files\n", length(INPUTS))
-all_scored <- rbindlist(lapply(INPUTS, readRDS))
+raw <- lapply(INPUTS, readRDS)
+all_scored     <- rbindlist(lapply(raw, `[[`, "scored"))
+cluster_detail <- rbindlist(lapply(raw, `[[`, "cluster_detail"))
 
 ## sum TP/FP/FN, THEN divide -- not mean of each row's own Precision/Recall.
 .pool_counts <- function(TP, FP, FN) {
@@ -87,8 +90,29 @@ for (i in seq_len(nrow(pooled))) with(pooled[i], say(
   if (is.na(Precision)) "NA" else sprintf("%.3f", Precision),
   if (is.na(Recall)) "NA" else sprintf("%.3f", Recall)))
 
+## ---- 4. FP proportion as a function of cluster size (PK) -----------------------
+## Pooled across every (rep,env) -- one row per significant cluster/unit
+## already carries its own size (n_loci) and TP/FP status from
+## R/04_score.R's .diagnose_ors() call, so this is a straight pooled count by
+## size bin, same "sum first, then divide" rule as the PR pooling above. Bins
+## fixed rather than data-driven (quantile bins would shift under -- and so
+## be incomparable across -- different cells/arms/tags): SIZE_FLOOR=2 is the
+## smallest scored cluster; the rest are round-number thresholds wide enough
+## to keep bin counts usable while size 2 and 3 (the most common, and where
+## detection differs most) get their own bins rather than being folded in.
+say("[4] FP proportion by cluster size (pooled across all rep,env), by (tag, arm, size_bin)\n")
+SIZE_BREAKS <- c(1, 2, 3, 5, 10, 20, 50, Inf)
+SIZE_LABELS <- c("2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
+cluster_detail[, size_bin := cut(n_loci, breaks = SIZE_BREAKS, labels = SIZE_LABELS)]
+fp_by_size <- cluster_detail[, .(
+  n_sig = .N, TP = sum(is_TP), FP = sum(is_FP),
+  FP_proportion = sum(is_FP) / .N
+), by = .(tag, arm, size_bin)]
+setorder(fp_by_size, tag, arm, size_bin)
+
 OUT <- file.path(stage_dir(STAGE), "pooled_pr.rds")
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
-saveRDS(list(per_replicate = all_scored, per_rep = per_rep, pooled = pooled), OUT)
+saveRDS(list(per_replicate = all_scored, per_rep = per_rep, pooled = pooled,
+            cluster_detail = cluster_detail, fp_by_size = fp_by_size), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
-say("\n[4] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
+say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
