@@ -50,6 +50,7 @@ invisible(check_ldscnr())
 if (!identical(LFMM_SOURCE, "compute")) stop("LFMM_SOURCE is not \"compute\" -- this stage expects to.")
 
 TARGET_TAG <- Sys.getenv("SIM_TAG", TAGS[1]); TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1]); TARGET_ENV <- as.integer(Sys.getenv("SIM_ENV", ENVS[1])); TARGET_REP <- as.integer(Sys.getenv("SIM_REP", REPS[1]))
+combo_id <- sprintf("%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP)
 BUNDLE_PATH <- file.path(PATHS$out, "02_bundle",
   sprintf("bundle_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 if (!file.exists(BUNDLE_PATH)) stop("R/02_bundle.R has not produced: ", basename(BUNDLE_PATH))
@@ -65,7 +66,7 @@ INPUTS <- BUNDLE_PATH
 PARAMS <- list(size_floor = SIZE_FLOOR, alpha = ALPHA, region_assembly = REGION_ASSEMBLY,
                statistics = STATISTICS, unit_repr = UNIT_REPR, lfmm_source = LFMM_SOURCE,
                lfmm_k = LFMM_K)
-if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
+if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
@@ -199,6 +200,6 @@ say("    Jaccard, across engine  -- consensus EMMAX/LFMM: %s ; Simes EMMAX/LFMM:
 ## ---- 7. save ---------------------------------------------------------------------
 OUT <- file.path(stage_dir(STAGE), sprintf("scan_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 saveRDS(list(results = RESULTS, sig = sig, hits = hits, n_true_qtn = n_truth), OUT)
-write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
-say("\n[7] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
+write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT, target = combo_id)
+say("\n[7] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE, combo_id))
 say("\n    Next: widen REPS -- permutation null design still TBD (00_config.R).\n")

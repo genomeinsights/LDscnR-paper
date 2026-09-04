@@ -60,6 +60,7 @@ TARGET_TAG  <- Sys.getenv("SIM_TAG",  TAGS[1])                    # "nobgs"
 TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1])                   # "V2_c1"
 TARGET_ENV  <- as.integer(Sys.getenv("SIM_ENV",  ENVS[1]))       # 1L
 TARGET_REP  <- as.integer(Sys.getenv("SIM_REP",  REPS[1]))       # 1L -- one replicate per run; SIM_REP overrides for looping
+combo_id <- sprintf("%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP)   # keys the receipt subdirectory (see 00_config.R)
 
 raw_dir <- if (TARGET_TAG == "nobgs") PATHS$raw_nemo_nobgs else PATHS$raw_nemo_bgs5
 archive <- file.path(raw_dir, sprintf("adapt_%s_chr%d_%s_env%d.tgz",
@@ -74,26 +75,31 @@ PARAMS <- list(tag = TARGET_TAG, cell = TARGET_CELL, env = TARGET_ENV, rep = TAR
 say("[0] target: tag=%s cell=%s env=%d rep=%d\n", TARGET_TAG, TARGET_CELL, TARGET_ENV, TARGET_REP)
 for (nm in names(INPUTS)) say("    %-8s %s  (%s)\n", nm, INPUTS[[nm]],
                               if (file.exists(INPUTS[[nm]])) "exists" else "MISSING")
-if (!stage_stale(STAGE, unname(INPUTS), PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
+if (!stage_stale(STAGE, unname(INPUTS), PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
 if (any(!file.exists(INPUTS))) stop("missing input(s): ",
     paste(names(INPUTS)[!file.exists(INPUTS)], collapse = ", "))
 
 ## ---- 1. unpack the archive ----------------------------------------------------
-## [!] CLEARED FIRST, FOUND 2026-09-04 WIDENING TO A GRID OF COMBINATIONS. This
-## is a single shared scratch path across every (tag,cell,env,rep); left
-## uncleared, a second combination's extraction landed ALONGSIDE the first's
-## leftover files rather than replacing them, and the very next stopifnot below
-## caught it immediately ("expected exactly one .map file", two present) rather
-## than silently reading the wrong one -- but only because it happened to fail
-## loudly. Cleared unconditionally before every unpack now, so there is nothing
-## to collide with regardless of what ran here before.
-unlink(PATHS$untar, recursive = TRUE)
-dir.create(PATHS$untar, recursive = TRUE, showWarnings = FALSE)
-say("\n[1] unpack -> %s\n", PATHS$untar)
-untar(archive, exdir = PATHS$untar)
-files <- list.files(PATHS$untar, recursive = TRUE, full.names = TRUE)
+## [!] PER-COMBINATION DIRECTORY, NOT THE SHARED PATHS$untar. First fix
+## (2026-09-04, running a second cell for the first time): cleared
+## PATHS$untar before every unpack, because a second combination's extraction
+## had landed ALONGSIDE the first's leftover files under the one shared path,
+## caught immediately by the stopifnot below ("expected exactly one .map
+## file", two present) rather than silently reading the wrong one. That fix
+## was correct for SEQUENTIAL runs and is NOT SAFE for concurrent ones (PK:
+## "4 on mini2 and 4 here") -- two processes racing to unlink+recreate+extract
+## into the same directory at once would corrupt each other's extraction
+## rather than merely leave stale files. Fixed properly now: a subdirectory
+## keyed by (tag, cell, rep), so concurrent combinations never share a path at
+## all, regardless of timing.
+untar_dir <- file.path(PATHS$untar, combo_id)
+unlink(untar_dir, recursive = TRUE)
+dir.create(untar_dir, recursive = TRUE, showWarnings = FALSE)
+say("\n[1] unpack -> %s\n", untar_dir)
+untar(archive, exdir = untar_dir)
+files <- list.files(untar_dir, recursive = TRUE, full.names = TRUE)
 map_file  <- files[grepl("\\.map$", files)]
 geno_file <- files[grepl("snp_geno", files, fixed = TRUE)]
 stopifnot("expected exactly one .map file" = length(map_file) == 1L,
@@ -114,6 +120,7 @@ sample_info <- GTs_raw[, .(pop, ID)]
 GTs_raw <- as.matrix(GTs_raw[, 6:ncol(GTs_raw), with = FALSE])
 say("    %d individuals x %d NEMO-native markers ; types: %s\n",
     nrow(GTs_raw), ncol(GTs_raw), paste(sprintf("%s=%d", names(table(nemo_map$type)), table(nemo_map$type)), collapse = ", "))
+unlink(untar_dir, recursive = TRUE)   # fully read into memory above; nothing on disk needed past here
 
 ## ---- 3. join against the reference map -- BOTH chromosomes, index space shared
 ## rec_map<rep>.rds is the genome MODEL (position, type, allelic_values) for
@@ -219,7 +226,7 @@ OUT <- file.path(PATHS$parsed, sprintf("nemo_%s_rep%d_%s_env%d.rds",
                                        TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 saveRDS(list(GTs = GTs, map = map, env = env,
             source = list(archive = archive, recmap = recmap_rds, env_file = env_txt)), OUT)
-write_receipt(STAGE, inputs = unname(INPUTS), params = PARAMS, outputs = OUT)
-say("\n[7] wrote %s (%.1f MB)\n    receipt: %s\n", OUT, file.size(OUT) / 1e6, receipt_path(STAGE))
+write_receipt(STAGE, inputs = unname(INPUTS), params = PARAMS, outputs = OUT, target = combo_id)
+say("\n[7] wrote %s (%.1f MB)\n    receipt: %s\n", OUT, file.size(OUT) / 1e6, receipt_path(STAGE, combo_id))
 say("\n    Next: R/02_bundle.R reads this ONE replicate's file (both chromosomes\n")
 say("    already in it) -- decay, ld_w, stage-1 clustering, the kinship basis.\n")

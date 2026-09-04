@@ -18,10 +18,25 @@
 suppressMessages({library(data.table); library(digest)})
 
 ## ---- 1. WHERE THINGS ARE ------------------------------------------------------
+## [!] NEMO_ROOT ADDED 2026-09-04, RUNNING ON A SECOND MACHINE (PK: "4 on mini2
+## and 4 here"). Everything under raw_root was hardcoded to /Volumes/Nemo/
+## Nemo_sim -- a LOCAL disk on this machine (confirmed: /dev/disk5s1, apfs,
+## local), not reachable from mini2 at all. Rather than mount it there (would
+## need either physically moving the drive or enabling network file sharing --
+## a system-settings change, not done without asking), the exact subset of
+## data this grid needs (7 cells x 10 reps x env1: ~279 MB of archives + 104 MB
+## of reference maps/env -- 383 MB total, verified by size before deciding this
+## was practical) is copied to mini2 under ~/Nemo_data instead of /Volumes/Nemo
+## (mini2's /Volumes is not writable without sudo; checked directly, not
+## assumed). NEMO_ROOT makes that a config value, not a code change, on either
+## machine: unset, everything resolves exactly as before.
+NEMO_ROOT <- Sys.getenv("SIM_NEMO_ROOT", "/Volumes/Nemo/Nemo_sim")
 PATHS <- list(
   module = path.expand("~/gitlab/LDscnR-paper/module_sim"),
   out    = path.expand("~/gitlab/LDscnR-paper/module_sim/out"),
-  ## RAW SIMULATION OUTPUT -- never written by this pipeline, and NOT copied in.
+  ## RAW SIMULATION OUTPUT -- never written by this pipeline, and NOT copied
+  ## into the repository (only the subset above may be copied to a SECOND
+  ## machine's disk, not into git; git remains untouched by NEMO_ROOT).
   ##
   ## [!] UNLIKE module_3sp, this is a DELIBERATE departure from "copy raw inputs
   ## into the module," and the reason is size, not principle: the full grid
@@ -33,7 +48,7 @@ PATHS <- list(
   ## because there is no alternative, not because it stopped mattering -- 01
   ## verifies presence and hashes what it reads, same discipline as module_3sp,
   ## so the dependency is at least VISIBLE and CHECKED rather than assumed.
-  raw_root = "/Volumes/Nemo/Nemo_sim",
+  raw_root = NEMO_ROOT,
   ## [!] CORRECTED 2026-09-04. Originally pointed at regen_sim_data_{nobgs,bgs5}
   ## -- traced those on PK's instruction and they are NOT raw: every bundle
   ## already carries emx_p/emx_F/lfmm_p/lfmm_F, a GRM and grm_markers built via
@@ -43,21 +58,21 @@ PATHS <- list(
   ## deliberately not used" for the kinship basis. Their own upstream,
   ## parsed_sim_data2, is ALSO already scored (same columns). The true raw
   ## source is NEMO's own native per-file output, one tgz per (tag,chr,V,c,env):
-  raw_nemo_nobgs = "/Volumes/Nemo/Nemo_sim/Nemo_out_nobgs",
-  raw_nemo_bgs5  = "/Volumes/Nemo/Nemo_sim/Nemo_out_bgs",
+  raw_nemo_nobgs = file.path(NEMO_ROOT, "Nemo_out_nobgs"),
+  raw_nemo_bgs5  = file.path(NEMO_ROOT, "Nemo_out_bgs"),
   ## Reference chromosome maps (position, type, allelic_values -- the genome
   ## MODEL, shared across every simulation replicate) and the spatial
   ## environment surfaces (one file per env index, shared across V/c/chr).
   ## Neither is a simulation OUTPUT; both are simulation INPUT that every
   ## replicate reads. Verified present for chr1/env1 (2026-09-04).
-  raw_recmap_dir = "/Volumes/Nemo/Nemo_sim/maps_500kb_with_allelic_values/chromosome_maps_500kb_rds",
-  raw_env_dir    = "/Volumes/Nemo/Nemo_sim/env",
+  raw_recmap_dir = file.path(NEMO_ROOT, "maps_500kb_with_allelic_values", "chromosome_maps_500kb_rds"),
+  raw_env_dir    = file.path(NEMO_ROOT, "env"),
   ## R_parsing/'s output: the clean, unscored bundle (GTs + map architecture/
   ## truth + env), one file per (tag,chr,V,c,env) -- the sim-side equivalent of
   ## module_3sp's raw_3sp.RData, and what 02_bundle.R in R/ will read as ITS raw
   ## input. Same external-volume reasoning as raw_root: too large for git or for
   ## a full local copy once this widens past one file.
-  parsed = "/Volumes/Nemo/Nemo_sim/module_sim_parsed",
+  parsed = file.path(NEMO_ROOT, "module_sim_parsed"),
   cache  = file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "cache")
 )
 PATHS$el_dir <- file.path(PATHS$cache, "edge_lists")
@@ -87,7 +102,10 @@ ENVS  <- 1L                # widen once verified
 ## Analyses run PER REPLICATE (PK); only the final PR/recall scoring pools
 ## across all ten (20 chromosomes total) -- that pooling is a later stage, not
 ## R_parsing/ or 02_bundle.R.
-REPS <- 1L                  # widen to 1:10 once this one replicate is verified end to end
+## WIDENED 2026-09-04 (PK) -- verified end to end on 21 combinations (7 cells x
+## 3 reps, zero failures, ~23s/replicate) before widening further, matching
+## this file's own "verify small, then scale" rule.
+REPS <- 1:10
 
 ## ---- 3. SEEDS -------------------------------------------------------------------
 SEEDS <- c(bundle = 1L, clusters = 11L, nulls = 41L, sensitivity = 41L)
@@ -337,27 +355,41 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
 }
 
 ## =============================================================================
-## RECEIPT MACHINERY -- identical to module_3sp, reused verbatim.
-## =============================================================================
-stage_dir <- function(stage) file.path(PATHS$out, stage)
-receipt_path <- function(stage) file.path(stage_dir(stage), "_receipt.rds")
+## RECEIPT MACHINERY -- from module_3sp, with one addition: an optional
+## `target` subdirectory.
+##
+## [!] ADDED 2026-09-04, RUNNING GENUINE PARALLELISM (PK: "4 on mini2 and 4
+## here"). module_3sp has exactly one target per stage, so a single shared
+## receipt per stage is correct there and this is left able to reproduce that
+## exact behaviour: target = "" (the default) resolves to the same path as
+## before, so nothing about module_3sp or module_sim's own earlier single-
+## target runs changes. module_sim now has up to 70 (cell, rep) combinations
+## that can run CONCURRENTLY, and a single shared receipt.rds per stage would
+## have multiple processes racing to overwrite the same file -- at best each
+## write clobbers the last, silently discarding provenance for every
+## combination but whichever wrote last; at worst two processes' writes
+## interleave and the file becomes unreadable, crashing a THIRD, unrelated
+## process's readRDS() on its own turn. Passing target = combo_id below gives
+## every combination its own receipt subdirectory instead.
+stage_dir <- function(stage, target = "") file.path(PATHS$out, stage, target)
+receipt_path <- function(stage, target = "") file.path(stage_dir(stage, target), "_receipt.rds")
 
 sha <- function(f) if (file.exists(f)) digest(f, algo = "sha256", file = TRUE) else NA_character_
 
 git_sha <- function() tryCatch(system2("git", c("-C", PATHS$module, "rev-parse", "--short", "HEAD"),
                                        stdout = TRUE, stderr = FALSE), error = function(e) NA_character_)
 
-write_receipt <- function(stage, inputs = character(), params = list(), outputs = character()) {
-  dir.create(stage_dir(stage), recursive = TRUE, showWarnings = FALSE)
+write_receipt <- function(stage, inputs = character(), params = list(), outputs = character(), target = "") {
+  dir.create(stage_dir(stage, target), recursive = TRUE, showWarnings = FALSE)
   saveRDS(list(stage = stage, when = Sys.time(), git = git_sha(),
                ldscnr = tryCatch(check_ldscnr(stop_on_fail = FALSE), error = function(e) NA),
                inputs = data.table(path = inputs, sha256 = vapply(inputs, sha, "")),
-               params = params, outputs = outputs), receipt_path(stage))
+               params = params, outputs = outputs), receipt_path(stage, target))
   invisible(TRUE)
 }
 
-stage_stale <- function(stage, inputs = character(), params = list()) {
-  rp <- receipt_path(stage)
+stage_stale <- function(stage, inputs = character(), params = list(), target = "") {
+  rp <- receipt_path(stage, target)
   if (!file.exists(rp)) { message("  [", stage, "] no receipt -- will run"); return(TRUE) }
   r <- readRDS(rp)
   if (!identical(params, r$params)) { message("  [", stage, "] parameters changed -- will run"); return(TRUE) }

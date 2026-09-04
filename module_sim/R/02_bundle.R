@@ -73,6 +73,10 @@ say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())
 
 TARGET_TAG <- Sys.getenv("SIM_TAG", TAGS[1]); TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1]); TARGET_ENV <- as.integer(Sys.getenv("SIM_ENV", ENVS[1])); TARGET_REP <- as.integer(Sys.getenv("SIM_REP", REPS[1]))
+## combo_id keys every per-combination path below (GDS, edge lists, decay/
+## clustering cache, receipt) -- defined here, before the staleness check,
+## since that check itself needs it as the receipt target.
+combo_id <- sprintf("%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP)
 parsed_file <- file.path(PATHS$parsed,
   sprintf("nemo_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 if (!file.exists(parsed_file)) stop("R_parsing/01_parse_nemo.R has not produced: ",
@@ -86,7 +90,7 @@ INPUTS <- unname(parsed_file)
 PARAMS <- list(rep = TARGET_REP, decay_args = DECAY_ARGS, rho_grid = RHO_GRID,
                cr_rho = CR_RHO, grm_basis = GRM_BASIS, grm_method = GRM_METHOD,
                seed_bundle = SEEDS[["bundle"]], seed_clusters = SEEDS[["clusters"]])
-if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
+if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
 
@@ -105,14 +109,19 @@ say("    %d individuals x %s markers ; %d QTN ; chromosomes: %s\n", nrow(GTs),
           sapply(split(map$type, map$Chr), function(t) sum(t == "QTN"))), collapse = ", "))
 
 ## ---- 2. GDS ------------------------------------------------------------------
-## Built here, in this module's own cache/, and nowhere else -- never touches
-## the old module_sim's superseded artefacts (all cleared, 2026-09-04).
-gds_path <- file.path(PATHS$cache, "sim.gds")
+## [!] PER-COMBINATION PATH, NOT PATHS$cache/sim.gds. That single shared path
+## was safe under the sequential driver (deleted and rebuilt fresh every run,
+## nothing to alias) but is NOT safe once mini2 and this machine (or several
+## processes on one machine) build different combinations' GDS files at the
+## same time -- concurrent delete+rebuild on one path would corrupt whichever
+## process loses the race. Fixed 2026-09-04, widening to real parallelism (PK:
+## "4 on mini2 and 4 here").
+gds_path <- file.path(PATHS$cache, paste0("sim_", combo_id, ".gds"))
 dir.create(dirname(gds_path), recursive = TRUE, showWarnings = FALSE)
 if (file.exists(gds_path)) { say("\n[2] removing stale %s\n", basename(gds_path)); unlink(gds_path) }
 say("\n[2] GDS -> %s\n", gds_path)
 gds <- create_gds_from_geno(geno = GTs, map = map, gds_path)
-on.exit(try(snpgdsClose(gds), silent = TRUE), add = TRUE)
+on.exit({ try(snpgdsClose(gds), silent = TRUE); unlink(gds_path) }, add = TRUE)
 stopifnot(file.exists(gds_path), file.size(gds_path) > 0)
 say("    %.1f MB\n", file.size(gds_path) / 1e6)
 
@@ -128,10 +137,19 @@ say("\n[3] LD decay: n_win_decay = %d, seed %d\n", DECAY_ARGS$n_win_decay, SEEDS
 decay_fp <- digest(list(decay_args = DECAY_ARGS, rho_grid = RHO_GRID,
                         tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP,
                         seed = SEEDS[["bundle"]], markers = ncol(GTs)), algo = "sha256")
-LD_decay <- .cache_step(sprintf("ld_decay_%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP), decay_fp, function() {
+## el_data_folder ALSO PER-COMBINATION, same reasoning as gds_path above --
+## compute_LD_decay writes "Chr1.el"/"Chr2.el" into this folder on every call;
+## a shared el_dir would let concurrent combinations overwrite each other's
+## edge lists mid-write. Nothing downstream reads these back (confirmed
+## 2026-09-04: ld_complexity_reduction below is passed gds directly, not
+## el_data_folder), so this is pure side-effect output, but a write race is
+## still worth avoiding rather than shrugging off because it happens not to be
+## read.
+el_dir <- file.path(PATHS$el_dir, combo_id)
+LD_decay <- .cache_step(paste0("ld_decay_", combo_id), decay_fp, function() {
   set.seed(SEEDS[["bundle"]])
   do.call(compute_LD_decay,
-         c(list(gds = gds, el_data_folder = PATHS$el_dir, ld_w_rho = RHO_GRID,
+         c(list(gds = gds, el_data_folder = el_dir, ld_w_rho = RHO_GRID,
                 seed = SEEDS[["bundle"]]),
            DECAY_ARGS)) })
 ld_ws <- LD_decay$ld_ws[map$marker, , drop = FALSE]
@@ -143,7 +161,7 @@ say("    %d chromosome(s) ; ld_w matrix %s x %d\n", nrow(LD_decay$decay_sum),
 ## ---- 4. stage-1 clustering -- BEFORE the kinship ------------------------------
 say("\n[4] stage-1 clustering (ld_complexity_reduction, rho = %.2f)\n", CR_RHO)
 stage1_fp <- digest(list(decay_fp = decay_fp, cr_rho = CR_RHO), algo = "sha256")
-stage1 <- .cache_step(sprintf("stage1_%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP), stage1_fp, function() {
+stage1 <- .cache_step(paste0("stage1_", combo_id), stage1_fp, function() {
   set.seed(SEEDS[["clusters"]])
   ld_complexity_reduction(map = map, LD_decay = LD_decay, rho = CR_RHO, gds = gds) })
 cl <- as.data.table(stage1$clusters)
@@ -183,7 +201,7 @@ say("    %d x %d ; mean diagonal %.4f ; off-diagonal mean %+.4f sd %.4f ; %.2f m
 ## allelic_values, MAF) carried through unchanged from R_parsing/ -- this stage
 ## does not touch truth, only method choices.
 OUT <- file.path(stage_dir(STAGE), sprintf("bundle_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
-dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
+dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)   # OUTPUT dir; safe to share -- dir.create is idempotent, and combo-specific FILENAMES already disambiguate the .rds itself
 saveRDS(list(
   GTs = GTs, map = map, env = env,
   ld_ws = ld_ws, LD_decay = LD_decay,
@@ -195,6 +213,6 @@ saveRDS(list(
                   seed_bundle = SEEDS[["bundle"]], seed_clusters = SEEDS[["clusters"]])
 ), OUT)
 
-write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
-say("\n[6] wrote %s (%.1f MB)\n    receipt: %s\n", OUT, file.size(OUT) / 1e6, receipt_path(STAGE))
+write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT, target = combo_id)
+say("\n[6] wrote %s (%.1f MB)\n    receipt: %s\n", OUT, file.size(OUT) / 1e6, receipt_path(STAGE, combo_id))
 say("\n    Next: a scan stage (EMMAX, matching module_3sp/R/03_EMMAX.R) -- not written yet.\n")
