@@ -141,12 +141,21 @@ SUBSAMPLE_STEP <- 2L    # keep_inds <- seq(1, 320, by = SUBSAMPLE_STEP)
 ## below because that is what was already committed, but flagged here rather
 ## than silently kept: this needs a sim-specific decision, not an inherited one.
 
-## LFMM. [!] The bundle this pipeline now parses from (NEMO's own output) has NO
-## lfmm_p at all -- unlike module_3sp's inherited lfmm_F.rds, there is nothing
-## to inherit at the raw-parse stage. If LFMM is wanted, it needs its own
-## reproducible computation step, not yet designed. EMMAX only until that
-## exists; do not silently fall back to any bundle's old lfmm_p.
-LFMM_SOURCE <- "not_yet_available"
+## LFMM. [!] UPDATED 2026-09-04 (PK): unlike module_3sp, this data is entirely
+## ours, so LFMM does not need to be inherited -- it can be computed fresh, in
+## the same run as EMMAX, from the same GTs and env. The bundle this pipeline
+## parses from (NEMO's own output) has no lfmm_p, and there is nothing to
+## inherit from any prior stage; the call pattern below is reused, not
+## reinvented, from the superseded module_sim_LDscnR/regen_sim_data.R, which
+## already computed LFMM the same way for the same kind of data:
+##   LEA::write.lfmm(GTs, ...); LEA::write.env(y, ...)
+##   proj <- LEA::lfmm2(geno, env, K = LFMM_K)
+##   pv   <- LEA::lfmm2.test(proj, geno, env, genomic.control = TRUE, full = TRUE)
+##   lfmm_p <- pv$pvalues; lfmm_F <- pv$fscores / pv$gif
+## K = 5 unchanged from that script; not re-derived here, and worth revisiting
+## once more than one replicate is in scope.
+LFMM_SOURCE <- "compute"
+LFMM_K <- 5L
 
 ## ---- 5. STAGE 02: THE BUNDLE (decay, ld_w, stage-1 clustering, kinship) --------
 ## n_win_decay = 20 is canonical independently on BOTH halves of this project --
