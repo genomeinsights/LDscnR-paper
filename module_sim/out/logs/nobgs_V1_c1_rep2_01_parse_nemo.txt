@@ -1,0 +1,31 @@
+=== 01_parse_nemo ===
+
+[0] target: tag=nobgs cell=V1_c1 env=1 rep=2
+    archive  /Volumes/T9/Nemo_sim/Nemo_out_nobgs/adapt_nobgs_chr2_V1_c1_env1.tgz  (exists)
+    recmap   /Volumes/T9/Nemo_sim/maps_500kb_with_allelic_values/chromosome_maps_500kb_rds/rec_map2.rds  (exists)
+    env      /Volumes/T9/Nemo_sim/env/env_1.txt  (exists)
+  [01_parse_nemo] no receipt -- will run
+
+[1] unpack -> /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/cache/untar/nobgs_V1_c1_rep2
+    adapt_nobgs_chr2_V1_c1_env1_1000_1.map
+    adapt_nobgs_chr2_V1_c1_env1_1000_1.snp_geno
+    320 individuals x 77082 NEMO-native markers ; types: ntrl=77078, quant=4
+
+[3] joining against reference map: rec_map2.rds
+    dropping 4 duplicate-position marker(s)
+    77078 markers survive the join (of 77082 NEMO-native, 1000000 reference)
+    by chromosome: Chr1=37671 (QTN=4), Chr2=39407 (QTN=0)
+
+[4] environment: env_1.txt
+    320 individuals placed on the 48x48 grid ; env range [0.140, 0.822]
+
+[5] subsampled to 160 of 320 individuals (step 2)
+    14,273 of 77,078 markers pass MAF > 0.10 (by chromosome: Chr1=6963 (QTN=1), Chr2=7310 (QTN=0))
+  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
+  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built 2026-09-02 18:41
+
+[7] wrote /Volumes/T9/Nemo_sim/module_sim_parsed/nemo_nobgs_rep2_V1_c1_env1.rds (0.7 MB)
+    receipt: /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/out/01_parse_nemo/nobgs_V1_c1_rep2/_receipt.rds
+
+    Next: R/02_bundle.R reads this ONE replicate's file (both chromosomes
+    already in it) -- decay, ld_w, stage-1 clustering, the kinship basis.

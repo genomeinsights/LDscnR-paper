@@ -1,0 +1,46 @@
+ℹ Loading LDscnR
+=== 03_scan ===
+
+  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
+  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
+[0] bundle: 160 individuals x 14,506 markers ; 1 true QTN ; 2,370 stage-1 units at floor 2
+  [03_scan] no receipt -- will run
+[1] EMMAX consensus -- ld_unit_matrix(repr = "consensus_dosage") + emmax_fast
+<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 0/2370 units -> 0 regions
+    0.0 min
+
+[2] EMMAX Simes -- direct marker-level scan aggregated per unit
+<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 0/2370 units -> 0 regions
+    0.0 min
+
+[3] LFMM consensus -- K = 5, on the same unit matrix EMMAX used
+    pre-correction gif = 4.638 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
+Computing eMLGs for 1 flagged clusters...
+  |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
+Distance-restricted dynamic cut: 1 chromosomes
+  |                                                                              |                                                                      |   0%Chr1: 1 flagged clusters -> 1 run(s) (largest 1)
+  |                                                                              |======================================================================| 100%
+<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 1/2370 units -> 1 regions
+    0.0 min
+
+[4] LFMM Simes -- direct marker-level scan, K = 5
+    pre-correction gif = 4.193 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
+Computing eMLGs for 2 flagged clusters...
+  |                                                                              |                                                                      |   0%  |                                                                              |===================================                                   |  50%  |                                                                              |======================================================================| 100%
+Distance-restricted dynamic cut: 1 chromosomes
+  |                                                                              |                                                                      |   0%Chr1: 2 flagged clusters -> 1 run(s) (largest 2)
+  |                                                                              |======================================================================| 100%
+<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 2/2370 units -> 1 regions
+    0.1 min
+
+[5] ground truth (sanity only -- not PR scoring), of 1 true QTN: emmax_consensus=0, emmax_simes=0, lfmm_consensus=1, lfmm_simes=1
+[6] discoveries: emmax_consensus=0, emmax_simes=0, lfmm_consensus=1, lfmm_simes=2
+    Jaccard, within engine  -- EMMAX consensus/Simes: NA ; LFMM consensus/Simes: 0.500
+    Jaccard, across engine  -- consensus EMMAX/LFMM: 0.000 ; Simes EMMAX/LFMM: 0.000
+  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
+  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
+
+[7] wrote /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/out/03_scan//scan_nobgs_rep6_V1_c1_env1.rds
+    receipt: /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/out/03_scan/nobgs_V1_c1_rep6/_receipt.rds
+
+    Next: widen REPS -- permutation null design still TBD (00_config.R).
