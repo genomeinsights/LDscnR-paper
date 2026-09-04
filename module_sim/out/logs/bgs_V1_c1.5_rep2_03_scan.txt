@@ -1,9 +1,0 @@
-i Loading LDscnR
-=== 03_scan ===
-
-  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
-  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-[0] bundle: 160 individuals x 13,842 markers ; 3 true QTN ; 2,050 stage-1 units at floor 2
-  [03_scan] up to date (2026-09-04 12:56)
-
-Nothing to do. Set FORCE=1 to rerun anyway.

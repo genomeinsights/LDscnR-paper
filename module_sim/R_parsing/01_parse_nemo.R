@@ -60,7 +60,7 @@ TARGET_TAG  <- Sys.getenv("SIM_TAG",  TAGS[1])                    # "nobgs"
 TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1])                   # "V2_c1"
 TARGET_ENV  <- as.integer(Sys.getenv("SIM_ENV",  ENVS[1]))       # 1L
 TARGET_REP  <- as.integer(Sys.getenv("SIM_REP",  REPS[1]))       # 1L -- one replicate per run; SIM_REP overrides for looping
-combo_id <- sprintf("%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP)   # keys the receipt subdirectory (see 00_config.R)
+combo_id <- sprintf("%s_%s_rep%d_env%d", TARGET_TAG, TARGET_CELL, TARGET_REP, TARGET_ENV)   # keys the receipt subdirectory (see 00_config.R)
 
 raw_dir <- if (TARGET_TAG == "nobgs") PATHS$raw_nemo_nobgs else PATHS$raw_nemo_bgs5
 archive <- file.path(raw_dir, sprintf("adapt_%s_chr%d_%s_env%d.tgz",

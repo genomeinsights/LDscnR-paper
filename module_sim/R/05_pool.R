@@ -1,22 +1,33 @@
 ## module_sim/R/05_pool.R
 ##
-## Replicate-average R/04_score.R's per-replicate TP/FP/FN/Precision/Recall
-## into one Precision/Recall (mean +- SE) per (tag, cell, arm), pooling across
-## all REPS present for that (tag, cell) -- the house convention used
-## everywhere else PR is scored in this repo (module_sim_LDscnR/run_sim_LDscnR.R:
-## "ALWAYS replicate-average (mean +- SE) -- env1 alone repeatedly flukes"; same
-## pattern in pr_curves.R, score_c2_against_truth.R, bgs_vs_nobgs_prauc.R).
-## Macro-averaging (mean of each replicate's own Precision), NOT the legacy
-## pooled-count micro-averaging in legacy/R_LDscnR/PR_AUC.R -- that was
-## superseded specifically because this repo settled on replicate-averaging
-## instead. The tradeoff macro-averaging makes: a replicate with zero
-## significant discoveries has Precision = NA (0/0), dropped via na.rm rather
-## than treated as 0 or excluded outright -- n_sig_reps below reports how many
-## of the REPS_N replicates actually contributed a Precision value, so a mean
-## built from few of them is visible rather than silently presented as solid.
+## Two-level POOLED-COUNT scoring of R/04_score.R's per-(tag,cell,rep,env,arm)
+## TP/FP/FN (each already summed over both chromosomes in that combo's bundle,
+## from a single evaluate_ors() call over all its stage-1 units -- see
+## R/04_score.R). PK, repeated explicitly: "precision recall should be
+## estimated for all chromosomes pooled" -- i.e. SUM TP/FP/FN first, then
+## compute ONE Precision/Recall from the totals, not the mean of each
+## combination's own Precision. Summation is associative, so summing
+## combo-level TP/FP/FN across reps/envs is exactly equal to summing the
+## underlying 20 (or up to 200, once envs are crossed) chromosomes' own
+## TP/FP/FN directly -- nothing per-chromosome needs to change upstream.
 ##
-## No target= subdirectory: unlike 01-04, this stage pools ACROSS reps, so its
-## receipt/output are keyed by (tag, cell) only, not (tag, cell, rep).
+## Two pooling levels, because ENV and REP are not the same kind of axis
+## (00_config.R's ENVS comment): ENV is the true replicate under one fixed
+## recombination map; REP is a different map entirely.
+##   1. per_rep: pool over ENV within each (tag, cell, rep, arm) -- the
+##      chromosomes-pooled PR for ONE genomic architecture.
+##   2. pooled:  pool per_rep's TP/FP/FN further, over REP, by (tag, cell,
+##      arm) -- the chromosomes-and-maps-pooled PR PK's original "10
+##      simulations, 20 chromosomes" description describes directly, once
+##      REPS is understood as the map axis rather than the replicate axis.
+##
+## This SUPERSEDES the previous macro-averaging (mean +- SE of each
+## replicate's own Precision) design -- dropped 2026-09-05 on PK's repeated,
+## explicit instruction, not merely refined. Pooled counts have no natural SE
+## the way a mean-of-independent-estimates does; none is reported here.
+##
+## No target= subdirectory: unlike 01-04, this stage pools ACROSS reps and
+## envs, so its receipt/output are keyed by (tag, cell) only.
 suppressMessages({library(data.table)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "R", "00_config.R"))
 STAGE <- "05_pool"
@@ -25,21 +36,23 @@ say("=== %s ===\n\n", STAGE)
 CELLS_ALL <- c("V0.5_c1", "V0.5_c1.5", "V0.5_c2", "V1_c1", "V1_c1.5", "V2_c1", "V2_c1.5")
 TAGS_ALL  <- c("nobgs", "bgs")
 REPS_N    <- 10L
+ENVS_N    <- 10L
 
 score_files <- data.table(expand.grid(tag = TAGS_ALL, cell = CELLS_ALL, rep = seq_len(REPS_N),
-                                       stringsAsFactors = FALSE))
+                                       env = seq_len(ENVS_N), stringsAsFactors = FALSE))
 score_files[, path := file.path(PATHS$out, "04_score",
-  sprintf("score_%s_rep%d_%s_env1.rds", tag, rep, cell))]
+  sprintf("score_%s_rep%d_%s_env%d.rds", tag, rep, cell, env))]
 score_files[, exists := file.exists(path)]
-say("[0] %d/%d expected (tag,cell,rep) score files present\n", sum(score_files$exists), nrow(score_files))
+say("[0] %d/%d expected (tag,cell,rep,env) score files present\n", sum(score_files$exists), nrow(score_files))
 if (any(!score_files$exists)) {
+  say("    %d missing (run R/04_score.R for these first) -- e.g.:\n", sum(!score_files$exists))
   missing <- score_files[exists == FALSE]
-  say("    missing (run R/04_score.R for these first):\n")
-  for (i in seq_len(nrow(missing))) say("      %s %s rep%d\n", missing$tag[i], missing$cell[i], missing$rep[i])
+  for (i in seq_len(min(10, nrow(missing)))) say("      %s %s rep%d env%d\n",
+    missing$tag[i], missing$cell[i], missing$rep[i], missing$env[i])
 }
 
 INPUTS <- score_files[exists == TRUE, path]
-PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N)
+PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENVS_N, pooling = "counts")
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -47,28 +60,35 @@ if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
 say("\n[1] reading %d score files\n", length(INPUTS))
 all_scored <- rbindlist(lapply(INPUTS, readRDS))
 
-say("[2] replicate-averaging (mean +- SE) by (tag, cell, arm)\n")
-pooled <- all_scored[, .(
-  n_reps        = .N,
-  n_sig_reps    = sum(!is.na(Precision)),
-  mean_n_sig    = mean(n_sig),
-  mean_TP       = mean(TP), mean_FP = mean(FP), mean_FN = mean(FN),
-  Precision     = mean(Precision, na.rm = TRUE),
-  Precision_SE  = if (sum(!is.na(Precision)) > 1) sd(Precision, na.rm = TRUE) / sqrt(sum(!is.na(Precision))) else NA_real_,
-  Recall        = mean(Recall),
-  Recall_SE     = if (.N > 1) sd(Recall) / sqrt(.N) else NA_real_,
-  PR            = mean(PR, na.rm = TRUE)
-), by = .(tag, cell, arm)]
+## sum TP/FP/FN, THEN divide -- not mean of each row's own Precision/Recall.
+.pool_counts <- function(TP, FP, FN) {
+  TP <- sum(TP); FP <- sum(FP); FN <- sum(FN)
+  list(TP = TP, FP = FP, FN = FN,
+       Precision = if ((TP + FP) > 0) TP / (TP + FP) else NA_real_,
+       Recall    = if ((TP + FN) > 0) TP / (TP + FN) else NA_real_)
+}
+
+say("[2] per-rep pooling: sum TP/FP/FN over ENV (both chromosomes each), by (tag, cell, rep, arm)\n")
+per_rep <- all_scored[, {p <- .pool_counts(TP, FP, FN)
+  list(n_envs = .N, n_sig = sum(n_sig), TP = p$TP, FP = p$FP, FN = p$FN,
+       Precision = p$Precision, Recall = p$Recall)}, by = .(tag, cell, rep, arm)]
+setorder(per_rep, tag, cell, rep, arm)
+
+say("[3] across-rep pooling: sum per_rep's TP/FP/FN further over REP, by (tag, cell, arm)\n")
+pooled <- per_rep[, {p <- .pool_counts(TP, FP, FN)
+  list(n_reps = .N, n_envs_total = sum(n_envs), n_sig = sum(n_sig),
+       TP = p$TP, FP = p$FP, FN = p$FN, Precision = p$Precision, Recall = p$Recall)}, by = .(tag, cell, arm)]
 setorder(pooled, tag, cell, arm)
 
-say("\n%-6s %-10s %-16s %5s %6s %6s %8s %8s\n", "tag", "cell", "arm", "nreps", "nsig", "mTP", "Precision", "Recall")
+say("\n%-6s %-10s %-16s %6s %5s %5s %5s %9s %9s\n", "tag", "cell", "arm", "nenvs", "TP", "FP", "FN", "Precision", "Recall")
 for (i in seq_len(nrow(pooled))) with(pooled[i], say(
-  "%-6s %-10s %-16s %5d %6d %6.2f %8s %5.3f+-%.3f\n",
-  tag, cell, arm, n_reps, n_sig_reps, mean_TP,
-  if (is.na(Precision)) "NA" else sprintf("%.3f", Precision), Recall, Recall_SE))
+  "%-6s %-10s %-16s %6d %5d %5d %5d %9s %9s\n",
+  tag, cell, arm, n_envs_total, TP, FP, FN,
+  if (is.na(Precision)) "NA" else sprintf("%.3f", Precision),
+  if (is.na(Recall)) "NA" else sprintf("%.3f", Recall)))
 
 OUT <- file.path(stage_dir(STAGE), "pooled_pr.rds")
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
-saveRDS(list(per_replicate = all_scored, pooled = pooled), OUT)
+saveRDS(list(per_replicate = all_scored, per_rep = per_rep, pooled = pooled), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
-say("\n[3] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
+say("\n[4] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))

@@ -92,17 +92,37 @@ CELLS <- "V2_c1"          # widen to c("V0.5_c1","V0.5_c2","V1_c1.5","V2_c1") on
 TAGS  <- "nobgs"          # other value is "bgs" (NOT "bgs5" -- that's just PATHS$raw_nemo_bgs5's
                             # own name; archive filenames and TARGET_TAG use "bgs", see
                             # R_parsing/01_parse_nemo.R's adapt_%s_chr%d_... pattern)
-ENVS  <- 1L                # widen once verified
+## [!] REP IS NOT THE STATISTICAL REPLICATE AXIS -- ENV IS. Corrected
+## 2026-09-05 after PK asked directly: "is not each replicate a different
+## map, and the environments are the true replicates?" Verified by untarring
+## chr1_V1_c1_env1 and chr1_V1_c1_env2 and diffing them -- SAME rec_map1.rds
+## (rep only varies the recombination map, shared across every env for that
+## rep) but COMPLETELY DIFFERENT .snp_geno/.map contents (different md5,
+## different sizes) between env1 and env2 of the same rep. So:
+##   REP (chr1..chr10)  = a different recombination map/genomic architecture
+##                         each time -- NOT an exchangeable replicate; pooling
+##                         across reps mixes different maps.
+##   ENV (env1..env10)  = same map, independent population/genotype
+##                         realization (different QTN placement, different
+##                         drift) -- THIS is the true replicate axis for
+##                         replicate-averaging.
+## R/05_pool.R replicate-averages over ENV within each REP (not across REPS)
+## for exactly this reason. REP is still widened to the full grid below --
+## PK: "fully cross reps x envs (10x10)" -- so results can also show whether
+## precision/recall replicate ACROSS different maps, which is a genuinely
+## different, useful question from within-map replicate variance.
+ENVS <- 1:10
 ## [!] RENAMED FROM "CHRS" 2026-09-04 (PK). "chr1".."chr10" in NEMO's own
 ## filenames are not ten genomic chromosomes to pool -- they are ten
-## INDEPENDENT SIMULATION REPLICATES, each already containing its own two
-## chromosomes (sharing one recombination map; confirmed directly, rec_map1.rds
-## has rows Chr %in% c(1,2), same bp range for both, and rec_map2.rds is a
-## genuinely different map -- one per replicate, not one per chromosome). A
-## replicate's parsed file therefore already IS a complete two-chromosome
-## bundle; there is no cross-replicate pooling to do before 02_bundle.R.
-## Analyses run PER REPLICATE (PK); only the final PR/recall scoring pools
-## across all ten (20 chromosomes total) -- that pooling is a later stage, not
+## independent recombination maps (see the ENVS comment above for why this
+## makes REP the map axis, not the replicate axis). Each replicate already
+## contains its own two chromosomes (sharing one recombination map; confirmed
+## directly, rec_map1.rds has rows Chr %in% c(1,2), same bp range for both,
+## and rec_map2.rds is a genuinely different map -- one per replicate, not one
+## per chromosome). A replicate's parsed file therefore already IS a complete
+## two-chromosome bundle; there is no cross-replicate pooling to do before
+## 02_bundle.R. Analyses run PER (rep, env) COMBINATION; only the final
+## PR/recall scoring pools across them -- that pooling is a later stage, not
 ## R_parsing/ or 02_bundle.R.
 ## WIDENED 2026-09-04 (PK) -- verified end to end on 21 combinations (7 cells x
 ## 3 reps, zero failures, ~23s/replicate) before widening further, matching

@@ -17,11 +17,12 @@
 ##
 ## [!] Single alpha, not a threshold sweep. 03_scan.R only tests at alpha=0.05
 ## (no tau_C/rho sweep exists in this pipeline), so this produces ONE
-## (TP,FP,FN,Precision,Recall) operating point per replicate per engine/arm --
-## not a PR-AUC curve. R/05_pool.R replicate-averages these across the 10
-## reps per (tag,cell), matching every other PR-scoring script in this repo's
-## house convention (mean +- SE across replicates -- see module_sim_LDscnR/
-## run_sim_LDscnR.R's "ALWAYS replicate-average" rule).
+## (TP,FP,FN,Precision,Recall) operating point per (rep,env) per engine/arm --
+## not a PR-AUC curve. R/05_pool.R POOLS these (sums TP/FP/FN, then computes
+## one Precision/Recall from the totals) across ENV within each REP, and
+## again across REP, per PK's repeated instruction that PR is estimated on
+## all chromosomes pooled -- not the mean of each combination's own
+## Precision/Recall.
 ##
 ## dmax_cap = 5e5: the same cap already standing everywhere else in the repo
 ## (see memory: "dcap 5e5 already universal").
@@ -33,7 +34,7 @@ say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())
 
 TARGET_TAG <- Sys.getenv("SIM_TAG", TAGS[1]); TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1]); TARGET_ENV <- as.integer(Sys.getenv("SIM_ENV", ENVS[1])); TARGET_REP <- as.integer(Sys.getenv("SIM_REP", REPS[1]))
-combo_id <- sprintf("%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP)
+combo_id <- sprintf("%s_%s_rep%d_env%d", TARGET_TAG, TARGET_CELL, TARGET_REP, TARGET_ENV)
 
 BUNDLE_PATH <- file.path(PATHS$out, "02_bundle",
   sprintf("bundle_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
@@ -50,7 +51,8 @@ RHO_R2 <- 0.75; RHO_D <- 0.95   ## score_thresholds()'s own defaults -- PK confi
 
 INPUTS <- c(BUNDLE_PATH, SCAN_PATH)
 PARAMS <- list(size_floor = SIZE_FLOOR, dmax_cap = DMAX_CAP, rho_r2 = RHO_R2, rho_d = RHO_D,
-               maf_min = 0.1, p_va_min = 0.05, max_bp = 2e6)
+               maf_min = 0.1, p_va_min = 0.05, max_bp = 2e6,
+               single_snp_arms = TRUE, single_snp_bh_alpha = ALPHA, lfmm_consensus_arm = FALSE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -88,7 +90,6 @@ say("    r2min = %.4f, dmax = %s bp\n", th$r2min, format(round(th$dmax), big.mar
 ## ---- 4. evaluate_ors() per engine/arm, significant units only -----------------
 ARMS <- list(emmax_consensus = sc$results$emmax$consensus$test,
             emmax_simes     = sc$results$emmax$simes$test,
-            lfmm_consensus  = sc$results$lfmm$consensus$test,
             lfmm_simes      = sc$results$lfmm$simes$test)
 say("\n[4] evaluate_ors() per engine/arm\n")
 scored <- rbindlist(lapply(names(ARMS), function(nm) {
@@ -104,6 +105,36 @@ scored <- rbindlist(lapply(names(ARMS), function(nm) {
              n_sig = length(sig_regions), TP = ev$TP, FP = ev$FP, FN = ev$FN,
              Precision = ev$Precision, Recall = ev$Recall, PR = ev$PR)
 }))
+
+## ---- 4b. single-SNP arms: same machinery, ground truth from the SNP's OWN unit --
+## PK: compare against single-SNP analyses using the same machinery, scoring a
+## significant SNP by the TP status of the stage-1 cluster (unit) it belongs
+## to. Implemented as: BH-correct the single-marker p-values genome-wide (not
+## per-unit -- there is no unit combination here, that is the whole point of
+## "single-SNP"), then a unit counts as a discovered region iff it contains at
+## least one significant marker. Feeding that region set through the same
+## evaluate_ors() the other three arms use keeps the TP/FP definition (and its
+## dedup-neutral handling of duplicate claims) identical across all five arms --
+## the comparison is single-SNP vs complexity-reduced significance calling,
+## not two different scoring rules.
+say("\n[4b] single-SNP arms (BH genome-wide, unit = discovered iff it contains a significant SNP)\n")
+score_single_snp <- function(p_vec, nm) {
+  q <- stats::p.adjust(p_vec, method = "BH")
+  sig_markers <- names(q)[!is.na(q) & q <= ALPHA]
+  sig_regions <- units$members[vapply(units$members, function(mk) any(mk %in% sig_markers), logical(1))]
+  ev <- evaluate_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
+  say("    %-16s sig_snp=%-5d sig_units=%-4d TP=%-3d FP=%-3d FN=%-3d Precision=%s Recall=%.3f\n",
+      nm, length(sig_markers), length(sig_regions), ev$TP, ev$FP, ev$FN,
+      if (is.na(ev$Precision)) "  NA" else sprintf("%.3f", ev$Precision), ev$Recall)
+  data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, arm = nm,
+             n_sig = length(sig_regions), TP = ev$TP, FP = ev$FP, FN = ev$FN,
+             Precision = ev$Precision, Recall = ev$Recall, PR = ev$PR)
+}
+scored_snp <- rbindlist(list(
+  score_single_snp(sc$results$single_snp$emmax_p, "emmax_snp"),
+  score_single_snp(sc$results$single_snp$lfmm_p,  "lfmm_snp")
+))
+scored <- rbind(scored, scored_snp)
 
 OUT <- file.path(stage_dir(STAGE), sprintf("score_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)

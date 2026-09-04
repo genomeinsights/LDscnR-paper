@@ -76,7 +76,7 @@ TARGET_TAG <- Sys.getenv("SIM_TAG", TAGS[1]); TARGET_CELL <- Sys.getenv("SIM_CEL
 ## combo_id keys every per-combination path below (GDS, edge lists, decay/
 ## clustering cache, receipt) -- defined here, before the staleness check,
 ## since that check itself needs it as the receipt target.
-combo_id <- sprintf("%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP)
+combo_id <- sprintf("%s_%s_rep%d_env%d", TARGET_TAG, TARGET_CELL, TARGET_REP, TARGET_ENV)
 parsed_file <- file.path(PATHS$parsed,
   sprintf("nemo_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 if (!file.exists(parsed_file)) stop("R_parsing/01_parse_nemo.R has not produced: ",

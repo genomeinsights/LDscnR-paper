@@ -1,9 +1,0 @@
-=== 01_parse_nemo ===
-
-[0] target: tag=bgs cell=V1_c1.5 env=1 rep=6
-    archive  /Volumes/Nemo/Nemo_sim/Nemo_out_bgs/adapt_bgs_chr6_V1_c1.5_env1.tgz  (exists)
-    recmap   /Volumes/Nemo/Nemo_sim/maps_500kb_with_allelic_values/chromosome_maps_500kb_rds/rec_map6.rds  (exists)
-    env      /Volumes/Nemo/Nemo_sim/env/env_1.txt  (exists)
-  [01_parse_nemo] up to date (2026-09-04 12:56)
-
-Nothing to do. Set FORCE=1 to rerun anyway.

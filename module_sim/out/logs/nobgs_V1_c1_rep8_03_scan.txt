@@ -1,56 +1,0 @@
-i Loading LDscnR
-=== 03_scan ===
-
-  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
-  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-[0] bundle: 160 individuals x 14,234 markers ; 3 true QTN ; 2,191 stage-1 units at floor 2
-  [03_scan] inputs changed: bundle_nobgs_rep8_V1_c1_env1.rds -- will run
-[1] EMMAX consensus -- ld_unit_matrix(repr = "consensus_dosage") + emmax_fast
-Computing eMLGs for 6 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |============                                                          |  17%  |                                                                              |=======================                                               |  33%  |                                                                              |===================================                                   |  50%  |                                                                              |===============================================                       |  67%  |                                                                              |==========================================================            |  83%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 1 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 6 flagged clusters -> 3 run(s) (largest 4)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 6/2191 units -> 5 regions
-    0.0 min
-
-[2] EMMAX Simes -- direct marker-level scan aggregated per unit
-Computing eMLGs for 6 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |============                                                          |  17%  |                                                                              |=======================                                               |  33%  |                                                                              |===================================                                   |  50%  |                                                                              |===============================================                       |  67%  |                                                                              |==========================================================            |  83%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 1 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 6 flagged clusters -> 3 run(s) (largest 4)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 6/2191 units -> 5 regions
-    0.0 min
-
-[3] LFMM consensus -- K = 5, on the same unit matrix EMMAX used
-    pre-correction gif = 3.862 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
-Computing eMLGs for 11 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |======                                                                |   9%  |                                                                              |=============                                                         |  18%  |                                                                              |===================                                                   |  27%  |                                                                              |=========================                                             |  36%  |                                                                              |================================                                      |  45%  |                                                                              |======================================                                |  55%  |                                                                              |=============================================                         |  64%  |                                                                              |===================================================                   |  73%  |                                                                              |=========================================================             |  82%  |                                                                              |================================================================      |  91%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 1 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 11 flagged clusters -> 3 run(s) (largest 8)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 11/2191 units -> 5 regions
-    0.0 min
-
-[4] LFMM Simes -- direct marker-level scan, K = 5
-    pre-correction gif = 3.364 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
-Computing eMLGs for 2 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |===================================                                   |  50%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 1 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 2 flagged clusters -> 2 run(s) (largest 1)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 2/2191 units -> 2 regions
-    0.1 min
-
-[5] ground truth (sanity only -- not PR scoring), of 3 true QTN: emmax_consensus=3, emmax_simes=3, lfmm_consensus=3, lfmm_simes=2
-[6] discoveries: emmax_consensus=6, emmax_simes=6, lfmm_consensus=11, lfmm_simes=2
-    Jaccard, within engine  -- EMMAX consensus/Simes: 1.000 ; LFMM consensus/Simes: 0.182
-    Jaccard, across engine  -- consensus EMMAX/LFMM: 0.545 ; Simes EMMAX/LFMM: 0.333
-  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
-  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-
-[7] wrote /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan//scan_nobgs_rep8_V1_c1_env1.rds
-    receipt: /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan/nobgs_V1_c1_rep8/_receipt.rds
-
-    Next: widen REPS -- permutation null design still TBD (00_config.R).

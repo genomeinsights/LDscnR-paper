@@ -50,7 +50,7 @@ invisible(check_ldscnr())
 if (!identical(LFMM_SOURCE, "compute")) stop("LFMM_SOURCE is not \"compute\" -- this stage expects to.")
 
 TARGET_TAG <- Sys.getenv("SIM_TAG", TAGS[1]); TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1]); TARGET_ENV <- as.integer(Sys.getenv("SIM_ENV", ENVS[1])); TARGET_REP <- as.integer(Sys.getenv("SIM_REP", REPS[1]))
-combo_id <- sprintf("%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP)
+combo_id <- sprintf("%s_%s_rep%d_env%d", TARGET_TAG, TARGET_CELL, TARGET_REP, TARGET_ENV)
 BUNDLE_PATH <- file.path(PATHS$out, "02_bundle",
   sprintf("bundle_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 if (!file.exists(BUNDLE_PATH)) stop("R/02_bundle.R has not produced: ", basename(BUNDLE_PATH))
@@ -65,7 +65,7 @@ say("[0] bundle: %d individuals x %s markers ; %d true QTN ; %s stage-1 units at
 INPUTS <- BUNDLE_PATH
 PARAMS <- list(size_floor = SIZE_FLOOR, alpha = ALPHA, region_assembly = REGION_ASSEMBLY,
                statistics = STATISTICS, unit_repr = UNIT_REPR, lfmm_source = LFMM_SOURCE,
-               lfmm_k = LFMM_K)
+               lfmm_k = LFMM_K, saves_single_snp_p = TRUE, lfmm_consensus_arm = FALSE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -125,21 +125,15 @@ print(test_emx_sim)
 say("    %.1f min\n\n", as.numeric(difftime(Sys.time(), t0, units = "mins")))
 RESULTS$emmax$simes <- list(test = test_emx_sim)
 
-## ---- 3. LFMM, consensus arm ----------------------------------------------------
-say("[3] LFMM consensus -- K = %d, on the same unit matrix EMMAX used\n", LFMM_K)
-t0 <- Sys.time()
-lf_con <- .lfmm_scan(um, y, LFMM_K)
-say("    pre-correction gif = %.3f (pv$pvalues is already GC-corrected -- see .lfmm_scan)\n", lf_con$gif_precorrection)
-test_lf_con <- ld_outlier_test(stage1, map, lf_con$p, statistic = "unit", size_floor = SIZE_FLOOR,
-                               alpha = ALPHA, assembly = "stage2_discovered", GTs = GTs,
-                               LD_decay = b$LD_decay, score_threshold = REGION_ASSEMBLY$score_threshold,
-                               distance_threshold = REGION_ASSEMBLY$distance_threshold)
-print(test_lf_con)
-say("    %.1f min\n\n", as.numeric(difftime(Sys.time(), t0, units = "mins")))
-RESULTS$lfmm$consensus <- list(test = test_lf_con, gif_precorrection = lf_con$gif_precorrection)
-
-## ---- 4. LFMM, Simes arm ---------------------------------------------------------
-say("[4] LFMM Simes -- direct marker-level scan, K = %d\n", LFMM_K)
+## ---- 3. LFMM, Simes arm ---------------------------------------------------------
+## NO LFMM consensus arm. PK: LFMM applied to complexity-reduced/pooled unit
+## genotypes is not how the method is meant to be used and does not work on
+## empirical data -- dropped 2026-09-05 (it "worked" on this simulated data,
+## which was a pipeline curiosity, not a validation of the approach). LFMM
+## only ever runs single-marker (this Simes arm, and the single-SNP arm in
+## R/04_score.R) -- the per-unit aggregation happens afterward, at the Simes
+## combination / region-assembly step, never by feeding LFMM a reduced matrix.
+say("[3] LFMM Simes -- direct marker-level scan, K = %d\n", LFMM_K)
 t0 <- Sys.time()
 lf_sim <- .lfmm_scan(GTs, y, LFMM_K)
 say("    pre-correction gif = %.3f (pv$pvalues is already GC-corrected -- see .lfmm_scan)\n", lf_sim$gif_precorrection)
@@ -151,7 +145,18 @@ print(test_lf_sim)
 say("    %.1f min\n\n", as.numeric(difftime(Sys.time(), t0, units = "mins")))
 RESULTS$lfmm$simes <- list(test = test_lf_sim, gif_precorrection = lf_sim$gif_precorrection)
 
-## ---- 5. per-replicate ground-truth sanity check, all four arms -----------------
+## ---- 3b. single-SNP p-values, saved for R/04_score.R's single-SNP comparison ---
+## pm_obs/lf_sim$p ARE ALREADY the single-marker scans (the Simes arm's own
+## inputs, before per-unit combination) -- nothing new to compute, just kept
+## rather than discarded. Names reattached explicitly (defensive: don't trust
+## either engine's own naming to survive unchanged) so R/04_score.R can match
+## a significant marker straight back to map$marker / stage-1 cluster
+## membership without positional-order assumptions.
+names(pm_obs)   <- map$marker
+names(lf_sim$p) <- map$marker
+RESULTS$single_snp <- list(emmax_p = pm_obs, lfmm_p = lf_sim$p)
+
+## ---- 4. per-replicate ground-truth sanity check, all three arms ----------------
 ## NOT the PR/recall scoring PK described as a later, cross-replicate stage --
 ## this is a cheap, immediate check that the pipeline is pointed at something
 ## real before ten replicates' worth of compute goes into it. A region "hits" a
@@ -179,27 +184,25 @@ RESULTS$lfmm$simes <- list(test = test_lf_sim, gif_precorrection = lf_sim$gif_pr
 n_truth <- sum(map$true_QTN)
 hits <- list(emmax_consensus = .hits_truth(test_emx_con$regions, map),
             emmax_simes     = .hits_truth(test_emx_sim$regions, map),
-            lfmm_consensus  = .hits_truth(test_lf_con$regions, map),
             lfmm_simes      = .hits_truth(test_lf_sim$regions, map))
-say("[5] ground truth (sanity only -- not PR scoring), of %d true QTN: %s\n", n_truth,
+say("[4] ground truth (sanity only -- not PR scoring), of %d true QTN: %s\n", n_truth,
     paste(sprintf("%s=%d", names(hits), unlist(hits)), collapse = ", "))
 
-## ---- 6. agreement, within and across engines -----------------------------------
+## ---- 5. agreement, within and across engines -----------------------------------
 sig <- list(emmax_consensus = test_emx_con$units[significant == TRUE]$unit_id,
            emmax_simes     = test_emx_sim$units[significant == TRUE]$unit_id,
-           lfmm_consensus  = test_lf_con$units[significant == TRUE]$unit_id,
            lfmm_simes      = test_lf_sim$units[significant == TRUE]$unit_id)
 .jac <- function(a, b) if (length(union(a, b))) length(intersect(a, b)) / length(union(a, b)) else NA_real_
 .fmt <- function(x) if (is.na(x)) "NA" else sprintf("%.3f", x)
-say("[6] discoveries: %s\n", paste(sprintf("%s=%d", names(sig), lengths(sig)), collapse = ", "))
-say("    Jaccard, within engine  -- EMMAX consensus/Simes: %s ; LFMM consensus/Simes: %s\n",
-    .fmt(.jac(sig$emmax_consensus, sig$emmax_simes)), .fmt(.jac(sig$lfmm_consensus, sig$lfmm_simes)))
-say("    Jaccard, across engine  -- consensus EMMAX/LFMM: %s ; Simes EMMAX/LFMM: %s\n",
-    .fmt(.jac(sig$emmax_consensus, sig$lfmm_consensus)), .fmt(.jac(sig$emmax_simes, sig$lfmm_simes)))
+say("[5] discoveries: %s\n", paste(sprintf("%s=%d", names(sig), lengths(sig)), collapse = ", "))
+say("    Jaccard, within engine  -- EMMAX consensus/Simes: %s\n",
+    .fmt(.jac(sig$emmax_consensus, sig$emmax_simes)))
+say("    Jaccard, across engine  -- Simes EMMAX/LFMM: %s\n",
+    .fmt(.jac(sig$emmax_simes, sig$lfmm_simes)))
 
-## ---- 7. save ---------------------------------------------------------------------
+## ---- 6. save ---------------------------------------------------------------------
 OUT <- file.path(stage_dir(STAGE), sprintf("scan_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 saveRDS(list(results = RESULTS, sig = sig, hits = hits, n_true_qtn = n_truth), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT, target = combo_id)
-say("\n[7] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE, combo_id))
+say("\n[6] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE, combo_id))
 say("\n    Next: widen REPS -- permutation null design still TBD (00_config.R).\n")

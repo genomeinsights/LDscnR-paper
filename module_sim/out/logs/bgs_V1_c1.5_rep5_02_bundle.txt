@@ -1,8 +1,0 @@
-i Loading LDscnR
-=== 02_bundle ===
-
-  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
-  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-  [02_bundle] up to date (2026-09-04 12:56)
-
-Nothing to do. Set FORCE=1 to rerun anyway.
