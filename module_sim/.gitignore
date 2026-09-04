@@ -4,3 +4,10 @@ figures/*
 !data/.gitkeep
 !figures/.gitkeep
 *.log
+
+# cache/ and out/: same convention as module_3sp's top-level .gitignore entry --
+# cache is large and fully regenerable (decay fits, edge lists), out/ keeps its
+# receipts (the audit trail of what ran) but not the heavy .rds payloads.
+cache/
+out/**/*.rds
+!out/**/_receipt.rds
