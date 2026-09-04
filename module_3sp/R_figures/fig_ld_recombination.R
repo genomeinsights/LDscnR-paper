@@ -25,6 +25,7 @@ invisible(check_ldscnr())
 A <- readRDS(file.path(PATHS$out, "09_ld_recombination", "ld_recombination.rds"))
 W <- A$windows; MK <- A$MK; RESULTS <- A$roc; pooled <- A$cor$pooled; bych <- A$cor$bych
 st <- A$cor$sign_p; chr_best <- A$chr_best; chr_med <- A$chr_med
+BYCH_MULTI <- A$bych_multi
 
 b <- readRDS(file.path(PATHS$out, "02_bundle", "bundle.rds"))
 map <- b$map
@@ -204,23 +205,36 @@ p_fig5a <- ggplot(W, aes(rate, a)) +
                       pooled, format(nrow(W), big.mark=","))) +
   theme_bw(11) + theme(plot.title = element_text(size = 9))
 
-bych_plot <- copy(bych)[order(-rho)]
-bych_plot[, Chr_lab := factor(gsub("Chr","",Chr), levels = gsub("Chr","",Chr))]
-p_fig5b <- ggplot(bych_plot, aes(Chr_lab, rho)) +
+## Multi-n_win sensitivity (PK): n_win_decay = 10 and 50, genome-wide, from the analysis
+## script's own sweep -- completes the old figure's right panel, minus n_win=5 (not
+## requested). Chromosome order is fixed by the CANONICAL fit (n_win=20), same as before;
+## the other two window counts are plotted against that same ordering, not their own.
+chr_order <- bych[order(-rho)]$Chr
+bych_long <- rbindlist(lapply(names(BYCH_MULTI), function(nw)
+  copy(BYCH_MULTI[[nw]])[, n_win := nw]))
+bych_long[, Chr_lab := factor(gsub("Chr","",Chr), levels = gsub("Chr","",chr_order))]
+bych_long[, n_win := factor(n_win, levels = c("10","20","50"))]
+pos_frac <- bych_long[, .(pos = sum(rho>0), n = .N), by = n_win][order(n_win)]
+say("    n_win sweep: %s\n", paste(sprintf("n_win=%s positive %d/%d", pos_frac$n_win,
+                                            pos_frac$pos, pos_frac$n), collapse = "; "))
+
+p_fig5b <- ggplot(bych_long, aes(Chr_lab, rho, colour = n_win)) +
   geom_hline(yintercept = 0, colour = "grey40") +
-  geom_point(colour = "#1565C0", size = 2) +
-  labs(x = "chromosome (ordered by within-chromosome rho)", y = "within-chromosome Spearman",
-      title = sprintf("Positive on %d/%d chromosomes at n_win_decay = 20\nsign p = %.2g",
-                      sum(bych$rho > 0), nrow(bych), st)) +
-  theme_bw(11) + theme(plot.title = element_text(size = 9))
+  geom_point(size = 2, alpha = 0.85) +
+  scale_colour_manual(values = c("10" = "#66A3D2", "20" = "#1565C0", "50" = "#0B3C6E"),
+                      name = expression(n[win])) +
+  labs(x = "chromosome (ordered by within-chromosome rho, n_win_decay = 20)",
+      y = "within-chromosome Spearman",
+      title = paste("Positive on", paste(sprintf("%d/%d at n_win=%s", pos_frac$pos,
+                                                  pos_frac$n, pos_frac$n_win), collapse = ", "))) +
+  theme_bw(11) + theme(plot.title = element_text(size = 8), legend.position = "top")
 
 p_fig5 <- p_fig5a | p_fig5b
 OUT_FIG5 <- file.path(PATHS$figures, "figure5_ld_recombination_reproduced.pdf")
 ggsave(OUT_FIG5, p_fig5, width = 11, height = 4.2, device = cairo_pdf)
 say("    wrote %s\n", OUT_FIG5)
-say("    NOTE: no multi-n_win (5/10/20/50) sweep here, unlike the old figure's right panel --\n")
-say("    module_3sp only ever fits the canonical n_win_decay=20; a genome-wide refit at three\n")
-say("    more window counts was not requested and would be the same multi-hour cost as\n")
-say("    02_bundle.R's own decay fit, three times over. Flagged rather than silently matched.\n")
+say("    n_win sweep is n_win_decay in {10, 20, 50} -- not the old figure's {5,10,20,50}, since\n")
+say("    n_win=5 was not requested; 20 is the canonical fit, 10 and 50 are the analysis script's\n")
+say("    own genome-wide sweep (R/09_ld_recombination.R section 7).\n")
 
 say("\n[6] all figures written to %s\n", PATHS$figures)

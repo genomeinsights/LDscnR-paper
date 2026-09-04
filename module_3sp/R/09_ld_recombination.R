@@ -54,7 +54,7 @@ b <- readRDS(file.path(PATHS$out, "02_bundle", "bundle.rds"))
 map <- b$map
 
 INPUTS <- c(file.path(PATHS$out, "02_bundle", "_receipt.rds"), PATHS$recmap)
-PARAMS <- list(q_grid = c(0.05, 0.10, 0.25), ld_w_col = "rho_0.95")
+PARAMS <- list(q_grid = c(0.05, 0.10, 0.25), ld_w_col = "rho_0.95", sweep_nwin = c(10, 50))
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -136,13 +136,56 @@ chr_med  <- bych_ord$Chr[which.min(abs(bych_ord$rho - median(bych_ord$rho)))]
 say("\n[6] representative chromosomes: %s (rho=%.2f, strongest), %s (rho=%.2f, near-median)\n",
     chr_best, bych[Chr==chr_best]$rho, chr_med, bych[Chr==chr_med]$rho)
 
-## ---- 7. save + receipt ---------------------------------------------------------
+## ---- 7. multi-n_win sensitivity: n_win=10 and n_win=50, genome-wide (PK) ---------------
+## Completes figure5's right panel (old R_3sp_blocks version compared within-chromosome
+## rho(a, rate) across n_win in {5,10,20,50}). PK: only 10 and 50 needed -- n_win=20 is
+## already the canonical fit (section 1/`bych` above), and 5 was not requested.
+##
+## GENOME-WIDE, unlike the Chr1+Chr4-only illustrative n_win=100 refit in R_figures/: this
+## feeds a real reported number (Figure 5), not an illustration, so every chromosome is
+## needed, not two. keep_el=FALSE: only the windowed `a` fit is used here, never ld_w or
+## clustering, so no edge lists are kept -- a real saving over 02_bundle.R's canonical fit,
+## which needs edges afterward for ld_complexity_reduction(). Still genuinely expensive (two
+## more genome-wide decay fits) -- 00_config.R's own comment ("the sweep at 10/50 is stage
+## 09, not here") always meant this to land in this script, just deferred until asked for.
+say("\n[7] multi-n_win sensitivity: genome-wide decay at n_win_decay = 10 and 50\n")
+gds_sweep_path <- file.path(PATHS$cache, "3sp_sweep.gds")
+if (file.exists(gds_sweep_path)) unlink(gds_sweep_path)
+gds_sweep <- create_gds_from_geno(geno = b$GTs, map = map, gds_sweep_path)
+on.exit(try(SNPRelate::snpgdsClose(gds_sweep), silent = TRUE), add = TRUE)
+
+sweep_bych <- function(nwin) {
+  set.seed(SEEDS[["bundle"]])
+  ld <- compute_LD_decay(gds_sweep, keep_el = FALSE, slide = DECAY_ARGS$slide,
+                         ld_method = DECAY_ARGS$ld_method, n_win_decay = nwin, cores = 1)
+  Wn <- rbindlist(lapply(names(ld$by_chr), function(ch) {
+    d <- as.data.table(ld$by_chr[[ch]]$decay)[, .(start, end, a)]
+    d[, Chr := ch][]
+  }))
+  Wn <- Wn[is.finite(start) & is.finite(end) & is.finite(a) & a > 0]
+  Wn[, wid := .I]
+  setkey(Wn, Chr, start, end)
+  Jn <- foverlaps(Wn[, .(Chr, start, end, wid)], MB, by.x = c("Chr","start","end"),
+                  type = "any", nomatch = NULL)
+  Rn <- Jn[, .(rate = median(rate)), by = wid]
+  Wn <- merge(Wn, Rn, by = "wid", all.x = TRUE)
+  Wn <- Wn[is.finite(rate) & is.finite(a)]
+  bychn <- Wn[, .(rho = if (.N >= 5) cor(a, rate, method = "spearman") else NA_real_), by = Chr][is.finite(rho)]
+  say("    n_win_decay = %3d: %s windows ; within-chr %d/%d positive\n",
+      nwin, format(nrow(Wn), big.mark=","), sum(bychn$rho > 0), nrow(bychn))
+  bychn
+}
+bych_10 <- sweep_bych(10)
+bych_50 <- sweep_bych(50)
+BYCH_MULTI <- list(`10` = bych_10, `20` = bych, `50` = bych_50)
+
+## ---- 8. save + receipt ---------------------------------------------------------
 ## Saves MK too (the per-marker ld_w table) -- the figures script needs it and it is cheap
 ## (one column of ~790k values), far cheaper than having R_figures/ recompute it from the
 ## bundle's raw ld_ws matrix.
 OUT_RDS <- file.path(OUT_DIR, "ld_recombination.rds")
 saveRDS(list(windows = W, MK = MK, roc = RESULTS, cor = list(pooled = pooled, bych = bych, sign_p = st),
-            chr_best = chr_best, chr_med = chr_med), OUT_RDS)
+            bych_multi = BYCH_MULTI, chr_best = chr_best, chr_med = chr_med), OUT_RDS)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT_RDS)
-say("\n[7] wrote %s\n    receipt: %s\n", OUT_RDS, receipt_path(STAGE))
+say("\n[8] wrote %s\n    receipt: %s\n", OUT_RDS, receipt_path(STAGE))
 say("\n    Figures: R_figures/fig_ld_recombination.R\n")
