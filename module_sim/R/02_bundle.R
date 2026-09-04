@@ -72,7 +72,7 @@ STAGE <- "02_bundle"
 say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())
 
-TARGET_TAG <- TAGS[1]; TARGET_CELL <- CELLS[1]; TARGET_ENV <- ENVS[1]; TARGET_REP <- REPS[1]
+TARGET_TAG <- Sys.getenv("SIM_TAG", TAGS[1]); TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1]); TARGET_ENV <- as.integer(Sys.getenv("SIM_ENV", ENVS[1])); TARGET_REP <- as.integer(Sys.getenv("SIM_REP", REPS[1]))
 parsed_file <- file.path(PATHS$parsed,
   sprintf("nemo_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 if (!file.exists(parsed_file)) stop("R_parsing/01_parse_nemo.R has not produced: ",
@@ -118,9 +118,17 @@ say("    %.1f MB\n", file.size(gds_path) / 1e6)
 
 ## ---- 3. LD decay, SEEDED, ld_w in place ---------------------------------------
 say("\n[3] LD decay: n_win_decay = %d, seed %d\n", DECAY_ARGS$n_win_decay, SEEDS[["bundle"]])
-decay_fp <- digest(list(decay_args = DECAY_ARGS, rho_grid = RHO_GRID, rep = TARGET_REP,
+## [!] tag/cell ADDED 2026-09-04, widening REPS to a real grid rather than one
+## cell. The fingerprint previously omitted them, relying only on rep + marker
+## count -- with a single cell ever tested that was invisible, but two
+## different cells could in principle land on the same marker count after
+## their own MAF filtering and silently alias a cached decay/clustering. The
+## cache FILENAME is now also keyed per (tag, cell, rep) below, which is the
+## primary fix; this closes the same gap in the fingerprint itself.
+decay_fp <- digest(list(decay_args = DECAY_ARGS, rho_grid = RHO_GRID,
+                        tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP,
                         seed = SEEDS[["bundle"]], markers = ncol(GTs)), algo = "sha256")
-LD_decay <- .cache_step("ld_decay", decay_fp, function() {
+LD_decay <- .cache_step(sprintf("ld_decay_%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP), decay_fp, function() {
   set.seed(SEEDS[["bundle"]])
   do.call(compute_LD_decay,
          c(list(gds = gds, el_data_folder = PATHS$el_dir, ld_w_rho = RHO_GRID,
@@ -135,7 +143,7 @@ say("    %d chromosome(s) ; ld_w matrix %s x %d\n", nrow(LD_decay$decay_sum),
 ## ---- 4. stage-1 clustering -- BEFORE the kinship ------------------------------
 say("\n[4] stage-1 clustering (ld_complexity_reduction, rho = %.2f)\n", CR_RHO)
 stage1_fp <- digest(list(decay_fp = decay_fp, cr_rho = CR_RHO), algo = "sha256")
-stage1 <- .cache_step("stage1", stage1_fp, function() {
+stage1 <- .cache_step(sprintf("stage1_%s_%s_rep%d", TARGET_TAG, TARGET_CELL, TARGET_REP), stage1_fp, function() {
   set.seed(SEEDS[["clusters"]])
   ld_complexity_reduction(map = map, LD_decay = LD_decay, rho = CR_RHO, gds = gds) })
 cl <- as.data.table(stage1$clusters)

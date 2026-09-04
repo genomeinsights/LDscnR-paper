@@ -49,7 +49,7 @@ say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())
 if (!identical(LFMM_SOURCE, "compute")) stop("LFMM_SOURCE is not \"compute\" -- this stage expects to.")
 
-TARGET_TAG <- TAGS[1]; TARGET_CELL <- CELLS[1]; TARGET_ENV <- ENVS[1]; TARGET_REP <- REPS[1]
+TARGET_TAG <- Sys.getenv("SIM_TAG", TAGS[1]); TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1]); TARGET_ENV <- as.integer(Sys.getenv("SIM_ENV", ENVS[1])); TARGET_REP <- as.integer(Sys.getenv("SIM_REP", REPS[1]))
 BUNDLE_PATH <- file.path(PATHS$out, "02_bundle",
   sprintf("bundle_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 if (!file.exists(BUNDLE_PATH)) stop("R/02_bundle.R has not produced: ", basename(BUNDLE_PATH))

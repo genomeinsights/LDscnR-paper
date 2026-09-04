@@ -56,10 +56,10 @@ source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "R", "00_confi
 STAGE <- "01_parse_nemo"
 say("=== %s ===\n\n", STAGE)
 
-TARGET_TAG  <- TAGS[1]     # "nobgs"
-TARGET_CELL <- CELLS[1]    # "V2_c1"
-TARGET_ENV  <- ENVS[1]     # 1L
-TARGET_REP  <- REPS[1]     # 1L -- ONE replicate; "adapt_..._chr1_..." in NEMO's own naming
+TARGET_TAG  <- Sys.getenv("SIM_TAG",  TAGS[1])                    # "nobgs"
+TARGET_CELL <- Sys.getenv("SIM_CELL", CELLS[1])                   # "V2_c1"
+TARGET_ENV  <- as.integer(Sys.getenv("SIM_ENV",  ENVS[1]))       # 1L
+TARGET_REP  <- as.integer(Sys.getenv("SIM_REP",  REPS[1]))       # 1L -- one replicate per run; SIM_REP overrides for looping
 
 raw_dir <- if (TARGET_TAG == "nobgs") PATHS$raw_nemo_nobgs else PATHS$raw_nemo_bgs5
 archive <- file.path(raw_dir, sprintf("adapt_%s_chr%d_%s_env%d.tgz",
@@ -81,6 +81,15 @@ if (any(!file.exists(INPUTS))) stop("missing input(s): ",
     paste(names(INPUTS)[!file.exists(INPUTS)], collapse = ", "))
 
 ## ---- 1. unpack the archive ----------------------------------------------------
+## [!] CLEARED FIRST, FOUND 2026-09-04 WIDENING TO A GRID OF COMBINATIONS. This
+## is a single shared scratch path across every (tag,cell,env,rep); left
+## uncleared, a second combination's extraction landed ALONGSIDE the first's
+## leftover files rather than replacing them, and the very next stopifnot below
+## caught it immediately ("expected exactly one .map file", two present) rather
+## than silently reading the wrong one -- but only because it happened to fail
+## loudly. Cleared unconditionally before every unpack now, so there is nothing
+## to collide with regardless of what ran here before.
+unlink(PATHS$untar, recursive = TRUE)
 dir.create(PATHS$untar, recursive = TRUE, showWarnings = FALSE)
 say("\n[1] unpack -> %s\n", PATHS$untar)
 untar(archive, exdir = PATHS$untar)
