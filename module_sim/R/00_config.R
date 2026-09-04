@@ -89,7 +89,9 @@ PATHS$untar  <- file.path(PATHS$cache, "untar")   # scratch for unpacked .tgz; n
 ## Set to the SMALLEST cell that lets every stage be verified end to end. Widen
 ## CELLS/TAGS/ENVS once 02-04 are confirmed correct on this one, not before.
 CELLS <- "V2_c1"          # widen to c("V0.5_c1","V0.5_c2","V1_c1.5","V2_c1") once verified
-TAGS  <- "nobgs"          # widen to c("nobgs","bgs5") once verified -- see RAW_SCORING below
+TAGS  <- "nobgs"          # other value is "bgs" (NOT "bgs5" -- that's just PATHS$raw_nemo_bgs5's
+                            # own name; archive filenames and TARGET_TAG use "bgs", see
+                            # R_parsing/01_parse_nemo.R's adapt_%s_chr%d_... pattern)
 ENVS  <- 1L                # widen once verified
 ## [!] RENAMED FROM "CHRS" 2026-09-04 (PK). "chr1".."chr10" in NEMO's own
 ## filenames are not ten genomic chromosomes to pool -- they are ten
