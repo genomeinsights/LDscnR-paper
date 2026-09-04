@@ -100,6 +100,13 @@ dir.create(untar_dir, recursive = TRUE, showWarnings = FALSE)
 say("\n[1] unpack -> %s\n", untar_dir)
 untar(archive, exdir = untar_dir)
 files <- list.files(untar_dir, recursive = TRUE, full.names = TRUE)
+## [!] Some bgs archives bundle more than one env's output together (e.g.
+## adapt_bgs_chr2_V0.5_c1_env1.tgz also contains the full env10 run) --
+## found 2026-09-04 launching the grid, 5 of 70 bgs archives affected, 0 of
+## 70 nobgs. Filter to TARGET_ENV explicitly rather than assuming "env1.tgz"
+## means only-env1 inside; env%d(?!\\d) avoids env1 matching env10's files.
+env_pat <- sprintf("env%d(?!\\d)", TARGET_ENV)
+files <- files[grepl(env_pat, files, perl = TRUE)]
 map_file  <- files[grepl("\\.map$", files)]
 geno_file <- files[grepl("snp_geno", files, fixed = TRUE)]
 stopifnot("expected exactly one .map file" = length(map_file) == 1L,
