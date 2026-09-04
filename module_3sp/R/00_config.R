@@ -21,6 +21,12 @@ suppressMessages({library(data.table); library(digest)})
 PATHS <- list(
   module   = path.expand("~/gitlab/LDscnR-paper/module_3sp"),
   out      = path.expand("~/gitlab/LDscnR-paper/module_3sp/out"),
+  ## ONE PLACE FOR EVERY FINAL FIGURE (PK), separate from out/<stage>/'s working files
+  ## (receipts, rds, csv). Every figure-producing script writes here so the whole set can be
+  ## browsed in one directory before hand-picking which ones move to
+  ## LDscnR_manuscript/figures/ -- out/<stage>/ stays the place for a stage's non-figure
+  ## outputs, not a second copy of the figures.
+  figures  = path.expand("~/gitlab/LDscnR-paper/module_3sp/figures"),
   ## RAW INPUTS -- never written by this pipeline.
   ##
   ## COPIED IN so the module is self-contained on this filesystem (PK). Both are
@@ -56,6 +62,7 @@ PATHS <- list(
 ## /Volumes/Nemo, an external volume, which is one reason its bundle could not be
 ## rebuilt on demand. Kept local and regenerable.
 PATHS$el_dir <- file.path(PATHS$cache, "edge_lists")
+dir.create(PATHS$figures, recursive = TRUE, showWarnings = FALSE)
 
 ## The EcoPeak BEDs, named explicitly rather than globbed: a glob would silently
 ## widen if the kingman session adds a cohort, and the overlap denominators would

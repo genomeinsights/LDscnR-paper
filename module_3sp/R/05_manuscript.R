@@ -6,7 +6,7 @@
 ## permutation results -- is a two-panel EMMAX/LFMM figure), plus a values
 ## file for the macros this module can honestly source.
 ##
-## RENAMED from 06_manuscript.R (PK), wired to 08_figure_both.R's two-panel
+## RENAMED from 06_manuscript.R (PK), wired to figure_manhattan.R's two-panel
 ## figure -- the design that survived review (Eda-style arrows for Eda and the
 ## chr1 inversion, two-row EcoPeak rug, span-normalised rug height across
 ## panels) -- superseding both 07_figure_emmax.R's single EMMAX panel and
@@ -39,9 +39,11 @@ lf <- readRDS(file.path(PATHS$out, "04_lfmm", "lfmm.rds"))
 OUT_DIR <- file.path(PATHS$out, STAGE); dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 ## ---- figure ------------------------------------------------------------------
-invisible(file.copy(file.path(PATHS$out, "08_figure_both", "both_engines_manhattan.pdf"),
-         file.path(OUT_DIR, "figure4_stickleback_validation.pdf"), overwrite = TRUE))
-say("[1] figure4_stickleback_validation.pdf <- 08_figure_both/both_engines_manhattan.pdf\n")
+## Both source and destination are in PATHS$figures (PK): every module_3sp figure lands in
+## one directory, browsed from there to pick what moves to LDscnR_manuscript/figures/ later.
+invisible(file.copy(file.path(PATHS$figures, "both_engines_manhattan.pdf"),
+         file.path(PATHS$figures, "figure4_stickleback_validation.pdf"), overwrite = TRUE))
+say("[1] figures/figure4_stickleback_validation.pdf <- figures/both_engines_manhattan.pdf\n")
 
 ## ---- values (module_3sp-sourced subset only) ---------------------------------
 con <- sc$consensus; sim <- sc$simes
@@ -103,6 +105,6 @@ say("[2] wrote %s -- %d macros\n", OUT_TEX, length(V))
 write_receipt(STAGE,
   inputs = c(file.path(PATHS$out, "03_EMMAX", "_receipt.rds"),
              file.path(PATHS$out, "04_lfmm", "_receipt.rds"),
-             file.path(PATHS$out, "08_figure_both", "_receipt.rds")),
-  params = list(), outputs = c(file.path(OUT_DIR, "figure4_stickleback_validation.pdf"), OUT_TEX))
+             file.path(PATHS$out, "figure_manhattan", "_receipt.rds")),
+  params = list(), outputs = c(file.path(PATHS$figures, "figure4_stickleback_validation.pdf"), OUT_TEX))
 say("\n[3] receipt: %s\n", receipt_path(STAGE))

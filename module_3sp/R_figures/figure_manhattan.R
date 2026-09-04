@@ -1,5 +1,5 @@
 ## =============================================================================
-## module_3sp/R/08_figure_both.R
+## module_3sp/R_figures/figure_manhattan.R
 ##
 ## PK: both engines, EACH using 07_figure_emmax.R's template (single-marker
 ## -log10(q), FDR line, cluster-level regions coloured, Eda arrow) -- stacked,
@@ -37,7 +37,7 @@ suppressMessages({library(data.table); library(LDscnR); library(ggplot2)
   library(patchwork); library(ggrastr)})
 devtools::load_all("~/gitlab/LDscnR")
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
-STAGE <- "08_figure_both"
+STAGE <- "figure_manhattan"
 say("=== %s ===\n\n", STAGE)
 
 b  <- readRDS(file.path(PATHS$out, "02_bundle", "bundle.rds"))
@@ -187,10 +187,13 @@ pB <- mk_panel("LFMM", sprintf("B  LFMM, Simes -- %d regions (%d on EcoPeak)",
                top_expand = 0.10, show_legend = FALSE) + labs(x = "chromosome")
 FIG <- pA / pB
 
+## Figures go to PATHS$figures (PK), the one place every module_3sp figure lands, browsed
+## from there to pick what moves to LDscnR_manuscript/figures/. OUT_DIR (out/figure_manhattan/)
+## stays only for the receipt.
 OUT_DIR <- file.path(PATHS$out, STAGE); dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
-OUT_PDF <- file.path(OUT_DIR, "both_engines_manhattan.pdf")
+OUT_PDF <- file.path(PATHS$figures, "both_engines_manhattan.pdf")
 ggsave(OUT_PDF, FIG, width = 15, height = 8.4, device = cairo_pdf)
-ggsave(file.path(OUT_DIR, "both_engines_manhattan.png"), FIG, width = 15, height = 8.4, dpi = 200)
+ggsave(file.path(PATHS$figures, "both_engines_manhattan.png"), FIG, width = 15, height = 8.4, dpi = 200)
 say("\n[3] wrote %s\n", OUT_PDF)
 say("\n[4] suggested LaTeX figure legend (the title text removed from the image):\n")
 say('    LD-complexity reduction recovers regions where single-marker testing\n')
