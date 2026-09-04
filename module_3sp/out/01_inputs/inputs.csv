@@ -1,0 +1,6 @@
+name,declared,resolved,bytes,sha256
+raw_3sp,/Users/petrikem/gitlab/LDscnR-paper/module_3sp/data/3sp_data.RData,/Users/petrikem/gitlab/LDscnR-paper/module_3sp/data/3sp_data.RData,166846879,811f7c8128c4aba7cdea9e9d4da00cc21904976f4218eb5d5046c6d6032e6417
+recmap,/Users/petrikem/gitlab/LDscnR-paper/3sp_data/rec_maps/stickleback_recomb_3crosses_gasAcu1.tsv,/Users/petrikem/gitlab/LDscnR-paper/3sp_data/rec_maps/stickleback_recomb_3crosses_gasAcu1.tsv,128303,e8d8876194bfa95dc3ebd84b00f1e5b328574665b5cbeb2121ee5464163740f8
+ecopeak_pv_c155.specific,/Users/petrikem/gitlab/LDscnR-paper/kingman2021/data/liftover/pv_c155.specific.bed,/Users/petrikem/gitlab/LDscnR-paper/kingman2021/data/liftover/pv_c155.specific.bed,1840,6d63c38543f2869f504136260891227ebcec82b6a282f7e5c1f13a4e726d62f2
+ecopeak_pv_c150.specific,/Users/petrikem/gitlab/LDscnR-paper/kingman2021/data/liftover/pv_c150.specific.bed,/Users/petrikem/gitlab/LDscnR-paper/kingman2021/data/liftover/pv_c150.specific.bed,9896,8bf12491fa7e42077ccbd2b1bf4908877503bf2e8f04d559abc715cbad9c9812
+lfmm_F,/Users/petrikem/gitlab/LDscnR-paper/module_3sp/data/lfmm_F.rds,/Users/petrikem/gitlab/LDscnR-paper/module_3sp/data/lfmm_F.rds,6732324,8ad2029c4b3487430111a2bbb4b4bd4bc443cba26bd5adae19a26f455abb82f4

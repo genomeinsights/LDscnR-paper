@@ -127,4 +127,7 @@ module_3sp/data/*
 !module_3sp/data/README.md
 module_3sp/out/**/*.rds
 !module_3sp/out/**/_receipt.rds
-module_3sp/out/run*.log   # ad hoc debug redirects, not designed pipeline output
+# ad hoc debug redirects, not designed pipeline output -- NOTE: a trailing "# comment" on
+# the same line as a pattern is NOT a comment in .gitignore syntax (only whole-line #
+# comments are), so this exclusion silently never matched until moved to its own line.
+module_3sp/out/run*.log

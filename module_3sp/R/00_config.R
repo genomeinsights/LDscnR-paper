@@ -346,7 +346,7 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
   ## packageDescription() then returns a DESCRIPTION with no Built field at all (that
   ## field is stamped only by R CMD INSTALL/build). sub() on NULL silently returns
   ## character(0), as.POSIXct(character(0)) is a length-0 POSIXct, and a length-0
-  ## condition in if() is a hard error in current R -- found by running 03_scan.R for
+  ## condition in if() is a hard error in current R -- found by running 03_EMMAX.R for
   ## real, not by the interactive checks that verified this function earlier, none of
   ## which had also called load_all() first.
   built_raw <- if (is.null(d$Built)) NA_character_ else sub(";.*$", "", sub("^[^;]*;[^;]*; *", "", d$Built))

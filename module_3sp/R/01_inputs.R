@@ -38,8 +38,15 @@ res <- rbindlist(lapply(names(INPUTS), function(nm) {
   p <- INPUTS[[nm]]
   ex <- file.exists(p)
   real <- if (ex) normalizePath(p, mustWork = FALSE) else NA_character_
+  ## was: !identical(real, normalizePath(p, mustWork=FALSE)) -- `real` IS
+  ## normalizePath(p, mustWork=FALSE), computed two lines up, so that comparison was always
+  ## FALSE (a value compared to itself) and the whole first half of the OR was vestigial;
+  ## is_link worked only via the second half, Sys.readlink(). Fixed to compare against the
+  ## UNRESOLVED declared path `p`, which is the actual symlink test (independent audit,
+  ## ldscnr-26/fe, 2026-09-04 -- caught in the one stage whose entire job is precision about
+  ## what's real).
   data.table(name = nm, declared = p, resolved = real,
-             is_link = ex && !identical(real, normalizePath(p, mustWork = FALSE)) || (ex && nzchar(Sys.readlink(p))),
+             is_link = ex && (!identical(real, p) || nzchar(Sys.readlink(p))),
              bytes = if (ex) file.size(p) else NA_real_, exists = ex)
 }))
 for (i in seq_len(nrow(res))) say("    %-22s %-8s %10s %s\n", res$name[i],

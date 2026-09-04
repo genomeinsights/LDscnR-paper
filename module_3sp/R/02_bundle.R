@@ -2,9 +2,9 @@
 ## module_3sp/R/02_bundle.R
 ##
 ## BUILD THE DATA BUNDLE: genotypes, map, LD-decay, ld_w, stage-1 clustering, kinship.
-## Runs no association test -- the scans are stage 05, because they depend on the kinship
-## this stage produces and conflating the two is why "rebuild the kinship" and "rerun the
-## scan" could not previously be decided independently.
+## Runs no association test -- the scans are stages 03/04, because they depend on the
+## kinship this stage produces and conflating the two is why "rebuild the kinship" and
+## "rerun the scan" could not previously be decided independently.
 ##
 ## THE ORDERING IS THE POINT OF THIS STAGE. The kinship basis is the STAGE-1
 ## REPRESENTATIVES, so the clustering must run BEFORE the kinship:
@@ -36,6 +36,11 @@ suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); libr
 devtools::load_all("~/gitlab/LDscnR")
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
 STAGE <- "02_bundle"
+## The version-pin gate, same as 03_EMMAX.R/04_lfmm.R -- and MORE needed here, not less: this
+## is the stage a pin mismatch is most expensive to discover late in (hours into the decay
+## fit), yet it was the one stage that had no gate at all until an independent audit caught
+## it (ldscnr-26/fe, cross-session, 2026-09-04).
+invisible(check_ldscnr())
 
 ## ---- CHECKPOINTS for the two expensive steps --------------------------------
 ## The decay fit and the clustering are the steps this stage can die partway through --
@@ -94,6 +99,11 @@ keep <- map$maf > MAF_KEEP
 GTs  <- GTs[, keep]; map <- map[keep]
 eco  <- as.integer(as.factor(e$pheno_3sp$ecotype)) - 1L   # Freshwater 0, Marine 1
 pheno <- as.data.table(e$pheno_3sp)
+## GTs, eco and pheno are aligned by ROW POSITION ONLY -- GTs_3sp carries no sample IDs
+## (rownames are NULL in the raw file), so identity cannot be checked, only count. Still
+## worth asserting explicitly rather than trusting silently: same-count-different-identity
+## is the failure class an independent audit flagged here (ldscnr-26/fe, 2026-09-04).
+stopifnot(nrow(GTs) == length(eco), nrow(GTs) == nrow(pheno))
 n <- nrow(GTs)
 say("    %d individuals x %s markers (maf > %.2f, %s dropped) ; Marine = %d\n",
     n, format(ncol(GTs), big.mark=","), MAF_KEEP, format(sum(!keep), big.mark=","), sum(eco))
@@ -185,6 +195,13 @@ say("    GRM: snpgdsGRM(method = \"%s\")\n", GRM_METHOD)
 t0 <- Sys.time()
 GRM <- snpgdsGRM(gds, snp.id = grm_markers, method = GRM_METHOD,
                  verbose = FALSE, autosome.only = FALSE)$grm
+## GRM's sample order matches GTs' row order by construction -- create_gds_from_geno()
+## assigns sample.id = paste0("ind_", seq_len(nrow(geno))) directly off GTs' row order at
+## GDS-creation time (gds_utils.R), and no sample-level subset/reorder happens between that
+## and here. Not an identity check (no sample IDs exist to check against -- see the eco/
+## pheno assertion above), but a real dimension check costs nothing and catches gross
+## mismatches from a future refactor that stops holding that construction invariant.
+stopifnot(nrow(GRM) == nrow(GTs), ncol(GRM) == nrow(GTs))
 ut <- upper.tri(GRM)
 say("    %d x %d ; mean diagonal %.4f ; off-diagonal mean %+.4f sd %.4f ; %.1f min\n",
     nrow(GRM), ncol(GRM), mean(diag(GRM)), mean(GRM[ut]), sd(GRM[ut]),
@@ -208,4 +225,5 @@ write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
 say("\n[6] wrote %s (%.0f MB) in %.1f min total\n", OUT, file.size(OUT)/1e6,
     as.numeric(difftime(Sys.time(), t_all, units="mins")))
 say("    receipt: %s\n", receipt_path(STAGE))
-say("\n    Next: 03_clusters.R (stage-2 grouping). The scans are 05, not here.\n")
+say("\n    Next: 03_EMMAX.R. There is no separate clustering stage -- ld_outlier_test()\n")
+say("    does stage-2 grouping internally.\n")

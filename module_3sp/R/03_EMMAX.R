@@ -1,7 +1,9 @@
 ## =============================================================================
-## module_3sp/R/03_scan.R
+## module_3sp/R/03_EMMAX.R
 ##
-## THE REAL SCAN: compute p-values, test stage-1 clusters, assemble regions,
+## THE EMMAX ARM (renamed from 03_scan.R -- parallel to 04_lfmm.R, since both
+## statistics computed here run on EMMAX; LFMM is the other engine, not another
+## arm of this file). Compute p-values, test stage-1 clusters, assemble regions,
 ## validate against a permutation null and against real EcoPeaks. Uses the
 ## package's new stage-1-cluster outlier API (ld_unit_matrix / ld_outlier_test /
 ## ld_outlier_perm / ld_region_rotation), pinned via LDSCNR_PIN in 00_config.R.
@@ -30,7 +32,7 @@
 suppressMessages({library(data.table); library(LDscnR); library(digest)})
 devtools::load_all("~/gitlab/LDscnR")
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
-STAGE <- "03_scan"
+STAGE <- "03_EMMAX"
 say("=== %s ===\n\n", STAGE)
 
 ## ---- 0. version pin, bundle, EcoPeaks ---------------------------------------
@@ -66,7 +68,7 @@ perm_population <- function() { pt <- copy(POPT)[, ep := sample(ecotype)]
 
 INPUTS <- c(BUNDLE_PATH, file.path(LIFT, ECOPEAK_BEDS))
 PARAMS <- list(size_floor = SIZE_FLOOR, alpha = ALPHA, region_assembly = REGION_ASSEMBLY,
-               statistics = STATISTICS, nperm_consensus = NPERM_CONSENSUS,
+               statistics = STATISTICS, unit_repr = UNIT_REPR, nperm_consensus = NPERM_CONSENSUS,
                nperm_simes = NPERM_SIMES, n_rotations = N_ROTATIONS,
                rotation_scheme = ROTATION_SCHEME)
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
@@ -77,9 +79,14 @@ dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
 RESULTS <- list()
 
 ## ---- 1. consensus arm (statistic = "unit") ----------------------------------
-say("[1] CONSENSUS arm -- ld_unit_matrix(repr = \"consensus_dosage\") + emmax_fast\n")
+say("[1] CONSENSUS arm -- ld_unit_matrix(repr = \"%s\") + emmax_fast\n", UNIT_REPR)
 t0 <- Sys.time()
-um <- ld_unit_matrix(GTs, stage1, map, size_floor = SIZE_FLOOR, repr = "consensus_dosage")
+## UNIT_REPR from config, not a literal -- was hardcoded "consensus_dosage" here, correct
+## only by coincidence (matched UNIT_REPR anyway), and PARAMS above omitted unit_repr
+## entirely so stage_stale() could not have detected a config change even after fixing the
+## literal. Both fixed together (independent audit, ldscnr-26/fe, 2026-09-04) -- this is
+## exactly the stage-08 sensitivity sweep's dependency.
+um <- ld_unit_matrix(GTs, stage1, map, size_floor = SIZE_FLOOR, repr = UNIT_REPR)
 Pu <- emmax_setup(um, GRM)
 pu_obs <- emmax_fast(Pu, eco)
 
