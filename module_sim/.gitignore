@@ -17,3 +17,14 @@ out/*/*.rds
 !out/*/_receipt.rds
 out/*/*/*.rds
 !out/*/*/_receipt.rds
+
+# [!] cache/ and out/ ABOVE became SYMLINKS 2026-09-05 (PK: "use the external
+# drive" -- the full reps x envs grid, 1400 combinations, filled both this
+# machine's and mini2's internal disks; both now point at /Volumes/Nemo or
+# /Volumes/T9). Git cannot see through a symlink to apply the directory-content
+# rules above, and committing the symlink itself would point every other
+# checkout at a path that only exists on this machine -- ignore it outright.
+# results/ is the deliberate exception: small, git-trackable summaries copied
+# out of the (now ignored) out/ tree, same convention as module_sim_LDscnR/results/.
+/cache
+/out
