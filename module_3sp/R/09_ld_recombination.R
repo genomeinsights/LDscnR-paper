@@ -54,7 +54,8 @@ b <- readRDS(file.path(PATHS$out, "02_bundle", "bundle.rds"))
 map <- b$map
 
 INPUTS <- c(file.path(PATHS$out, "02_bundle", "_receipt.rds"), PATHS$recmap)
-PARAMS <- list(q_grid = c(0.05, 0.10, 0.25), ld_w_col = "rho_0.95", sweep_nwin = c(10, 50))
+PARAMS <- list(q_grid = c(0.05, 0.10, 0.25), ld_w_col = "rho_0.95", sweep_nwin = c(10, 50),
+              boot_reps = 2000)
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -70,6 +71,10 @@ W <- W[is.finite(start) & is.finite(end) & is.finite(a) & a > 0]
 W[, wid := .I]
 say("    %s windows across %d chromosomes ; median width %.0f kb\n",
     format(nrow(W), big.mark=","), uniqueN(W$Chr), median(W$end - W$start)/1e3)
+## kept UNFILTERED (no rate/ld_w requirement) for section 9's track-stability grid -- that
+## question is about the a estimates agreeing with EACH OTHER across window counts, not about
+## pedigree-map coverage, so it should not inherit section 3's rate/ld_w_med filter below.
+W_full <- copy(W)
 
 ## ---- 2. per-window median ld_w, from the same marker set the panel scans --
 say("\n[2] per-window median ld_w (%s)\n", PARAMS$ld_w_col)
@@ -136,25 +141,70 @@ chr_med  <- bych_ord$Chr[which.min(abs(bych_ord$rho - median(bych_ord$rho)))]
 say("\n[6] representative chromosomes: %s (rho=%.2f, strongest), %s (rho=%.2f, near-median)\n",
     chr_best, bych[Chr==chr_best]$rho, chr_med, bych[Chr==chr_med]$rho)
 
-## ---- 7. multi-n_win sensitivity: n_win=10 and n_win=50, genome-wide (PK) ---------------
+## ---- 7. direct concordance between ld_w and a (Supplementary.tex) ----------------------
+## SUPPLEMENTARY, "Direct concordance between ld_w and a" -- an INTERNAL check (both derive
+## from the same LD data, so this is not a substitute for the pedigree-map validation in
+## sections 4-5, and should not be read as one): does the marker-resolution ld_w track the
+## window-level decay rate a at all, pooled and within chromosomes, and can ld_w classify the
+## lowest-a windows? Expected direction is inverse (high ld_w = slow decay = low a).
+say("\n[7] direct concordance: ld_w_med vs a (pooled + within-chromosome, block-bootstrap CI)\n")
+pooled_ldw_a <- cor(W$ld_w_med, W$a, method = "spearman")
+bych_ldw_a <- W[, .(rho = if (.N >= 5) cor(ld_w_med, a, method = "spearman") else NA_real_), by = Chr][is.finite(rho)]
+n_neg_ldw_a <- sum(bych_ldw_a$rho < 0); n_chr_ldw_a <- nrow(bych_ldw_a)
+sign_p_ldw_a <- binom.test(n_neg_ldw_a, n_chr_ldw_a, alternative = "greater")$p.value  # predicted: negative
+say("    pooled Spearman(ld_w, a) = %+.3f\n", pooled_ldw_a)
+say("    within-chr: %d/%d negative (predicted direction), one-sided sign p = %.3g\n",
+    n_neg_ldw_a, n_chr_ldw_a, sign_p_ldw_a)
+
+## chromosome-stratified block bootstrap (resample CHROMOSOMES with replacement, preserving
+## within-chromosome spatial autocorrelation -- an ordinary window-level CI would treat
+## overlapping windows as independent and understate uncertainty).
+set.seed(SEEDS[["bundle"]])
+chrs_boot <- unique(W$Chr)
+boot_cors <- vapply(seq_len(PARAMS$boot_reps), function(i) {
+  samp_chrs <- sample(chrs_boot, length(chrs_boot), replace = TRUE)
+  Wb <- rbindlist(lapply(samp_chrs, function(ch) W[Chr == ch]))
+  cor(Wb$ld_w_med, Wb$a, method = "spearman")
+}, numeric(1))
+ci_ldw_a <- quantile(boot_cors, c(0.025, 0.975))
+say("    block-bootstrap 95%% CI (B=%d, resampled by chromosome): [%.3f, %.3f]\n",
+    PARAMS$boot_reps, ci_ldw_a[1], ci_ldw_a[2])
+
+## AUC of ld_w_med classifying the lowest 5/10/25% of a, WITHIN EACH CHROMOSOME -- a
+## scale-free complement to the correlation, matching section 5's design.
+auc_ldw_vs_a <- function(q) {
+  Wq <- copy(W)
+  Wq[, thresh := quantile(a, q), by = Chr]
+  Wq[, low_a := a <= thresh]
+  r <- pROC::roc(Wq$low_a, Wq$ld_w_med, quiet = TRUE, direction = "auto")
+  ci <- pROC::ci.auc(r)
+  say("    lowest %.0f%% of a within chromosome (n=%d/%d): AUC(ld_w) = %.3f [%.3f-%.3f]\n",
+      100*q, sum(Wq$low_a), nrow(Wq), as.numeric(pROC::auc(r)), ci[1], ci[3])
+  data.table(q = q, n_low = sum(Wq$low_a), n = nrow(Wq), auc = as.numeric(pROC::auc(r)), lo = ci[1], hi = ci[3])
+}
+CONCORDANCE_AUC <- rbindlist(lapply(PARAMS$q_grid, auc_ldw_vs_a))
+CONCORDANCE <- list(pooled_rho = pooled_ldw_a, bych = bych_ldw_a, sign_p = sign_p_ldw_a,
+                    boot_ci = as.numeric(ci_ldw_a), auc = CONCORDANCE_AUC)
+
+## ---- 8. multi-n_win sensitivity: n_win=10 and n_win=50, genome-wide (PK) ---------------
 ## Completes figure5's right panel (old R_3sp_blocks version compared within-chromosome
 ## rho(a, rate) across n_win in {5,10,20,50}). PK: only 10 and 50 needed -- n_win=20 is
 ## already the canonical fit (section 1/`bych` above), and 5 was not requested.
 ##
 ## GENOME-WIDE, unlike the Chr1+Chr4-only illustrative n_win=100 refit in R_figures/: this
-## feeds a real reported number (Figure 5), not an illustration, so every chromosome is
-## needed, not two. keep_el=FALSE: only the windowed `a` fit is used here, never ld_w or
-## clustering, so no edge lists are kept -- a real saving over 02_bundle.R's canonical fit,
-## which needs edges afterward for ld_complexity_reduction(). Still genuinely expensive (two
-## more genome-wide decay fits) -- 00_config.R's own comment ("the sweep at 10/50 is stage
-## 09, not here") always meant this to land in this script, just deferred until asked for.
-say("\n[7] multi-n_win sensitivity: genome-wide decay at n_win_decay = 10 and 50\n")
+## feeds real reported numbers (Figure 5 AND section 9 below), not an illustration, so every
+## chromosome is needed. keep_el=FALSE: only the windowed `a` fit is used, never ld_w or
+## clustering, so no edge lists are kept. Each n_win refit is genuinely expensive (a second
+## genome-wide decay fit) -- refit_nwin() below runs it ONCE per n_win and the raw per-window
+## `a` table is reused by BOTH section 8 (rho-vs-rate sensitivity) and section 9 (track
+## stability across window counts), rather than refitting a second time for section 9.
+say("\n[8] multi-n_win sensitivity: genome-wide decay at n_win_decay = 10 and 50\n")
 gds_sweep_path <- file.path(PATHS$cache, "3sp_sweep.gds")
 if (file.exists(gds_sweep_path)) unlink(gds_sweep_path)
 gds_sweep <- create_gds_from_geno(geno = b$GTs, map = map, gds_sweep_path)
 on.exit(try(SNPRelate::snpgdsClose(gds_sweep), silent = TRUE), add = TRUE)
 
-sweep_bych <- function(nwin) {
+refit_nwin <- function(nwin) {
   set.seed(SEEDS[["bundle"]])
   ld <- compute_LD_decay(gds_sweep, keep_el = FALSE, slide = DECAY_ARGS$slide,
                          ld_method = DECAY_ARGS$ld_method, n_win_decay = nwin, cores = 1)
@@ -164,28 +214,105 @@ sweep_bych <- function(nwin) {
   }))
   Wn <- Wn[is.finite(start) & is.finite(end) & is.finite(a) & a > 0]
   Wn[, wid := .I]
+  Wn
+}
+join_pedigree_rate <- function(Wn) {
   setkey(Wn, Chr, start, end)
   Jn <- foverlaps(Wn[, .(Chr, start, end, wid)], MB, by.x = c("Chr","start","end"),
                   type = "any", nomatch = NULL)
   Rn <- Jn[, .(rate = median(rate)), by = wid]
-  Wn <- merge(Wn, Rn, by = "wid", all.x = TRUE)
-  Wn <- Wn[is.finite(rate) & is.finite(a)]
-  bychn <- Wn[, .(rho = if (.N >= 5) cor(a, rate, method = "spearman") else NA_real_), by = Chr][is.finite(rho)]
-  say("    n_win_decay = %3d: %s windows ; within-chr %d/%d positive\n",
-      nwin, format(nrow(Wn), big.mark=","), sum(bychn$rho > 0), nrow(bychn))
-  bychn
+  merge(Wn, Rn, by = "wid", all.x = TRUE)
 }
-bych_10 <- sweep_bych(10)
-bych_50 <- sweep_bych(50)
+sweep_nwin <- function(nwin) {
+  Wn <- refit_nwin(nwin)
+  Wr <- join_pedigree_rate(Wn)
+  Wr <- Wr[is.finite(rate) & is.finite(a)]
+  bychn <- Wr[, .(rho = if (.N >= 5) cor(a, rate, method = "spearman") else NA_real_), by = Chr][is.finite(rho)]
+  say("    n_win_decay = %3d: %s windows ; within-chr %d/%d positive\n",
+      nwin, format(nrow(Wr), big.mark=","), sum(bychn$rho > 0), nrow(bychn))
+  list(bych = bychn, W = Wn, W_rate = Wr)
+}
+sweep_10 <- sweep_nwin(10)
+sweep_50 <- sweep_nwin(50)
+bych_10 <- sweep_10$bych; bych_50 <- sweep_50$bych
 BYCH_MULTI <- list(`10` = bych_10, `20` = bych, `50` = bych_50)
 
-## ---- 8. save + receipt ---------------------------------------------------------
+## ---- 9. quantitative stability of the a track across window counts (Supplementary.tex) --
+## SUPPLEMENTARY, "Quantitative stability of the a track across window counts" -- distinct
+## from section 8's question (does a-vs-rate correlation hold at each n_win?): does the
+## SPATIAL a track itself stay stable when the window count changes? Reuses section 8's
+## n_win=10/50 refits (sweep_10$W, sweep_50$W) plus the canonical n_win=20 table (W) --
+## no extra genome-wide decay fit.
+##
+## Grid: the canonical (n_win=20) track's OWN window midpoints, per chromosome, shared by
+## all three resolutions -- NOT each resolution's own independent range. (Caught on the
+## first scratch attempt: building each resolution's grid from its own window range meant
+## different n_win -> different boundary padding -> almost no shared grid point after
+## dcast(), pervasive NA.) approx(rule=2) flat-extrapolates at chromosome ends a track does
+## not reach.
+say("\n[9] track stability across window counts (n_win = 10, 20, 50)\n")
+TRACKS <- list(`10` = sweep_10$W, `20` = W_full, `50` = sweep_50$W)
+GRID_SRC <- W_full   ## unfiltered canonical grid -- see note at W_full's definition (section 1)
+interp_all <- rbindlist(lapply(names(TRACKS), function(nw) {
+  Wt <- TRACKS[[nw]]
+  rbindlist(lapply(unique(GRID_SRC$Chr), function(ch) {
+    d <- Wt[Chr == ch][order(start)]
+    if (nrow(d) < 2) return(NULL)
+    mid <- (d$start + d$end) / 2
+    g <- GRID_SRC[Chr == ch][order(start)]
+    grid <- (g$start + g$end) / 2   ## canonical track's OWN midpoints, shared by all three
+    ai <- approx(mid, d$a, xout = grid, rule = 2)$y
+    data.table(Chr = ch, pos = grid, n_win = nw, a = ai)
+  }))
+}))
+IW <- dcast(interp_all, Chr + pos ~ n_win, value.var = "a")
+setnames(IW, c("10","20","50"), c("a10","a20","a50"))
+say("    interpolated grid: %s points across %d chromosomes\n", format(nrow(IW), big.mark=","), uniqueN(IW$Chr))
+
+pair_cor <- function(x, y) {
+  bych_xy <- IW[, .(rho = if (.N >= 5) cor(get(x), get(y), method = "spearman") else NA_real_), by = Chr][is.finite(rho)]
+  median(bych_xy$rho)
+}
+rho_1020 <- pair_cor("a10","a20"); rho_1050 <- pair_cor("a10","a50"); rho_2050 <- pair_cor("a20","a50")
+say("    chromosome-stratified Spearman (median across chromosomes): 10v20=%.3f 10v50=%.3f 20v50=%.3f\n",
+    rho_1020, rho_1050, rho_2050)
+
+jacc_decile <- function(x, y) {
+  IW2 <- copy(IW)
+  IW2[, `:=`(lowx = get(x) <= quantile(get(x), 0.10), lowy = get(y) <= quantile(get(y), 0.10))]
+  length(which(IW2$lowx & IW2$lowy)) / length(which(IW2$lowx | IW2$lowy))
+}
+jac_1020 <- jacc_decile("a10","a20"); jac_1050 <- jacc_decile("a10","a50"); jac_2050 <- jacc_decile("a20","a50")
+say("    Jaccard, lowest decay-rate decile (pooled grid points): 10v20=%.3f 10v50=%.3f 20v50=%.3f\n",
+    jac_1020, jac_1050, jac_2050)
+
+## AUC of `a` vs the pedigree low-recombination tail, AT EACH RESOLUTION (reuses section 8's
+## rate-joined tables for 10/50, plus the canonical W for 20).
+RATE_TRACKS <- list(`10` = sweep_10$W_rate, `20` = W, `50` = sweep_50$W_rate)
+auc_at_nwin <- rbindlist(lapply(names(RATE_TRACKS), function(nw) {
+  Wt <- RATE_TRACKS[[nw]][is.finite(rate) & is.finite(a)]
+  rbindlist(lapply(PARAMS$q_grid, function(q) {
+    y <- as.integer(Wt$rate <= quantile(Wt$rate, q))
+    r <- pROC::roc(y, Wt$a, quiet = TRUE, direction = "auto")
+    ci <- pROC::ci.auc(r)
+    say("    n_win=%s q=%.2f: AUC(a) = %.3f [%.3f-%.3f]\n", nw, q, as.numeric(pROC::auc(r)), ci[1], ci[3])
+    data.table(n_win = nw, q = q, auc = as.numeric(pROC::auc(r)), lo = ci[1], hi = ci[3])
+  }))
+}))
+say("    AUC range across all resolutions x thresholds: %.3f - %.3f\n", min(auc_at_nwin$auc), max(auc_at_nwin$auc))
+
+STABILITY <- list(pairwise_rho = list(`10v20` = rho_1020, `10v50` = rho_1050, `20v50` = rho_2050),
+                  jaccard_decile = list(`10v20` = jac_1020, `10v50` = jac_1050, `20v50` = jac_2050),
+                  auc_by_nwin = auc_at_nwin)
+
+## ---- 10. save + receipt ---------------------------------------------------------
 ## Saves MK too (the per-marker ld_w table) -- the figures script needs it and it is cheap
 ## (one column of ~790k values), far cheaper than having R_figures/ recompute it from the
 ## bundle's raw ld_ws matrix.
 OUT_RDS <- file.path(OUT_DIR, "ld_recombination.rds")
 saveRDS(list(windows = W, MK = MK, roc = RESULTS, cor = list(pooled = pooled, bych = bych, sign_p = st),
-            bych_multi = BYCH_MULTI, chr_best = chr_best, chr_med = chr_med), OUT_RDS)
+            bych_multi = BYCH_MULTI, chr_best = chr_best, chr_med = chr_med,
+            concordance = CONCORDANCE, stability = STABILITY), OUT_RDS)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT_RDS)
-say("\n[8] wrote %s\n    receipt: %s\n", OUT_RDS, receipt_path(STAGE))
+say("\n[10] wrote %s\n    receipt: %s\n", OUT_RDS, receipt_path(STAGE))
 say("\n    Figures: R_figures/fig_ld_recombination.R\n")

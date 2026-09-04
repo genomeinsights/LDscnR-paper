@@ -250,20 +250,16 @@ SCORE_THRESHOLD    <- 0.80
 
 ## ---- 7. STAGES 04+: TESTING ------------------------------------------------------
 ALPHA <- 0.05
-## SIZE_FLOOR, mechanically applying module_3sp's own rule (2x the median
-## stage-1 cluster size) now that 02_bundle.R has actually reported that number
-## for this replicate: median cluster size 1.00 (rep 1, V2_c1, env1, nobgs;
-## 63.8% singleton clusters). 2 x 1 = 2.
-##
-## [!] FLAGGED, NOT A CONFIRMED PK DECISION -- this is the rule applied
-## mechanically to unblock the scan stage, not a fresh judgement call, and it
-## is a much thinner floor than 3sp's 8: at floor 2, almost every non-singleton
-## cluster clears it, so this excludes only singletons rather than doing the
-## real multiplicity-reduction work a floor is meant for. Median cluster size
-## will differ by (V, c) cell (dispersal kernel c drives background LD, which
-## drives cluster size) and plausibly by replicate within one cell -- this
-## value is specific to rep 1 and should be re-checked, not silently reused,
-## once more replicates or cells are in scope.
+## SIZE_FLOOR = 2L, CONFIRMED (PK, 2026-09-03/04): checked across 5 sampled
+## V0.5_c1 bundles (different reps/envs) -- median stage-1 cluster size pins
+## at 1.00 everywhere sampled, so floor 2 consistently excludes only true
+## singleton clusters, not the general multiplicity-reduction work a floor is
+## meant for (unlike 3sp's floor of 8). PK's framing: SIZE_FLOOR is a
+## convenience post-hoc knob for how small a cluster to still trust, not a
+## value to mechanically re-derive per cell -- a smaller floor trades known
+## lower precision for an unknown recall gain, and floor 2 (singletons-only)
+## is the accepted operating point for this simulation grid. Not swept per
+## (V,c) cell/replicate.
 SIZE_FLOOR <- 2L
 
 STATISTICS <- c("consensus", "Simes")
