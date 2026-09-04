@@ -201,15 +201,21 @@ SCORE_THRESHOLD    <- 0.80
 
 ## ---- 7. STAGES 04+: TESTING ------------------------------------------------------
 ALPHA <- 0.05
-## [!] SIZE_FLOOR IS NOT SET HERE, DELIBERATELY. module_3sp's floor of 8 is
-## "2x the median stage-1 cluster size of 4.11" for ONE dataset -- a derived
-## quantity, not a constant, and this module's median cluster size will differ
-## by (V, c) cell (dispersal kernel c drives background LD, which drives
-## cluster size -- established earlier this project). Stage 02 must COMPUTE and
-## RECORD the median per cell it builds; stage 04 reads that recorded value
-## rather than a number typed in here. A single SIZE_FLOOR hardcoded across
-## cells with different LD structure would silently re-introduce the coupling
-## bug this file's whole contract exists to prevent.
+## SIZE_FLOOR, mechanically applying module_3sp's own rule (2x the median
+## stage-1 cluster size) now that 02_bundle.R has actually reported that number
+## for this replicate: median cluster size 1.00 (rep 1, V2_c1, env1, nobgs;
+## 63.8% singleton clusters). 2 x 1 = 2.
+##
+## [!] FLAGGED, NOT A CONFIRMED PK DECISION -- this is the rule applied
+## mechanically to unblock the scan stage, not a fresh judgement call, and it
+## is a much thinner floor than 3sp's 8: at floor 2, almost every non-singleton
+## cluster clears it, so this excludes only singletons rather than doing the
+## real multiplicity-reduction work a floor is meant for. Median cluster size
+## will differ by (V, c) cell (dispersal kernel c drives background LD, which
+## drives cluster size) and plausibly by replicate within one cell -- this
+## value is specific to rep 1 and should be re-checked, not silently reused,
+## once more replicates or cells are in scope.
+SIZE_FLOOR <- 2L
 
 STATISTICS <- c("consensus", "Simes")
 ENGINES    <- c("EMMAX", "LFMM")
