@@ -4,33 +4,6 @@ i Loading LDscnR
   LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
   source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
 [0] bundle: 160 individuals x 15,088 markers ; 4 true QTN ; 2,159 stage-1 units at floor 2
-  [03_scan] no receipt -- will run
-[1] EMMAX consensus -- ld_unit_matrix(repr = "consensus_dosage") + emmax_fast
-<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 0/2159 units -> 0 regions
-    0.0 min
+  [03_scan] up to date (2026-09-04 12:57)
 
-[2] EMMAX Simes -- direct marker-level scan aggregated per unit
-<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 0/2159 units -> 0 regions
-    0.0 min
-
-[3] LFMM consensus -- K = 5, on the same unit matrix EMMAX used
-    pre-correction gif = 3.578 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
-<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 0/2159 units -> 0 regions
-    0.0 min
-
-[4] LFMM Simes -- direct marker-level scan, K = 5
-    pre-correction gif = 5.744 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
-<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 0/2159 units -> 0 regions
-    0.1 min
-
-[5] ground truth (sanity only -- not PR scoring), of 4 true QTN: emmax_consensus=0, emmax_simes=0, lfmm_consensus=0, lfmm_simes=0
-[6] discoveries: emmax_consensus=0, emmax_simes=0, lfmm_consensus=0, lfmm_simes=0
-    Jaccard, within engine  -- EMMAX consensus/Simes: NA ; LFMM consensus/Simes: NA
-    Jaccard, across engine  -- consensus EMMAX/LFMM: NA ; Simes EMMAX/LFMM: NA
-  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
-  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-
-[7] wrote /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan//scan_bgs_rep8_V1_c1.5_env1.rds
-    receipt: /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan/bgs_V1_c1.5_rep8/_receipt.rds
-
-    Next: widen REPS -- permutation null design still TBD (00_config.R).
+Nothing to do. Set FORCE=1 to rerun anyway.

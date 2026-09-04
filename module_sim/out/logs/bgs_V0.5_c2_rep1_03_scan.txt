@@ -4,57 +4,6 @@ i Loading LDscnR
   LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
   source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
 [0] bundle: 160 individuals x 15,469 markers ; 4 true QTN ; 2,270 stage-1 units at floor 2
-  [03_scan] no receipt -- will run
-[1] EMMAX consensus -- ld_unit_matrix(repr = "consensus_dosage") + emmax_fast
-Computing eMLGs for 2 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |===================================                                   |  50%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 2 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 1 flagged clusters -> 1 run(s) (largest 1)
-  |                                                                              |===================================                                   |  50%Chr2: 1 flagged clusters -> 1 run(s) (largest 1)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 2/2270 units -> 2 regions
-    0.0 min
+  [03_scan] up to date (2026-09-04 12:54)
 
-[2] EMMAX Simes -- direct marker-level scan aggregated per unit
-Computing eMLGs for 3 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |=======================                                               |  33%  |                                                                              |===============================================                       |  67%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 2 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 1 flagged clusters -> 1 run(s) (largest 1)
-  |                                                                              |===================================                                   |  50%Chr2: 2 flagged clusters -> 2 run(s) (largest 1)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 3/2270 units -> 3 regions
-    0.0 min
-
-[3] LFMM consensus -- K = 5, on the same unit matrix EMMAX used
-    pre-correction gif = 5.330 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
-Computing eMLGs for 4 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |==================                                                    |  25%  |                                                                              |===================================                                   |  50%  |                                                                              |====================================================                  |  75%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 2 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 1 flagged clusters -> 1 run(s) (largest 1)
-  |                                                                              |===================================                                   |  50%Chr2: 3 flagged clusters -> 3 run(s) (largest 1)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> unit / stage2_discovered | floor = 2, alpha = 0.05 | 4/2270 units -> 4 regions
-    0.0 min
-
-[4] LFMM Simes -- direct marker-level scan, K = 5
-    pre-correction gif = 5.296 (pv$pvalues is already GC-corrected -- see .lfmm_scan)
-Computing eMLGs for 14 flagged clusters...
-  |                                                                              |                                                                      |   0%  |                                                                              |=====                                                                 |   7%  |                                                                              |==========                                                            |  14%  |                                                                              |===============                                                       |  21%  |                                                                              |====================                                                  |  29%  |                                                                              |=========================                                             |  36%  |                                                                              |==============================                                        |  43%  |                                                                              |===================================                                   |  50%  |                                                                              |========================================                              |  57%  |                                                                              |=============================================                         |  64%  |                                                                              |==================================================                    |  71%  |                                                                              |=======================================================               |  79%  |                                                                              |============================================================          |  86%  |                                                                              |=================================================================     |  93%  |                                                                              |======================================================================| 100%
-Distance-restricted dynamic cut: 2 chromosomes
-  |                                                                              |                                                                      |   0%Chr1: 8 flagged clusters -> 7 run(s) (largest 2)
-  |                                                                              |===================================                                   |  50%Chr2: 6 flagged clusters -> 5 run(s) (largest 2)
-  |                                                                              |======================================================================| 100%
-<ld_outlier_test> simes / stage2_discovered | floor = 2, alpha = 0.05 | 14/2270 units -> 14 regions
-    0.1 min
-
-[5] ground truth (sanity only -- not PR scoring), of 4 true QTN: emmax_consensus=1, emmax_simes=1, lfmm_consensus=1, lfmm_simes=2
-[6] discoveries: emmax_consensus=2, emmax_simes=3, lfmm_consensus=4, lfmm_simes=14
-    Jaccard, within engine  -- EMMAX consensus/Simes: 0.667 ; LFMM consensus/Simes: 0.286
-    Jaccard, across engine  -- consensus EMMAX/LFMM: 0.500 ; Simes EMMAX/LFMM: 0.214
-  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
-  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-
-[7] wrote /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan//scan_bgs_rep1_V0.5_c2_env1.rds
-    receipt: /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan/bgs_V0.5_c2_rep1/_receipt.rds
-
-    Next: widen REPS -- permutation null design still TBD (00_config.R).
+Nothing to do. Set FORCE=1 to rerun anyway.

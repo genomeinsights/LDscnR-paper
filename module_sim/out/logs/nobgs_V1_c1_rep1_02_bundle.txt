@@ -1,8 +1,35 @@
-ℹ Loading LDscnR
+i Loading LDscnR
 === 02_bundle ===
 
   LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
   source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-  [02_bundle] up to date (2026-09-04 12:48)
+  [02_bundle] inputs changed: nemo_nobgs_rep1_V1_c1_env1.rds -- will run
+[1] reading nemo_nobgs_rep1_V1_c1_env1.rds
+    160 individuals x 14,479 markers ; 2 QTN ; chromosomes: Chr1 (6,994 markers, 2 QTN), Chr2 (7,485 markers, 0 QTN)
 
-Nothing to do. Set FORCE=1 to rerun anyway.
+[2] removing stale sim_nobgs_V1_c1_rep1.gds
+
+[2] GDS -> /Users/petrikem/gitlab/LDscnR-paper/module_sim/cache/sim_nobgs_V1_c1_rep1.gds
+    0.7 MB
+
+[3] LD decay: n_win_decay = 20, seed 1
+    [cache hit] ld_decay_nobgs_V1_c1_rep1 (computed 2026-09-04 12:36) -- skipping
+    2 chromosome(s) ; ld_w matrix 14,479 x 20
+
+[4] stage-1 clustering (ld_complexity_reduction, rho = 0.50)
+    [cache hit] stage1_nobgs_V1_c1_rep1 (computed 2026-09-04 12:36) -- skipping
+    7,175 clusters ; median size 1.00 -- SIZE_FLOOR is not yet set (00_config.R),
+    this is the number that should decide it, per module_3sp's own 2x-median convention.
+
+[5] kinship basis: stage1_pruned (module_3sp's canonical basis, not the superseded
+    sim bundles' complexity_chain/ld_prune_and_eMLG basis)
+    7,175 of 14,479 markers (49.6%)
+    GRM: snpgdsGRM(method = "GCTA")
+    160 x 160 ; mean diagonal 1.0246 ; off-diagonal mean -0.0064 sd 0.0438 ; 0.00 min
+  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
+  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
+
+[6] wrote /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/02_bundle//bundle_nobgs_rep1_V1_c1_env1.rds (8.4 MB)
+    receipt: /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/02_bundle/nobgs_V1_c1_rep1/_receipt.rds
+
+    Next: a scan stage (EMMAX, matching module_3sp/R/03_EMMAX.R) -- not written yet.

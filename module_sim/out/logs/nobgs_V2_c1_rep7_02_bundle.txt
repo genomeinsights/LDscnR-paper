@@ -1,17 +1,17 @@
-ℹ Loading LDscnR
+i Loading LDscnR
 === 02_bundle ===
 
   LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
   source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
-  [02_bundle] no receipt -- will run
+  [02_bundle] inputs changed: nemo_nobgs_rep7_V2_c1_env1.rds -- will run
 [1] reading nemo_nobgs_rep7_V2_c1_env1.rds
     160 individuals x 14,983 markers ; 1 QTN ; chromosomes: Chr1 (7,496 markers, 1 QTN), Chr2 (7,487 markers, 0 QTN)
 
-[2] GDS -> /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/cache/sim_nobgs_V2_c1_rep7.gds
+[2] GDS -> /Users/petrikem/gitlab/LDscnR-paper/module_sim/cache/sim_nobgs_V2_c1_rep7.gds
     0.7 MB
 
 [3] LD decay: n_win_decay = 20, seed 1
-Savinge edge list to folder /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/cache/edge_lists/nobgs_V2_c1_rep7
+Savinge edge list to folder /Users/petrikem/gitlab/LDscnR-paper/module_sim/cache/edge_lists/nobgs_V2_c1_rep7
 Filtering SNPs to MAF > 0.1 for background-LD and decay-curve fitting (edge lists remain unfiltered).
 Background LD: 0.028
 Estimating LD-decay
@@ -26,7 +26,7 @@ Suggested slide windows in SNPs for target rho:
    target   median      p90      max
    <char>    <num>    <num>    <num>
 1:   0.99 1663.848 1664.624 1664.818
-    [cached] ld_decay_nobgs_V2_c1_rep7 -> /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/cache/ld_decay_nobgs_V2_c1_rep7.rds (0.1 min)
+    [cached] ld_decay_nobgs_V2_c1_rep7 -> /Users/petrikem/gitlab/LDscnR-paper/module_sim/cache/ld_decay_nobgs_V2_c1_rep7.rds (0.2 min)
     2 chromosome(s) ; ld_w matrix 14,983 x 20
 
 [4] stage-1 clustering (ld_complexity_reduction, rho = 0.50)
@@ -50,7 +50,7 @@ Representative median r2 (non-singleton clusters):
 
 Stored components:
   map_snp, clusters, pruned
-    [cached] stage1_nobgs_V2_c1_rep7 -> /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/cache/stage1_nobgs_V2_c1_rep7.rds (0.0 min)
+    [cached] stage1_nobgs_V2_c1_rep7 -> /Users/petrikem/gitlab/LDscnR-paper/module_sim/cache/stage1_nobgs_V2_c1_rep7.rds (0.0 min)
     5,135 clusters ; median size 1.00 -- SIZE_FLOOR is not yet set (00_config.R),
     this is the number that should decide it, per module_3sp's own 2x-median convention.
 
@@ -62,7 +62,7 @@ Stored components:
   LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
   source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
 
-[6] wrote /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/out/02_bundle//bundle_nobgs_rep7_V2_c1_env1.rds (8.3 MB)
-    receipt: /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/out/02_bundle/nobgs_V2_c1_rep7/_receipt.rds
+[6] wrote /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/02_bundle//bundle_nobgs_rep7_V2_c1_env1.rds (8.3 MB)
+    receipt: /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/02_bundle/nobgs_V2_c1_rep7/_receipt.rds
 
     Next: a scan stage (EMMAX, matching module_3sp/R/03_EMMAX.R) -- not written yet.

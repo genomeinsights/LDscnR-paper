@@ -4,28 +4,6 @@
     archive  /Volumes/Nemo/Nemo_sim/Nemo_out_bgs/adapt_bgs_chr9_V0.5_c1.5_env1.tgz  (exists)
     recmap   /Volumes/Nemo/Nemo_sim/maps_500kb_with_allelic_values/chromosome_maps_500kb_rds/rec_map9.rds  (exists)
     env      /Volumes/Nemo/Nemo_sim/env/env_1.txt  (exists)
-  [01_parse_nemo] no receipt -- will run
+  [01_parse_nemo] up to date (2026-09-04 12:53)
 
-[1] unpack -> /Users/petrikem/gitlab/LDscnR-paper/module_sim/cache/untar/bgs_V0.5_c1.5_rep9
-    adapt_bgs_chr9_V0.5_c1.5_env1_1000_1.map
-    adapt_bgs_chr9_V0.5_c1.5_env1_1000_1.snp_geno
-    320 individuals x 76168 NEMO-native markers ; types: delet=4, ntrl=76158, quant=6
-
-[3] joining against reference map: rec_map9.rds
-    dropping 2 duplicate-position marker(s)
-    76166 markers survive the join (of 76168 NEMO-native, 1000000 reference)
-    by chromosome: Chr1=35527 (QTN=6), Chr2=40639 (QTN=0)
-
-[4] environment: env_1.txt
-    320 individuals placed on the 48x48 grid ; env range [0.140, 0.822]
-
-[5] subsampled to 160 of 320 individuals (step 2)
-    14,396 of 76,166 markers pass MAF > 0.10 (by chromosome: Chr1=6614 (QTN=5), Chr2=7782 (QTN=0))
-  LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
-  source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built 2026-09-03 18:04
-
-[7] wrote /Volumes/Nemo/Nemo_sim/module_sim_parsed/nemo_bgs_rep9_V0.5_c1.5_env1.rds (0.5 MB)
-    receipt: /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/01_parse_nemo/bgs_V0.5_c1.5_rep9/_receipt.rds
-
-    Next: R/02_bundle.R reads this ONE replicate's file (both chromosomes
-    already in it) -- decay, ld_w, stage-1 clustering, the kinship basis.
+Nothing to do. Set FORCE=1 to rerun anyway.

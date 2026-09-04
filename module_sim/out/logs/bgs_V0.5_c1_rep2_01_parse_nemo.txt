@@ -4,8 +4,6 @@
     archive  /Volumes/Nemo/Nemo_sim/Nemo_out_bgs/adapt_bgs_chr2_V0.5_c1_env1.tgz  (exists)
     recmap   /Volumes/Nemo/Nemo_sim/maps_500kb_with_allelic_values/chromosome_maps_500kb_rds/rec_map2.rds  (exists)
     env      /Volumes/Nemo/Nemo_sim/env/env_1.txt  (exists)
-  [01_parse_nemo] no receipt -- will run
+  [01_parse_nemo] up to date (2026-09-04 12:53)
 
-[1] unpack -> /Users/petrikem/gitlab/LDscnR-paper/module_sim/cache/untar/bgs_V0.5_c1_rep2
-Error: expected exactly one .map file
-Execution halted
+Nothing to do. Set FORCE=1 to rerun anyway.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ## module_sim/run_grid.sh
 ##
-## Run 01_parse_nemo -> 02_bundle -> 03_scan for every (cell, rep) combination
+## Run 01_parse_nemo -> 02_bundle -> 03_scan -> 04_score for every (cell, rep) combination
 ## in CELLS x REPS below, for one TAG, up to $CONCURRENCY combinations at
 ## once. Safe to run concurrently across machines too, as long as each
 ## machine's (tag,rep) combinations are disjoint from the other's --
@@ -56,7 +56,7 @@ run_combo() {
   local cell="$1" rep="$2"
   local combo_log="$TMPDIR_TIMING/${TAG}_${cell}_rep${rep}.csv"
   export SIM_CELL="$cell" SIM_REP="$rep"
-  for pair in "R_parsing/01_parse_nemo.R:01_parse_nemo" "R/02_bundle.R:02_bundle" "R/03_scan.R:03_scan"; do
+  for pair in "R_parsing/01_parse_nemo.R:01_parse_nemo" "R/02_bundle.R:02_bundle" "R/03_scan.R:03_scan" "R/04_score.R:04_score"; do
     script="${pair%%:*}"; stage="${pair##*:}"
     logfile="out/logs/${TAG}_${cell}_rep${rep}_${stage}.txt"
     t0=$(date +%s)

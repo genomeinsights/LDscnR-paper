@@ -1,10 +1,10 @@
-ℹ Loading LDscnR
+i Loading LDscnR
 === 03_scan ===
 
   LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
   source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
 [0] bundle: 160 individuals x 14,892 markers ; 1 true QTN ; 2,381 stage-1 units at floor 2
-  [03_scan] no receipt -- will run
+  [03_scan] inputs changed: bundle_nobgs_rep6_V0.5_c1_env1.rds -- will run
 [1] EMMAX consensus -- ld_unit_matrix(repr = "consensus_dosage") + emmax_fast
 Computing eMLGs for 1 flagged clusters...
   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
@@ -50,7 +50,7 @@ Distance-restricted dynamic cut: 1 chromosomes
   LDscnR 0.0.0.9000 | commit 011a165c8c99 (outlier-scan)
   source hash 362892c1ee4c6628 == pin 362892c1ee4c6628 | built unknown (loaded via devtools::load_all(), not an install)
 
-[7] wrote /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/out/03_scan//scan_nobgs_rep6_V0.5_c1_env1.rds
-    receipt: /Users/petrikemppainen/gitlab/LDscnR-paper/module_sim/out/03_scan/nobgs_V0.5_c1_rep6/_receipt.rds
+[7] wrote /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan//scan_nobgs_rep6_V0.5_c1_env1.rds
+    receipt: /Users/petrikem/gitlab/LDscnR-paper/module_sim/out/03_scan/nobgs_V0.5_c1_rep6/_receipt.rds
 
     Next: widen REPS -- permutation null design still TBD (00_config.R).
