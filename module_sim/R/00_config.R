@@ -328,7 +328,12 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
                                       stdout = TRUE, stderr = FALSE), error = function(e) character())
   head_sha <- substr(paste(g("rev-parse","HEAD"), collapse = ""), 1, 12)
   dirty <- length(g("status","--porcelain","--untracked-files=no")) > 0
-  src <- sort(g("ls-files","R/"))
+  ## radix sort, NOT the default locale-collated one -- R's sort() otherwise
+  ## orders filenames by LC_COLLATE, which differs across machines (this
+  ## Mac's "C" vs mini2's "C.UTF-8") and silently changes the concatenation
+  ## order the hash below is computed over, aliasing a byte-identical R/
+  ## directory into two different pins. Found 2026-09-04 provisioning mini2.
+  src <- sort(g("ls-files","R/"), method = "radix")
   cur <- if (!length(src)) NA_character_ else {
     fp <- file.path(LDSCNR_PIN$repo, src)
     substr(digest::digest(paste(vapply(fp[file.exists(fp)],
