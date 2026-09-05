@@ -24,13 +24,13 @@ pooled[, SI   := factor(SI_MAP[V_raw], levels = c("strong", "medium", "weak"))]
 pooled[, disp := factor(DISP_MAP[c_raw], levels = c("high", "medium", "low"))]
 pooled[, cell_label := sprintf("%s SI, %s disp", SI, disp)]
 
-## Cells sorted by performance (mean Recall across all tag x arm, descending --
-## best-performing parameter combination first), per PK's request, rather than
-## by SI/disp parameter value.
-perf_order <- pooled[, .(mean_recall = mean(Recall)), by = .(cell, cell_label)][order(-mean_recall)]
-say("[0] cells ranked by mean Recall (all tag x arm): %s\n",
-    paste(sprintf("%s=%.3f", perf_order$cell, perf_order$mean_recall), collapse = ", "))
-pooled[, cell_label := factor(cell_label, levels = perf_order$cell_label)]
+## Cells sorted by dispersal (high -> low), then by selection intensity
+## (high -> low) within each dispersal level -- PK's fixed parameter order,
+## not a performance ranking.
+cell_order <- unique(pooled[, .(cell, cell_label, disp, SI)])
+setorder(cell_order, disp, SI)
+say("[0] cell order (disp high->low, then SI high->low): %s\n", paste(cell_order$cell, collapse = ", "))
+pooled[, cell_label := factor(cell_label, levels = cell_order$cell_label)]
 ## NO lfmm_consensus (PK, 2026-09-05: LFMM on complexity-reduced/pooled
 ## genotypes is not how the method is meant to be used, dropped from
 ## R/03_scan.R and R/04_score.R). Two single-SNP arms added instead.
@@ -40,12 +40,17 @@ ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
 pooled[, arm := factor(arm, levels = ARM_LEVELS)]
 pooled[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 
-## long format: one row per (tag, cell, arm, metric), metric in {Precision, Recall}, with its SE.
+## long format: one row per (tag, cell, arm, metric), metric in {Recall,
+## Precision, PR, beta}, with its SE. PR = Precision*Recall; beta =
+## FN/(TP+FN) = 1-Recall, the Type II error rate (the natural counterpart to
+## ALPHA) -- both computed in R/05_pool.R alongside Precision/Recall.
 long <- rbindlist(list(
   pooled[, .(tag, cell = cell_label, arm, metric = "Recall",    value = Recall,    SE = Recall_SE)],
-  pooled[, .(tag, cell = cell_label, arm, metric = "Precision", value = Precision, SE = Precision_SE)]
+  pooled[, .(tag, cell = cell_label, arm, metric = "Precision", value = Precision, SE = Precision_SE)],
+  pooled[, .(tag, cell = cell_label, arm, metric = "Precision x Recall", value = PR, SE = PR_SE)],
+  pooled[, .(tag, cell = cell_label, arm, metric = "beta (Type II error)", value = beta, SE = beta_SE)]
 ))
-long[, metric := factor(metric, levels = c("Recall", "Precision"))]
+long[, metric := factor(metric, levels = c("Recall", "Precision", "Precision x Recall", "beta (Type II error)"))]
 
 say("[1] %d (tag,cell,arm,metric) points ; %d Precision NAs (zero-TP-zero-FP cells -- see 05_pool.R)\n",
     nrow(long), sum(is.na(long$value) & long$metric == "Precision"))
@@ -59,7 +64,7 @@ p <- ggplot(long, aes(cell, value, colour = arm, group = arm)) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(x = NULL, y = NULL,
       title = "Pooled TP/FP scoring: Precision/Recall by cell (all chromosomes pooled -- sum TP/FP/FN, then one ratio)",
-      subtitle = "mean +/- SE across the 10 environments (the replicate axis); cells sorted by mean Recall, best-performing first (SI = selection intensity, disp = dispersal/gene flow)") +
+      subtitle = "mean +/- SE across the 10 environments (the replicate axis); cells sorted by dispersal (high->low) then selection intensity (high->low)") +
   theme_bw(11) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
         axis.text.x = element_text(size = 7, angle = 40, hjust = 1), legend.position = "top")
@@ -67,6 +72,6 @@ p <- ggplot(long, aes(cell, value, colour = arm, group = arm)) +
 FIG_DIR <- file.path(PATHS$module, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 OUT <- file.path(FIG_DIR, "fig_pooled_pr.pdf")
-ggsave(OUT, p, width = 10, height = 6.5, device = cairo_pdf)
-ggsave(sub("\\.pdf$", ".png", OUT), p, width = 10, height = 6.5, dpi = 200)
+ggsave(OUT, p, width = 10, height = 11, device = cairo_pdf)
+ggsave(sub("\\.pdf$", ".png", OUT), p, width = 10, height = 11, dpi = 200)
 say("\n[2] wrote %s (+ .png)\n", OUT)

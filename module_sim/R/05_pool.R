@@ -65,26 +65,32 @@ all_scored     <- rbindlist(lapply(raw, `[[`, "scored"))
 cluster_detail <- rbindlist(lapply(raw, `[[`, "cluster_detail"))
 
 ## sum TP/FP/FN, THEN divide -- not mean of each row's own Precision/Recall.
+## PR = Precision*Recall; beta = FN/(TP+FN) = 1-Recall, the Type II error
+## rate (the natural counterpart to ALPHA, 00_config.R's significance
+## threshold) -- PK asked for both alongside Precision/Recall.
 .pool_counts <- function(TP, FP, FN) {
   TP <- sum(TP); FP <- sum(FP); FN <- sum(FN)
-  list(TP = TP, FP = FP, FN = FN,
-       Precision = if ((TP + FP) > 0) TP / (TP + FP) else NA_real_,
-       Recall    = if ((TP + FN) > 0) TP / (TP + FN) else NA_real_)
+  Precision <- if ((TP + FP) > 0) TP / (TP + FP) else NA_real_
+  Recall    <- if ((TP + FN) > 0) TP / (TP + FN) else NA_real_
+  list(TP = TP, FP = FP, FN = FN, Precision = Precision, Recall = Recall,
+       PR = Precision * Recall, beta = if ((TP + FN) > 0) FN / (TP + FN) else NA_real_)
 }
 .se <- function(x) { x <- x[!is.na(x)]; if (length(x) > 1) sd(x) / sqrt(length(x)) else NA_real_ }
 
 say("[2] per-env pooling: sum TP/FP/FN over REP (both chromosomes each), by (tag, cell, env, arm)\n")
 per_env <- all_scored[, {p <- .pool_counts(TP, FP, FN)
   list(n_reps = .N, n_sig = sum(n_sig), TP = p$TP, FP = p$FP, FN = p$FN,
-       Precision = p$Precision, Recall = p$Recall)}, by = .(tag, cell, env, arm)]
+       Precision = p$Precision, Recall = p$Recall, PR = p$PR, beta = p$beta)}, by = .(tag, cell, env, arm)]
 setorder(per_env, tag, cell, env, arm)
 
-say("[3] across-env pooling: mean +- SE, over ENV (N=%d), of per_env's Precision/Recall, by (tag, cell, arm)\n", ENVS_N)
+say("[3] across-env pooling: mean +- SE, over ENV (N=%d), of per_env's Precision/Recall/PR/beta, by (tag, cell, arm)\n", ENVS_N)
 pooled <- per_env[, {pc <- .pool_counts(TP, FP, FN)
   list(n_envs = .N, n_reps_total = sum(n_reps), n_sig = sum(n_sig),
        TP = pc$TP, FP = pc$FP, FN = pc$FN,
        Precision = pc$Precision, Precision_SE = .se(Precision),
-       Recall = pc$Recall, Recall_SE = .se(Recall))}, by = .(tag, cell, arm)]
+       Recall = pc$Recall, Recall_SE = .se(Recall),
+       PR = pc$PR, PR_SE = .se(PR),
+       beta = pc$beta, beta_SE = .se(beta))}, by = .(tag, cell, arm)]
 setorder(pooled, tag, cell, arm)
 
 say("\n%-6s %-10s %-16s %6s %5s %5s %5s %14s %14s\n", "tag", "cell", "arm", "nenvs", "TP", "FP", "FN", "Precision", "Recall")
