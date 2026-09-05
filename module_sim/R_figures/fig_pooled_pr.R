@@ -1,9 +1,10 @@
 ## module_sim/R_figures/fig_pooled_pr.R
 ##
-## Visualize R/05_pool.R's POOLED (sum TP/FP/FN, then one Precision/Recall --
-## not mean-of-replicates) results across cells, faceted by engine/arm,
-## coloured by tag (bgs/nobgs). Uses the across-rep `pooled` table (already
-## pooled over ENV within each REP, then over REP -- see 05_pool.R).
+## Visualize R/05_pool.R's POOLED (sum TP/FP/FN, then one Precision/Recall)
+## Precision/Recall by cell, mean +- SE across the 10 ENVIRONMENTS (the true
+## replicate axis -- see 05_pool.R's header). PK: "the main comparison is
+## between methods, not between bgs" -- coloured by arm (method), faceted by
+## tag instead of the other way around.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "R", "00_config.R"))
 say("=== fig_pooled_pr ===\n\n")
@@ -33,28 +34,32 @@ pooled[, cell_label := factor(cell_label, levels = perf_order$cell_label)]
 ## NO lfmm_consensus (PK, 2026-09-05: LFMM on complexity-reduced/pooled
 ## genotypes is not how the method is meant to be used, dropped from
 ## R/03_scan.R and R/04_score.R). Two single-SNP arms added instead.
-pooled[, arm  := factor(arm, levels = c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp"))]
-pooled[, tag  := factor(tag, levels = c("nobgs", "bgs"))]
+ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
+ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
+                 lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")
+pooled[, arm := factor(arm, levels = ARM_LEVELS)]
+pooled[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 
-## long format: one row per (tag, cell, arm, metric), metric in {Precision, Recall}.
+## long format: one row per (tag, cell, arm, metric), metric in {Precision, Recall}, with its SE.
 long <- rbindlist(list(
-  pooled[, .(tag, cell = cell_label, arm, metric = "Recall",    value = Recall)],
-  pooled[, .(tag, cell = cell_label, arm, metric = "Precision", value = Precision)]
+  pooled[, .(tag, cell = cell_label, arm, metric = "Recall",    value = Recall,    SE = Recall_SE)],
+  pooled[, .(tag, cell = cell_label, arm, metric = "Precision", value = Precision, SE = Precision_SE)]
 ))
 long[, metric := factor(metric, levels = c("Recall", "Precision"))]
 
 say("[1] %d (tag,cell,arm,metric) points ; %d Precision NAs (zero-TP-zero-FP cells -- see 05_pool.R)\n",
     nrow(long), sum(is.na(long$value) & long$metric == "Precision"))
 
-p <- ggplot(long, aes(cell, value, colour = tag, group = tag)) +
-  geom_line(alpha = 0.5, linewidth = 0.4, position = position_dodge(width = 0.3)) +
-  geom_point(position = position_dodge(width = 0.3), size = 2) +
-  facet_grid(metric ~ arm) +
-  scale_colour_manual(values = c(nobgs = "#1565C0", bgs = "#C0392B")) +
+p <- ggplot(long, aes(cell, value, colour = arm, group = arm)) +
+  geom_line(alpha = 0.5, linewidth = 0.4, position = position_dodge(width = 0.4)) +
+  geom_pointrange(aes(ymin = pmax(0, value - SE), ymax = pmin(1, value + SE)),
+                  position = position_dodge(width = 0.4), size = 0.3, fatten = 2) +
+  facet_grid(metric ~ tag) +
+  scale_colour_manual(values = ARM_COLOURS, name = "method") +
   scale_y_continuous(limits = c(0, 1)) +
   labs(x = NULL, y = NULL,
       title = "Pooled TP/FP scoring: Precision/Recall by cell (all chromosomes pooled -- sum TP/FP/FN, then one ratio)",
-      subtitle = "cells sorted by mean Recall, best-performing first (SI = selection intensity, disp = dispersal/gene flow)") +
+      subtitle = "mean +/- SE across the 10 environments (the replicate axis); cells sorted by mean Recall, best-performing first (SI = selection intensity, disp = dispersal/gene flow)") +
   theme_bw(11) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
         axis.text.x = element_text(size = 7, angle = 40, hjust = 1), legend.position = "top")
@@ -62,6 +67,6 @@ p <- ggplot(long, aes(cell, value, colour = tag, group = tag)) +
 FIG_DIR <- file.path(PATHS$module, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 OUT <- file.path(FIG_DIR, "fig_pooled_pr.pdf")
-ggsave(OUT, p, width = 14, height = 6, device = cairo_pdf)
-ggsave(sub("\\.pdf$", ".png", OUT), p, width = 14, height = 6, dpi = 200)
+ggsave(OUT, p, width = 10, height = 6.5, device = cairo_pdf)
+ggsave(sub("\\.pdf$", ".png", OUT), p, width = 10, height = 6.5, dpi = 200)
 say("\n[2] wrote %s (+ .png)\n", OUT)

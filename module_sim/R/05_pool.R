@@ -11,20 +11,21 @@
 ## underlying 20 (or up to 200, once envs are crossed) chromosomes' own
 ## TP/FP/FN directly -- nothing per-chromosome needs to change upstream.
 ##
-## Two pooling levels, because ENV and REP are not the same kind of axis
-## (00_config.R's ENVS comment): ENV is the true replicate under one fixed
-## recombination map; REP is a different map entirely.
-##   1. per_rep: pool over ENV within each (tag, cell, rep, arm) -- the
-##      chromosomes-pooled PR for ONE genomic architecture.
-##   2. pooled:  pool per_rep's TP/FP/FN further, over REP, by (tag, cell,
-##      arm) -- the chromosomes-and-maps-pooled PR PK's original "10
-##      simulations, 20 chromosomes" description describes directly, once
-##      REPS is understood as the map axis rather than the replicate axis.
+## ENV is the replicate axis for SE (PK, 2026-09-05: "use the environments
+## for SE"); REP is a different recombination map each time, not an
+## exchangeable replicate (00_config.R's ENVS comment) -- but env_<N>.txt is
+## the SAME file for every rep, so pooling REP into each env's estimate is a
+## coherent operation (same environmental predictor, different genomic
+## architectures), unlike pooling ACROSS env would be.
+##   1. per_env: pool over REP within each (tag, cell, env, arm) -- one
+##      chromosomes-and-maps-pooled Precision/Recall per environment.
+##   2. pooled:  mean +- SE, ACROSS ENV, of per_env's Precision/Recall, by
+##      (tag, cell, arm) -- N=10 (the number of environments), the genuine
+##      replicate count.
 ##
-## This SUPERSEDES the previous macro-averaging (mean +- SE of each
-## replicate's own Precision) design -- dropped 2026-09-05 on PK's repeated,
-## explicit instruction, not merely refined. Pooled counts have no natural SE
-## the way a mean-of-independent-estimates does; none is reported here.
+## Point estimate is still the pooled-count Precision/Recall (not a mean of
+## means) -- the SE is layered on top of that same pooled quantity, computed
+## per env, not a second, different estimator.
 ##
 ## No target= subdirectory: unlike 01-04, this stage pools ACROSS reps and
 ## envs, so its receipt/output are keyed by (tag, cell) only.
@@ -53,7 +54,7 @@ if (any(!score_files$exists)) {
 
 INPUTS <- score_files[exists == TRUE, path]
 PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENVS_N, pooling = "counts",
-               fp_by_size = TRUE)
+               se_axis = "env", fp_by_size = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -70,49 +71,56 @@ cluster_detail <- rbindlist(lapply(raw, `[[`, "cluster_detail"))
        Precision = if ((TP + FP) > 0) TP / (TP + FP) else NA_real_,
        Recall    = if ((TP + FN) > 0) TP / (TP + FN) else NA_real_)
 }
+.se <- function(x) { x <- x[!is.na(x)]; if (length(x) > 1) sd(x) / sqrt(length(x)) else NA_real_ }
 
-say("[2] per-rep pooling: sum TP/FP/FN over ENV (both chromosomes each), by (tag, cell, rep, arm)\n")
-per_rep <- all_scored[, {p <- .pool_counts(TP, FP, FN)
-  list(n_envs = .N, n_sig = sum(n_sig), TP = p$TP, FP = p$FP, FN = p$FN,
-       Precision = p$Precision, Recall = p$Recall)}, by = .(tag, cell, rep, arm)]
-setorder(per_rep, tag, cell, rep, arm)
+say("[2] per-env pooling: sum TP/FP/FN over REP (both chromosomes each), by (tag, cell, env, arm)\n")
+per_env <- all_scored[, {p <- .pool_counts(TP, FP, FN)
+  list(n_reps = .N, n_sig = sum(n_sig), TP = p$TP, FP = p$FP, FN = p$FN,
+       Precision = p$Precision, Recall = p$Recall)}, by = .(tag, cell, env, arm)]
+setorder(per_env, tag, cell, env, arm)
 
-say("[3] across-rep pooling: sum per_rep's TP/FP/FN further over REP, by (tag, cell, arm)\n")
-pooled <- per_rep[, {p <- .pool_counts(TP, FP, FN)
-  list(n_reps = .N, n_envs_total = sum(n_envs), n_sig = sum(n_sig),
-       TP = p$TP, FP = p$FP, FN = p$FN, Precision = p$Precision, Recall = p$Recall)}, by = .(tag, cell, arm)]
+say("[3] across-env pooling: mean +- SE, over ENV (N=%d), of per_env's Precision/Recall, by (tag, cell, arm)\n", ENVS_N)
+pooled <- per_env[, {pc <- .pool_counts(TP, FP, FN)
+  list(n_envs = .N, n_reps_total = sum(n_reps), n_sig = sum(n_sig),
+       TP = pc$TP, FP = pc$FP, FN = pc$FN,
+       Precision = pc$Precision, Precision_SE = .se(Precision),
+       Recall = pc$Recall, Recall_SE = .se(Recall))}, by = .(tag, cell, arm)]
 setorder(pooled, tag, cell, arm)
 
-say("\n%-6s %-10s %-16s %6s %5s %5s %5s %9s %9s\n", "tag", "cell", "arm", "nenvs", "TP", "FP", "FN", "Precision", "Recall")
+say("\n%-6s %-10s %-16s %6s %5s %5s %5s %14s %14s\n", "tag", "cell", "arm", "nenvs", "TP", "FP", "FN", "Precision", "Recall")
 for (i in seq_len(nrow(pooled))) with(pooled[i], say(
-  "%-6s %-10s %-16s %6d %5d %5d %5d %9s %9s\n",
-  tag, cell, arm, n_envs_total, TP, FP, FN,
-  if (is.na(Precision)) "NA" else sprintf("%.3f", Precision),
-  if (is.na(Recall)) "NA" else sprintf("%.3f", Recall)))
+  "%-6s %-10s %-16s %6d %5d %5d %5d %6s+-%-6s %6s+-%-6s\n",
+  tag, cell, arm, n_envs, TP, FP, FN,
+  if (is.na(Precision)) "NA" else sprintf("%.3f", Precision), if (is.na(Precision_SE)) "NA" else sprintf("%.3f", Precision_SE),
+  if (is.na(Recall)) "NA" else sprintf("%.3f", Recall), if (is.na(Recall_SE)) "NA" else sprintf("%.3f", Recall_SE)))
 
 ## ---- 4. FP proportion as a function of cluster size (PK) -----------------------
-## Pooled across every (rep,env) -- one row per significant cluster/unit
-## already carries its own size (n_loci) and TP/FP status from
-## R/04_score.R's .diagnose_ors() call, so this is a straight pooled count by
-## size bin, same "sum first, then divide" rule as the PR pooling above. Bins
-## fixed rather than data-driven (quantile bins would shift under -- and so
-## be incomparable across -- different cells/arms/tags): SIZE_FLOOR=2 is the
-## smallest scored cluster; the rest are round-number thresholds wide enough
-## to keep bin counts usable while size 2 and 3 (the most common, and where
-## detection differs most) get their own bins rather than being folded in.
-say("[4] FP proportion by cluster size (pooled across all rep,env), by (tag, arm, size_bin)\n")
+## Same env-as-replicate-axis logic as the PR pooling above: pool over
+## (rep, cell) within (tag, env, arm, size_bin) to get one FP proportion per
+## environment, then mean +- SE across the 10 environments for the final
+## point. Bins fixed rather than data-driven (quantile bins would shift
+## under -- and so be incomparable across -- different cells/arms/tags):
+## SIZE_FLOOR=2 is the smallest scored cluster; the rest are round-number
+## thresholds wide enough to keep bin counts usable while size 2 and 3 (the
+## most common, and where detection differs most) get their own bins rather
+## than being folded in.
+say("\n[4] FP proportion by cluster size, mean +- SE over ENV, by (tag, arm, size_bin)\n")
 SIZE_BREAKS <- c(1, 2, 3, 5, 10, 20, 50, Inf)
 SIZE_LABELS <- c("2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
 cluster_detail[, size_bin := cut(n_loci, breaks = SIZE_BREAKS, labels = SIZE_LABELS)]
-fp_by_size <- cluster_detail[, .(
-  n_sig = .N, TP = sum(is_TP), FP = sum(is_FP),
-  FP_proportion = sum(is_FP) / .N
+per_env_size <- cluster_detail[, .(
+  n_sig = .N, TP = sum(is_TP), FP = sum(is_FP), FP_proportion = sum(is_FP) / .N
+), by = .(tag, env, arm, size_bin)]
+fp_by_size <- per_env_size[, .(
+  n_envs = .N, n_sig = sum(n_sig),
+  FP_proportion = sum(FP) / (sum(TP) + sum(FP)),
+  FP_proportion_SE = .se(FP_proportion)
 ), by = .(tag, arm, size_bin)]
 setorder(fp_by_size, tag, arm, size_bin)
 
 OUT <- file.path(stage_dir(STAGE), "pooled_pr.rds")
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
-saveRDS(list(per_replicate = all_scored, per_rep = per_rep, pooled = pooled,
-            cluster_detail = cluster_detail, fp_by_size = fp_by_size), OUT)
+saveRDS(list(per_replicate = all_scored, per_env = per_env, pooled = pooled,
+            cluster_detail = cluster_detail, per_env_size = per_env_size, fp_by_size = fp_by_size), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
