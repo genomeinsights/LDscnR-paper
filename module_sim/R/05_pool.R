@@ -59,7 +59,11 @@ PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENV
                ## stratification, size_bin now starts at "1", and the new pooled
                ## bootstrap CI -- logic changes stage_stale() cannot see any other
                ## way -- forces a rerun instead of silently reusing pre-fix output.
-               pool_version = "2026-09-06-audit")
+               pool_version = "2026-09-06-audit",
+               ## [!] bumped again 2026-09-06: added the neutral-chromosome
+               ## (Chr2) FP analysis (PK: "analyse the neutral chromosomes
+               ## separately, only FPs of course").
+               neutral_chr_fp = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -210,10 +214,55 @@ fp_by_size_cell <- per_env_size_cell[, .(
 ), by = .(tag, cell, arm, size_bin)]
 setorder(fp_by_size, tag, arm, size_bin)
 
+## ---- 5. Neutral chromosome (Chr2): FPs only (PK) --------------------------------
+## PK: "analyse the neutral chromosomes separately (only FPs of course)."
+## Chr2 never carries a QTN (R/04_score.R: confirmed directly across every
+## cell/tag/rep sampled, and qtn_ld_table() groups strictly by Chr so a Chr2
+## candidate marker has zero eligible QTN -- is_TP is unconditionally FALSE
+## there, no cross-chromosome contamination risk even though Chr1/Chr2 share
+## the same Pos range). Every significant Chr2 region is therefore an
+## assumption-free false positive, independent of the r2min/dmax matching
+## thresholds entirely -- an empirical false-discovery rate under the SAME
+## genotypes/kinship/spatial structure as the real data, with no permutation
+## needed. A real, cheap complement to a formal phenotype-permutation null
+## (still open, external audit item 2) -- not a replacement: this measures
+## behaviour on a QTN-free part of the genome, not calibration of the trait
+## test overall.
+say("\n[5] neutral chromosome (Chr2): FP counts, mean +- SE over ENV\n")
+stopifnot("Chr2 must never score a TP -- qtn_ld_table()'s per-Chr grouping should make this impossible" =
+            !any(cluster_detail[Chr == "Chr2", is_TP]))
+neutral_detail <- cluster_detail[Chr == "Chr2"]
+
+## Zero-fill (tag,cell,env,arm) combos with NO significant Chr2 region at
+## all -- common for the conservative cluster-based arms -- so the mean
+## below counts a quiet environment as 0 FP, not as missing data.
+ALL_ARMS <- unique(cluster_detail$arm)
+all_envs_arms <- CJ(tag = TAGS_ALL, cell = CELLS_ALL, env = seq_len(ENVS_N), arm = ALL_ARMS)
+per_env_neutral <- neutral_detail[, .(FP = sum(is_FP)), by = .(tag, cell, env, arm)]
+per_env_neutral <- merge(all_envs_arms, per_env_neutral, by = c("tag", "cell", "env", "arm"), all.x = TRUE)
+per_env_neutral[is.na(FP), FP := 0L]
+
+fp_neutral <- per_env_neutral[, .(n_envs = .N, total_FP = sum(FP), mean_FP = mean(FP), FP_SE = .se(FP)),
+                              by = .(tag, cell, arm)]
+setorder(fp_neutral, tag, cell, arm)
+
+## by cluster size, pooled across cells (same fixed bins as fp_by_size above)
+all_envs_arms_size <- CJ(tag = TAGS_ALL, env = seq_len(ENVS_N), arm = ALL_ARMS, size_bin = SIZE_LABELS)
+per_env_neutral_size <- neutral_detail[, .(FP = sum(is_FP)), by = .(tag, env, arm, size_bin)]
+per_env_neutral_size <- merge(all_envs_arms_size, per_env_neutral_size,
+                              by = c("tag", "env", "arm", "size_bin"), all.x = TRUE)
+per_env_neutral_size[is.na(FP), FP := 0L]
+fp_neutral_size <- per_env_neutral_size[, .(n_envs = .N, total_FP = sum(FP), mean_FP = mean(FP), FP_SE = .se(FP)),
+                                       by = .(tag, arm, size_bin)]
+setorder(fp_neutral_size, tag, arm, size_bin)
+
+say("    %d total Chr2 significant regions across all arms (all FP by construction)\n", nrow(neutral_detail))
+
 OUT <- file.path(stage_dir(STAGE), "pooled_pr.rds")
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
 saveRDS(list(per_replicate = all_scored, per_env = per_env, pooled = pooled,
             cluster_detail = cluster_detail, per_env_size = per_env_size, fp_by_size = fp_by_size,
-            per_env_size_cell = per_env_size_cell, fp_by_size_cell = fp_by_size_cell), OUT)
+            per_env_size_cell = per_env_size_cell, fp_by_size_cell = fp_by_size_cell,
+            neutral_detail = neutral_detail, fp_neutral = fp_neutral, fp_neutral_size = fp_neutral_size), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
