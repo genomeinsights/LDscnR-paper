@@ -137,35 +137,24 @@ say("\n[3] LD decay: n_win_decay = %d, seed %d\n", DECAY_ARGS$n_win_decay, SEEDS
 decay_fp <- digest(list(decay_args = DECAY_ARGS, rho_grid = RHO_GRID,
                         tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP,
                         seed = SEEDS[["bundle"]], markers = ncol(GTs)), algo = "sha256")
-## el_data_folder ALSO PER-COMBINATION, same reasoning as gds_path above --
-## compute_LD_decay writes "Chr1.el"/"Chr2.el" into this folder on every call;
-## a shared el_dir would let concurrent combinations overwrite each other's
-## edge lists mid-write. Nothing downstream reads these back (confirmed
-## 2026-09-04: ld_complexity_reduction below is passed gds directly, not
-## el_data_folder), so this is pure side-effect output, but a write race is
-## still worth avoiding rather than shrugging off because it happens not to be
-## read.
-el_dir <- file.path(PATHS$el_dir, combo_id)
+## [!] NO el_data_folder, keep_el = FALSE (00_config.R) -- both are the
+## FUNCTION'S OWN DEFAULTS (checked directly: args(compute_LD_decay) shows
+## el_data_folder=NULL, keep_el=FALSE), and ld_complexity_reduction() below
+## needs neither (its own signature takes LD_decay + gds, no edge-list
+## argument at all) -- confirmed 2026-09-04, restated in the commit that
+## first tried to fix this. The PREVIOUS version of this file passed
+## el_data_folder = a per-combination path anyway, purely out of copied
+## convention, and across the first 1400-combination grid the resulting
+## edge-list files (never read by anything) accumulated to 382 GB before
+## anyone noticed. A same-day fix that deleted them AFTER compute_LD_decay
+## returned was itself broken (el_dir is a file-name PREFIX compute_LD_decay
+## concatenates directly, not a directory -- unlink(el_dir, recursive=TRUE)
+## was a silent no-op against a path never actually created). Flagged by a
+## peer session (NEMO simulation work, 2026-09-05): the correct fix is not
+## writing them at all, which is simply not overriding either default.
 LD_decay <- .cache_step(paste0("ld_decay_", combo_id), decay_fp, function() {
   set.seed(SEEDS[["bundle"]])
-  do.call(compute_LD_decay,
-         c(list(gds = gds, el_data_folder = el_dir, ld_w_rho = RHO_GRID,
-                seed = SEEDS[["bundle"]]),
-           DECAY_ARGS)) })
-## [!] CLEANED UP IMMEDIATELY. Found 2026-09-05 rebuilding for bgs5: nothing
-## ever removed these, and across the first 1400-combination grid they
-## (never read back downstream, per this section's own comment above)
-## accumulated to 382 GB before anyone noticed. el_data_folder still writes
-## them (needed internally during this call), but there is no reason to keep
-## the result once compute_LD_decay has returned.
-##
-## [!] el_dir IS A FILE PREFIX, NOT A DIRECTORY. compute_LD_decay writes
-## "<el_dir>Chr1.el"/"<el_dir>Chr2.el" literally concatenated (no path
-## separator) -- unlink(el_dir, recursive=TRUE) is a silent no-op against a
-## path that was never actually created, which is why the first attempt at
-## this cleanup (same day) did not work: measured 560 MB surviving one
-## combination's smoke test that should have logged this line. Glob instead.
-unlink(Sys.glob(paste0(el_dir, "*.el")))
+  do.call(compute_LD_decay, c(list(gds = gds, ld_w_rho = RHO_GRID, seed = SEEDS[["bundle"]]), DECAY_ARGS)) })
 ld_ws <- LD_decay$ld_ws[map$marker, , drop = FALSE]
 ld95  <- if ("rho_0.95" %in% colnames(ld_ws)) "rho_0.95" else "0.95"
 map[, ld_w_095 := ld_ws[, ld95]]

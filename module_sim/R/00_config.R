@@ -98,7 +98,12 @@ PATHS <- list(
   parsed = file.path(NEMO_ROOT, "module_sim_parsed_bgs5"),
   cache  = file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "cache")
 )
-PATHS$el_dir <- file.path(PATHS$cache, "edge_lists")
+## [!] PATHS$el_dir REMOVED 2026-09-05. Was a per-combination path for
+## compute_LD_decay's edge-list output -- nothing downstream ever read it
+## (02_bundle.R passes gds directly to ld_complexity_reduction()), and across
+## the first 1400-combination grid the edge lists it enabled accumulated to
+## 382 GB. Fixed at the source: 02_bundle.R no longer passes el_data_folder
+## or overrides keep_el (see DECAY_ARGS below), so nothing is written at all.
 PATHS$untar  <- file.path(PATHS$cache, "untar")   # scratch for unpacked .tgz; not an output
 
 ## ---- 2. WHICH SLICE OF THE GRID THIS BUILD TARGETS -----------------------------
@@ -239,7 +244,7 @@ DECAY_ARGS <- list(
   max_pairs      = 5000,
   ld_method      = "corr",
   n_strata       = 20,
-  keep_el        = TRUE,
+  keep_el        = FALSE,  # [!] was TRUE; see 02_bundle.R's comment -- caused a 382 GB leak, fixed 2026-09-05
   slide          = 500,
   rho_targets    = 0.99,
   cores          = 1
