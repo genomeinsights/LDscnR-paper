@@ -66,7 +66,12 @@ PARAMS <- list(size_floor = SIZE_FLOOR, dmax_cap = DMAX_CAP, rho_r2 = RHO_R2, rh
                ## marker as its own size-1 region (external audit item 1 / PK), a
                ## logic change stage_stale() cannot see any other way -- forces a
                ## rerun instead of silently reusing pre-fix score files.
-               single_snp_region_size = "per_marker_size1")
+               single_snp_region_size = "per_marker_size1",
+               ## [!] bumped again 2026-09-06: added emmax_snp_clustered/
+               ## lfmm_snp_clustered, the singletons-EXCLUDED variant, alongside
+               ## emmax_snp/lfmm_snp (singletons-INCLUDED) -- PK: "single SNP
+               ## included/excluded in the single SNP analyses, different colors".
+               single_snp_clustered_variant = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -205,10 +210,32 @@ res_snp <- Map(function(p_vec, nm) {
   .score_arm(sig_regions, nm)
 }, list(sc$results$single_snp$emmax_p, sc$results$single_snp$lfmm_p), list("emmax_snp", "lfmm_snp"))
 
-res_all <- c(res_cluster, res_snp)
+## ---- 4c. single-SNP arms, CLUSTERED-ONLY variant (singletons excluded) --------
+## ADDED 2026-09-06 (PK: "redo also some of the other precision, recall
+## analyses with single SNP included/excluded in the single SNP analyses,
+## different colors"). This is deliberately the PRE-FIX behavior from 4b
+## above, kept as an explicit second variant rather than dropped: a
+## significant marker only counts if its own Stage-1 unit clears SIZE_FLOOR
+## (>=2 markers), and the region scored is that WHOLE unit, not just the one
+## marker -- truly isolated (size-1) significant markers are excluded
+## entirely, neither TP nor FP. Comparing `emmax_snp`/`lfmm_snp` (singletons
+## INCLUDED, 4b) against `emmax_snp_clustered`/`lfmm_snp_clustered` (singletons
+## EXCLUDED, here) shows how much of the unrestricted single-marker arm's
+## apparent performance comes from truly-isolated calls vs. markers already
+## embedded in a real LD cluster.
+say("\n[4c] single-SNP arms, clustered-only variant (BH genome-wide, unit = discovered iff it contains a significant SNP)\n")
+res_snp_clustered <- Map(function(p_vec, nm) {
+  q <- stats::p.adjust(p_vec, method = "BH")
+  sig_markers <- names(q)[!is.na(q) & q <= ALPHA]
+  sig_regions <- units$members[vapply(units$members, function(mk) any(mk %in% sig_markers), logical(1))]
+  .score_arm(sig_regions, nm)
+}, list(sc$results$single_snp$emmax_p, sc$results$single_snp$lfmm_p),
+   list("emmax_snp_clustered", "lfmm_snp_clustered"))
+
+res_all <- c(res_cluster, res_snp, res_snp_clustered)
 scored         <- rbindlist(lapply(res_all, `[[`, "agg"))
 cluster_detail <- rbindlist(lapply(res_all, `[[`, "detail"))
-say("\n[4c] %d significant clusters/units captured across %d arms for FP-vs-size analysis\n",
+say("\n[4d] %d significant clusters/units captured across %d arms for FP-vs-size analysis\n",
     nrow(cluster_detail), length(res_all))
 
 OUT <- file.path(stage_dir(STAGE), sprintf("score_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
