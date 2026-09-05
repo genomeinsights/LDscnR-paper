@@ -15,8 +15,19 @@ CONCURRENCY="${1:-4}"
 
 mkdir -p out/logs
 
+## SKIP, not FAIL, a (tag,cell,rep,env) whose bundle isn't built yet -- e.g. a
+## cell bgs5 doesn't have data for yet. [!] FIXED 2026-09-06: this script was
+## missing the same bundle-existence check run_popgen_grid.sh and
+## run_bgswindows_grid.sh already have, so the first real bgs5 run (4/7
+## cells) FAILED (not skipped) 600/1400 combos -- one Rscript error per
+## missing cell -- rather than cleanly skipping them.
 run_combo() {
   local tag="$1" cell="$2" rep="$3" env="$4"
+  local bundle="out/02_bundle/bundle_${tag}_rep${rep}_${cell}_env${env}.rds"
+  if [ ! -f "$bundle" ]; then
+    echo "[$(date +%H:%M:%S)] ${tag} ${cell} rep${rep} env${env}: SKIP (no bundle yet)"
+    return 0
+  fi
   export SIM_TAG="$tag" SIM_CELL="$cell" SIM_REP="$rep" SIM_ENV="$env"
   logfile="out/logs/bgsrecomb_${tag}_${cell}_rep${rep}_env${env}.txt"
   if Rscript R/08_bgs_recomb.R > "$logfile" 2>&1; then st=ok; else st=FAIL; fi
