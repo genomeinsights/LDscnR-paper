@@ -1,3 +1,10 @@
+> **Exploratory, superseded for reported values (2026-09-06).** The
+> manuscript's simulation section is sourced from `module_sim/` (its
+> `R/`, `R_parsing/`, `results/`, `figures/`) exclusively. This module's
+> C-score/threshold-sweep/partial-grid output predates that clean pipeline
+> and must not be mixed with `module_sim/results/pooled_pr.rds` unless
+> independently regenerated under the current one -- external audit item 9.
+
 # module_sim_LDscnR
 
 Clean, package-only benchmark of the LD-aware C-score outlier-region method on the
