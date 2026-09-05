@@ -105,11 +105,20 @@ for (i in seq_len(nrow(pooled))) with(pooled[i], say(
 ## within (tag, [cell,] env, arm, size_bin) to get one FP proportion per
 ## environment, then mean +- SE across the 10 environments for the final
 ## point. Bins fixed rather than data-driven (quantile bins would shift
-## under -- and so be incomparable across -- different cells/arms/tags):
-## SIZE_FLOOR=2 is the smallest scored cluster; the rest are round-number
-## thresholds wide enough to keep bin counts usable while size 2 and 3 (the
-## most common, and where detection differs most) get their own bins rather
-## than being folded in.
+## under -- and so be incomparable across -- different cells/arms/tags): the
+## rest are round-number thresholds wide enough to keep bin counts usable
+## while size 1-3 (the most common, and where detection differs most) each
+## get their own bin rather than being folded in.
+##
+## [!] FIXED 2026-09-06 (PK direct correction + external audit item 1):
+## SIZE_FLOOR=2 is the smallest CLUSTER-based unit (R/04_score.R's `units`,
+## floor-filtered before clustering even starts), but single-SNP arms (fixed
+## alongside this in 04_score.R -- each significant marker now its own size-1
+## region, not the enclosing multi-marker unit) really do produce n_loci=1
+## rows. The breaks used to start at 1 with cut()'s default right-closed
+## intervals, under which x==1 exactly falls in NO bin (silently dropped as
+## NA) -- "Single SNPs go all the way to 1 not 2." Breaks now start at 0 with
+## an explicit "1" label.
 ##
 ## [!] FIXED 2026-09-06 (external audit): the point estimate FP/(TP+FP)
 ## excludes dedup-neutral rows (neither is_TP nor is_FP -- a duplicate claim
@@ -123,8 +132,8 @@ for (i in seq_len(nrow(pooled))) with(pooled[i], say(
 ## together lets cluster-size trends partly reflect changing cell composition
 ## rather than a within-cell size effect.
 say("\n[4] FP proportion by cluster size, mean +- SE over ENV, pooled and by-cell\n")
-SIZE_BREAKS <- c(1, 2, 3, 5, 10, 20, 50, Inf)
-SIZE_LABELS <- c("2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
+SIZE_BREAKS <- c(0, 1, 2, 3, 5, 10, 20, 50, Inf)
+SIZE_LABELS <- c("1", "2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
 cluster_detail[, size_bin := cut(n_loci, breaks = SIZE_BREAKS, labels = SIZE_LABELS)]
 
 ## pooled across cells

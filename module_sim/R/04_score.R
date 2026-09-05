@@ -165,24 +165,38 @@ res_cluster <- lapply(names(ARMS), function(nm) {
   .score_arm(units$members[t$units$significant], nm)
 })
 
-## ---- 4b. single-SNP arms: same machinery, ground truth from the SNP's OWN unit --
-## PK: compare against single-SNP analyses using the same machinery, scoring a
-## significant SNP by the TP status of the stage-1 cluster (unit) it belongs
-## to. Implemented as: BH-correct the single-marker p-values genome-wide (not
-## per-unit -- there is no unit combination here, that is the whole point of
-## "single-SNP"), then a unit counts as a discovered region iff it contains at
-## least one significant marker. Feeding that region set through the SAME
-## .score_arm() the cluster-based arms use keeps the TP/FP definition (and its
-## dedup-neutral handling of duplicate claims) identical across all five arms --
-## the comparison is single-SNP vs complexity-reduced significance calling,
-## not two different scoring rules.
-say("\n[4b] single-SNP arms (BH genome-wide, unit = discovered iff it contains a significant SNP)\n")
-res_snp <- lapply(list(emmax_snp = sc$results$single_snp$emmax_p, lfmm_snp = sc$results$single_snp$lfmm_p),
-  function(p_vec) NULL)
+## ---- 4b. single-SNP arms: each significant marker is its OWN size-1 region ----
+## PK: compare against single-SNP analyses using the same machinery. BH-correct
+## the single-marker p-values genome-wide (not per-unit -- there is no unit
+## combination here, that is the whole point of "single-SNP"), then EACH
+## significant marker is its own discovered region of size 1 -- NOT the whole
+## enclosing Stage-1 unit it happens to sit inside. .score_arm() -> evaluate_ors()/
+## .diagnose_ors() are agnostic to region size (n_loci = length(region) falls
+## out naturally as 1), so this needs no package change, only feeding a
+## different `regions` list in.
+##
+## [!] FIXED 2026-09-06 (external audit item 1 + PK direct correction, "Single
+## SNPs go all the way to 1 not 2. Unless that one is a QTN it is an FP."):
+## the previous version credited the FULL enclosing Stage-1 unit (>= SIZE_FLOOR
+## markers, since `units` above was already floor-filtered) as "discovered"
+## whenever ANY one of its markers was individually significant, then scored
+## that whole multi-marker unit's TP/FP status. That (a) let a single
+## significant SNP borrow TP credit from neighbouring markers it never tested,
+## inflating single-SNP precision/recall relative to a genuine unrestricted
+## single-marker benchmark, (b) meant a truly isolated significant marker --
+## one whose own Stage-1 unit does not clear SIZE_FLOOR, so it never appears in
+## `units` at all -- was invisible to scoring altogether (neither a TP nor an
+## FP), and (c) meant cluster_detail's n_loci for these arms was never 1,
+## silently excluding single-SNP arms from the smallest FP-by-size bin. Feeding
+## singleton regions through the SAME .score_arm() keeps the TP/FP definition
+## (and its dedup-neutral handling) identical across all five arms -- the
+## comparison is single-SNP vs complexity-reduced significance calling, not two
+## different scoring rules.
+say("\n[4b] single-SNP arms (BH genome-wide, each significant marker its own size-1 region)\n")
 res_snp <- Map(function(p_vec, nm) {
   q <- stats::p.adjust(p_vec, method = "BH")
   sig_markers <- names(q)[!is.na(q) & q <= ALPHA]
-  sig_regions <- units$members[vapply(units$members, function(mk) any(mk %in% sig_markers), logical(1))]
+  sig_regions <- as.list(sig_markers)
   .score_arm(sig_regions, nm)
 }, list(sc$results$single_snp$emmax_p, sc$results$single_snp$lfmm_p), list("emmax_snp", "lfmm_snp"))
 

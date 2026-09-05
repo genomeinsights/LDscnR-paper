@@ -47,3 +47,16 @@ touch anything in `R/`, `R_figures/`, `results/`, or `figures/` that predates
 this note. Any fix proven here first still needs to be (and, so far, has
 been) ported into the live `module_sim/R*/` scripts by hand -- this directory
 itself still does not regenerate.
+
+**Known gap, 2026-09-06:** audit item 1's core fix (single-SNP arms score
+each significant marker as its own size-1 region, not the enclosing
+multi-marker Stage-1 unit -- PK: "Single SNPs go all the way to 1 not 2")
+landed in the live `R/04_score.R` + `R/05_pool.R` AFTER this archive's
+`cluster_detail` was generated. It cannot be recomputed from the existing
+`pooled_pr.rds` (needs a real 04_score.R rerun against raw score objects that
+no longer exist for bgs2) and is out of scope for `R_audit/`'s
+recompute-only fixes. The archived and `R_audit/`-corrected single-SNP
+FP-by-size numbers therefore both still lack any n_loci==1 rows and
+understate single-SNP arms' true FP rate at the smallest size. Will be
+correct by construction once/if bgs2 nobgs is ever rerun under the current
+pipeline.

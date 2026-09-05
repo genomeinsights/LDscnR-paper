@@ -14,7 +14,10 @@ POOL_PATH <- file.path(PATHS$out, "05_pool", "pooled_pr.rds")
 if (!file.exists(POOL_PATH)) stop("R/05_pool.R has not produced: ", POOL_PATH)
 fp <- readRDS(POOL_PATH)$fp_by_size
 
-SIZE_LABELS <- c("2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
+## [!] FIXED 2026-09-06: "1" added -- single-SNP arms now produce genuine
+## size-1 regions (R/04_score.R), and R/05_pool.R's bins now start at 0 so
+## n_loci==1 lands in its own bin instead of falling into cut()'s NA gap.
+SIZE_LABELS <- c("1", "2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
 ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
 ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
                  lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")
