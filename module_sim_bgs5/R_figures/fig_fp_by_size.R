@@ -18,9 +18,17 @@ fp <- readRDS(POOL_PATH)$fp_by_size
 ## size-1 regions (R/04_score.R), and R/05_pool.R's bins now start at 0 so
 ## n_loci==1 lands in its own bin instead of falling into cut()'s NA gap.
 SIZE_LABELS <- c("1", "2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
-ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
-ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
-                 lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")
+## [!] ADDED 2026-09-06 (PK: "single SNP included/excluded ... different
+## colors"): emmax_snp_clustered/lfmm_snp_clustered exclude singletons (only
+## count a marker inside a real >=2-marker Stage-1 unit) -- see R/04_score.R.
+## Their n_loci is always >= SIZE_FLOOR, same as the three cluster-based
+## arms; only emmax_snp/lfmm_snp (singletons included) ever populate the "1"
+## bin. Colours pair by hue: saturated = included, pastel = excluded.
+ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes",
+                "emmax_snp", "emmax_snp_clustered", "lfmm_snp", "lfmm_snp_clustered")
+ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A", lfmm_simes = "#7B1FA2",
+                 emmax_snp = "#F9A825", emmax_snp_clustered = "#FFCC80",
+                 lfmm_snp = "#C0392B", lfmm_snp_clustered = "#EF9A9A")
 fp[, size_bin := factor(size_bin, levels = SIZE_LABELS)]
 fp[, arm := factor(arm, levels = ARM_LEVELS)]
 fp[, tag := factor(tag, levels = c("nobgs", "bgs"))]

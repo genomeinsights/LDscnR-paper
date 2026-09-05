@@ -27,17 +27,33 @@ pr <- pooled[cell %in% HIGH_DISP_CELLS, .(tag, cell, arm, Precision, Recall)]
 say("[0] %d (tag,cell,arm) panels, cells restricted to high dispersal: %s\n",
     nrow(pr), paste(HIGH_DISP_CELLS, collapse = ", "))
 
-ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
 ## [!] FIXED 2026-09-06 (external audit, item 8): was "EMMAX representative" --
 ## the arm uses the consensus dosage across the cluster's markers, not a
 ## single representative SNP.
-ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes",
-                lfmm_simes = "LFMM Simes", emmax_snp = "EMMAX single-SNP", lfmm_snp = "LFMM single-SNP")
-ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
-                 lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")
+##
+## [!] ADDED 2026-09-06 (PK: "single SNP included/excluded ... different
+## colors"): emmax_snp/lfmm_snp score every significant marker as its own
+## region (singletons INCLUDED); emmax_snp_clustered/lfmm_snp_clustered only
+## count a marker inside a real >=2-marker Stage-1 unit (singletons EXCLUDED,
+## the pre-fix behaviour kept as a comparator -- R/04_score.R). Colours pair
+## by hue: saturated = included, pastel = excluded.
+ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes",
+                "emmax_snp", "emmax_snp_clustered", "lfmm_snp", "lfmm_snp_clustered")
+ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes", lfmm_simes = "LFMM Simes",
+                emmax_snp = "EMMAX single-SNP (incl. singletons)",
+                emmax_snp_clustered = "EMMAX single-SNP (excl. singletons)",
+                lfmm_snp = "LFMM single-SNP (incl. singletons)",
+                lfmm_snp_clustered = "LFMM single-SNP (excl. singletons)")
+ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A", lfmm_simes = "#7B1FA2",
+                 emmax_snp = "#F9A825", emmax_snp_clustered = "#FFCC80",
+                 lfmm_snp = "#C0392B", lfmm_snp_clustered = "#EF9A9A")
 
 med <- pr[, .(Precision = median(Precision), Recall = median(Recall)), by = .(tag, arm)]
-say("[1] median over %d high-dispersal cells, by (tag, arm)\n", length(HIGH_DISP_CELLS))
+## [!] FIXED 2026-09-06: was length(HIGH_DISP_CELLS) -- the TARGET count (3),
+## wrong once a cell is missing (bgs5 currently has only 2 of 3). Now the
+## actual number of cells present in `pr`.
+n_cells <- uniqueN(pr$cell)
+say("[1] median over %d high-dispersal cells, by (tag, arm)\n", n_cells)
 med[, arm := factor(arm, levels = ARM_LEVELS)]
 setorder(med, tag, arm)
 med[, arm_label := factor(ARM_LABELS[as.character(arm)], levels = ARM_LABELS[ARM_LEVELS])]
@@ -51,7 +67,7 @@ p <- ggplot(med, aes(Recall, Precision, colour = arm_label)) +
   labs(x = "recall", y = "precision",
       title = "Clustering trades recall for precision",
       subtitle = sprintf("Medians over %d high-dispersal cells per (tag, method). Circles = nobgs, triangles = bgs.",
-                          length(HIGH_DISP_CELLS))) +
+                          n_cells)) +
   guides(colour = guide_legend(nrow = 2), shape = guide_legend(nrow = 2)) +
   theme_bw(11) +
   theme(panel.grid.minor = element_blank(), legend.position = "top", legend.box = "vertical")

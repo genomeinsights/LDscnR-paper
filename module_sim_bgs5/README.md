@@ -60,6 +60,26 @@ in the live `module_sim/`, ported here too) -- failed loudly instead of
 skipping on the 3 not-yet-simulated cells, but did not affect the 800 valid
 combos' results.
 
+## Updated same day: single-SNP included/excluded variants
+
+PK asked to see the single-SNP arms' performance both with and without
+truly-isolated (size-1) significant markers counted, side by side (different
+colors, not a replacement): `emmax_snp`/`lfmm_snp` (singletons INCLUDED --
+the unrestricted benchmark above) and the new `emmax_snp_clustered`/
+`lfmm_snp_clustered` (singletons EXCLUDED -- a significant marker only
+counts if its own Stage-1 unit clears SIZE_FLOOR, scored as that whole unit;
+this is the PRE-FIX behaviour, kept as an explicit comparator rather than
+dropped). The contrast is stark and consistent across every cell -- e.g.
+nobgs V0.5_c1 emmax_snp: 16352 FP / 0.005 precision (included) vs 663 FP /
+0.112 precision (clustered-only, excluded), for nearly identical recall
+(0.497 vs 0.503). `fig_pooled_pr.pdf`, `fig_fbeta.pdf`,
+`fig_precision_recall_scatter.pdf`, and `fig_fp_by_size.pdf` all now show
+both variants (saturated colour = included, pastel = excluded).
+`fig_fp_by_size.pdf`'s size-1 bin is populated exclusively by the two
+INCLUDED arms (~99% FP proportion for isolated single-marker calls, all 4
+cells/tags) -- Simes/consensus/clustered-only never produce a size-1 region
+by construction.
+
 ## Kept here as a snapshot
 
 As with `module_sim_bgs2`: a permanent record of this comparison point, not

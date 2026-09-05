@@ -34,9 +34,19 @@ pooled[, cell_label := factor(cell_label, levels = cell_order$cell_label)]
 ## NO lfmm_consensus (PK, 2026-09-05: LFMM on complexity-reduced/pooled
 ## genotypes is not how the method is meant to be used, dropped from
 ## R/03_scan.R and R/04_score.R). Two single-SNP arms added instead.
-ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
-ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
-                 lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")
+##
+## [!] ADDED 2026-09-06 (PK: "single SNP included/excluded in the single SNP
+## analyses, different colors"): emmax_snp/lfmm_snp score every significant
+## marker as its own region (singletons INCLUDED, the unrestricted
+## benchmark); emmax_snp_clustered/lfmm_snp_clustered only count a marker if
+## its Stage-1 unit clears SIZE_FLOOR (singletons EXCLUDED, the pre-fix
+## behaviour kept as an explicit comparator -- R/04_score.R). Colours pair by
+## hue: saturated = included, pastel = excluded.
+ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes",
+                "emmax_snp", "emmax_snp_clustered", "lfmm_snp", "lfmm_snp_clustered")
+ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A", lfmm_simes = "#7B1FA2",
+                 emmax_snp = "#F9A825", emmax_snp_clustered = "#FFCC80",
+                 lfmm_snp = "#C0392B", lfmm_snp_clustered = "#EF9A9A")
 pooled[, arm := factor(arm, levels = ARM_LEVELS)]
 pooled[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 
