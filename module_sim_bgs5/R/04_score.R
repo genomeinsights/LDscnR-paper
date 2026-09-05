@@ -71,7 +71,11 @@ PARAMS <- list(size_floor = SIZE_FLOOR, dmax_cap = DMAX_CAP, rho_r2 = RHO_R2, rh
                ## lfmm_snp_clustered, the singletons-EXCLUDED variant, alongside
                ## emmax_snp/lfmm_snp (singletons-INCLUDED) -- PK: "single SNP
                ## included/excluded in the single SNP analyses, different colors".
-               single_snp_clustered_variant = TRUE)
+               single_snp_clustered_variant = TRUE,
+               ## [!] bumped again 2026-09-06: cluster_detail now carries a Chr
+               ## column (PK: "analyse the neutral chromosomes separately, only
+               ## FPs of course") -- forces a rerun to populate it.
+               cluster_detail_chr = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -132,14 +136,27 @@ N_TRUE <- sum(map$true_pos_QTN, na.rm = TRUE)
 ## candidate_qtn_is_true_positive to reconstruct evaluate_ors()'s
 ## dedup-neutral "extra" (neither TP nor FP) exactly. Called once per arm
 ## here instead of building the aggregate a second, differently-scoped way.
-.score_arm <- function(sig_regions, nm) {
+## [!] ADDED 2026-09-06 (PK: "analyse the neutral chromosomes separately,
+## only FPs of course"). `chr` is the region-level chromosome (Chr1 or Chr2),
+## one value per element of `sig_regions`, supplied by each call site below
+## (units$Chr for cluster-based regions, a marker->Chr lookup for the
+## unrestricted single-SNP regions). Chr2 never carries a QTN (confirmed
+## directly across every cell/tag/rep sampled -- qtn_ld_table() groups
+## strictly by Chr, so a Chr2 candidate marker has zero eligible QTN and
+## always resolves candidate_qtn = NA -- is_TP is unconditionally FALSE
+## there, with no risk of a spurious cross-chromosome match even though
+## Chr1/Chr2 share the same Pos range). Every significant Chr2 region is
+## therefore an assumption-free FP, independent of the r2min/dmax matching
+## thresholds entirely -- a real negative control already built into the
+## simulation, not a permutation.
+.score_arm <- function(sig_regions, nm, chr) {
   if (NO_QTN_POSSIBLE) {
     n_sig <- length(sig_regions)
     ev <- list(TP = 0L, FP = n_sig, FN = N_TRUE,
                Precision = if (n_sig > 0) 0 else NA_real_,
                Recall = if (N_TRUE > 0) 0 else NA_real_, PR = NA_real_)
     detail <- data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
-                         n_loci = vapply(sig_regions, length, integer(1)),
+                         Chr = chr, n_loci = vapply(sig_regions, length, integer(1)),
                          is_TP = rep(FALSE, n_sig), is_FP = rep(TRUE, n_sig))
   } else {
     ev <- evaluate_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
@@ -147,10 +164,10 @@ N_TRUE <- sum(map$true_pos_QTN, na.rm = TRUE)
       dg <- .diagnose_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
       extra <- dg$dropped_by_dedup == TRUE & dg$candidate_qtn_is_true_positive %in% TRUE
       data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
-                 n_loci = dg$n_loci, is_TP = dg$is_TP, is_FP = !dg$is_TP & !extra)
+                 Chr = chr, n_loci = dg$n_loci, is_TP = dg$is_TP, is_FP = !dg$is_TP & !extra)
     } else {
       data.table(tag = character(), cell = character(), rep = integer(), env = integer(), arm = character(),
-                 n_loci = integer(), is_TP = logical(), is_FP = logical())
+                 Chr = character(), n_loci = integer(), is_TP = logical(), is_FP = logical())
     }
   }
   agg <- data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
@@ -172,7 +189,7 @@ res_cluster <- lapply(names(ARMS), function(nm) {
   t <- ARMS[[nm]]
   stopifnot("unit_id must align by position between R/03_scan.R and .ld_outlier_units() here" =
               nrow(t$units) == nrow(units), identical(t$units$unit_id, units$unit_id))
-  .score_arm(units$members[t$units$significant], nm)
+  .score_arm(units$members[t$units$significant], nm, chr = units$Chr[t$units$significant])
 })
 
 ## ---- 4b. single-SNP arms: each significant marker is its OWN size-1 region ----
@@ -203,11 +220,12 @@ res_cluster <- lapply(names(ARMS), function(nm) {
 ## comparison is single-SNP vs complexity-reduced significance calling, not two
 ## different scoring rules.
 say("\n[4b] single-SNP arms (BH genome-wide, each significant marker its own size-1 region)\n")
+marker_chr <- stats::setNames(as.character(map$Chr), map$marker)
 res_snp <- Map(function(p_vec, nm) {
   q <- stats::p.adjust(p_vec, method = "BH")
   sig_markers <- names(q)[!is.na(q) & q <= ALPHA]
   sig_regions <- as.list(sig_markers)
-  .score_arm(sig_regions, nm)
+  .score_arm(sig_regions, nm, chr = unname(marker_chr[sig_markers]))
 }, list(sc$results$single_snp$emmax_p, sc$results$single_snp$lfmm_p), list("emmax_snp", "lfmm_snp"))
 
 ## ---- 4c. single-SNP arms, CLUSTERED-ONLY variant (singletons excluded) --------
@@ -227,8 +245,8 @@ say("\n[4c] single-SNP arms, clustered-only variant (BH genome-wide, unit = disc
 res_snp_clustered <- Map(function(p_vec, nm) {
   q <- stats::p.adjust(p_vec, method = "BH")
   sig_markers <- names(q)[!is.na(q) & q <= ALPHA]
-  sig_regions <- units$members[vapply(units$members, function(mk) any(mk %in% sig_markers), logical(1))]
-  .score_arm(sig_regions, nm)
+  hit <- vapply(units$members, function(mk) any(mk %in% sig_markers), logical(1))
+  .score_arm(units$members[hit], nm, chr = units$Chr[hit])
 }, list(sc$results$single_snp$emmax_p, sc$results$single_snp$lfmm_p),
    list("emmax_snp_clustered", "lfmm_snp_clustered"))
 

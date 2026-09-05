@@ -80,6 +80,41 @@ INCLUDED arms (~99% FP proportion for isolated single-marker calls, all 4
 cells/tags) -- Simes/consensus/clustered-only never produce a size-1 region
 by construction.
 
+## Updated same day: neutral chromosome (Chr2), FPs only
+
+PK: "analyse the neutral chromosomes separately (only FPs of course)." Chr2
+never carries a QTN (verified directly across every cell/tag/rep sampled),
+and `qtn_ld_table()` groups strictly by Chr, so a Chr2 candidate marker has
+zero eligible QTN -- every significant Chr2 region is an assumption-free
+false positive, no permutation needed (`fig_fp_neutral_chr.pdf`).
+
+Result: 3 of the 4 cells (all high/medium dispersal) are essentially clean
+on Chr2 for every arm. The one low-dispersal cell (`V0.5_c2`) shows real,
+substantial inflation even for `emmax_consensus` (21-22 mean FP per env vs
+0-1.4 everywhere else) -- a genome-wide false-signal problem from residual
+population structure (isolation by distance), not something LD clustering
+can fix since there's no real signal to cluster around. `V1_c1.5` (medium
+dispersal) shows a smaller but real bump too (4-6), so this is a gradient,
+not a single bad cell. EMMAX's kinship correction handles it much better
+than LFMM's latent factors (`emmax_consensus`/`emmax_simes` stay at 21-44 in
+the worst cell; `lfmm_simes` reaches 62-80; the unrestricted single-SNP
+arms exceed 200). `bgs` roughly doubles the Chr2 FP rate at every arm in
+that cell relative to `nobgs` (e.g. `lfmm_snp`: 1068 vs 469) -- consistent
+with BGS lowering effective population size genome-wide, not only on the
+selected chromosome. The size-1 (unrestricted single-SNP only) bin sits at
+300-1200 mean FP, 10-100x every other cluster-size bin -- the included/
+excluded gap from above, replicated on data with zero possible true
+positives.
+
+Functions as a real, free complement to the still-missing phenotype-
+permutation null (external audit item 2) -- not a substitute (it tests one
+QTN-free chromosome under the real spatial/kinship structure, not global
+calibration of the trait test), but arguably more relevant here since
+nothing is permuted away. Also independent evidence for PK's own scoping
+decision to restrict headline comparisons to high-dispersal cells: this
+shows low dispersal isn't just underpowered, it has an active,
+structure-driven false-positive problem.
+
 ## Kept here as a snapshot
 
 As with `module_sim_bgs2`: a permanent record of this comparison point, not
