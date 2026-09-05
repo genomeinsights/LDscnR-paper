@@ -34,3 +34,16 @@ than fail; nothing needs editing to extend the grid later).
 
 Kept here as a permanent, non-regenerating record -- do not update the code
 or figures in this directory again.
+
+**Exception, added 2026-09-06 (PK):** the 7-cell nobgs grid here is exactly
+the "not necessarily wrong" detection-performance data described above, and
+is the ONLY full 7-cell grid available while bgs5 still covers just 4 -- PK
+asked to keep improving the analysis against bgs2's nobgs arm in the meantime
+so it "easily transfers to the other simulations later," using an external
+audit of the manuscript's simulation section as the worklist. New,
+audit-response-only scripts and outputs live in `R_audit/` and are additive:
+they read the existing `results/pooled_pr.rds` (nobgs rows only) and do not
+touch anything in `R/`, `R_figures/`, `results/`, or `figures/` that predates
+this note. Any fix proven here first still needs to be (and, so far, has
+been) ported into the live `module_sim/R*/` scripts by hand -- this directory
+itself still does not regenerate.

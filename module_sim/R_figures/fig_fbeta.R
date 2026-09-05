@@ -27,7 +27,10 @@ say("[0] %d (tag,cell,arm) panels, cells restricted to high dispersal: %s\n",
     nrow(pr), paste(HIGH_DISP_CELLS, collapse = ", "))
 
 ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
-ARM_LABELS <- c(emmax_consensus = "EMMAX representative", emmax_simes = "EMMAX Simes",
+## [!] FIXED 2026-09-06 (external audit, item 8): was "EMMAX representative" --
+## the arm uses the consensus dosage across the cluster's markers, not a
+## single representative SNP.
+ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes",
                 lfmm_simes = "LFMM Simes", emmax_snp = "EMMAX single-SNP", lfmm_snp = "LFMM single-SNP")
 ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
                  lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")

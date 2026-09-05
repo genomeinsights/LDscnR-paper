@@ -9,8 +9,12 @@
 ## stage (04_lfmm.R) because its p-values are INHERITED from an external,
 ## unreproducible source with no consensus arm available, this module's data is
 ## entirely ours: LFMM is computed fresh, here, from the same GTs and env
-## EMMAX uses, with the SAME two-arm structure. There is no structural reason
-## to split them.
+## EMMAX uses. There is no structural reason to split them.
+##
+## [!] FIXED 2026-09-06 (external audit, item 10): this used to say LFMM has
+## "the SAME two-arm structure" as EMMAX -- stale. lfmm_consensus_arm = FALSE
+## below: LFMM only has simes + single-SNP (two arms total), EMMAX has
+## consensus + simes + single-SNP (three) -- see ARM_LEVELS in R_figures/.
 ##
 ## LFMM CALL PATTERN reused from the superseded module_sim_LDscnR/
 ## regen_sim_data.R, which already computed it this way for the same kind of

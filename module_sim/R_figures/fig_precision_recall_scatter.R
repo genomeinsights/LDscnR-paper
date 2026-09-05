@@ -2,9 +2,13 @@
 ##
 ## Precision-vs-recall scatter, medians per (tag, arm) -- mirrors the
 ## reference figure's Panel A. Circles = nobgs, triangles = bgs, coloured by
-## method, one line per tag joining its five methods (same analysis, "which
-## arm" varying) in reduction-degree order (clustered methods first,
-## single-SNP last -- R/05_pool.R's ARM_LEVELS order).
+## method.
+##
+## [!] FIXED 2026-09-06 (external audit, item 8): the five methods used to be
+## joined by a line per tag. Dropped -- ARM_LEVELS is a reduction-degree
+## ORDERING (clustered methods first, single-SNP last), not a continuous
+## trajectory a system moves along, so a connecting line implied a
+## relationship (interpolation, a shared axis) the five points don't have.
 ##
 ## RESTRICTED TO HIGH-DISPERSAL CELLS, same scope as fig_fbeta.R (PK, reading
 ## fig_pooled_pr.R's Precision*Recall row: "for everything but high
@@ -24,7 +28,10 @@ say("[0] %d (tag,cell,arm) panels, cells restricted to high dispersal: %s\n",
     nrow(pr), paste(HIGH_DISP_CELLS, collapse = ", "))
 
 ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
-ARM_LABELS <- c(emmax_consensus = "EMMAX representative", emmax_simes = "EMMAX Simes",
+## [!] FIXED 2026-09-06 (external audit, item 8): was "EMMAX representative" --
+## the arm uses the consensus dosage across the cluster's markers, not a
+## single representative SNP.
+ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes",
                 lfmm_simes = "LFMM Simes", emmax_snp = "EMMAX single-SNP", lfmm_snp = "LFMM single-SNP")
 ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
                  lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")
@@ -38,13 +45,12 @@ med[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 names(ARM_COLOURS) <- ARM_LABELS[names(ARM_COLOURS)]
 
 p <- ggplot(med, aes(Recall, Precision, colour = arm_label)) +
-  geom_path(aes(group = tag), colour = "grey50", alpha = 0.5, linewidth = 0.4) +
   geom_point(aes(shape = tag), size = 3.5) +
   scale_colour_manual(values = ARM_COLOURS, name = "method") +
   scale_shape_manual(values = c(nobgs = 16, bgs = 17), name = NULL) +
   labs(x = "recall", y = "precision",
       title = "Clustering trades recall for precision",
-      subtitle = sprintf("Medians over %d high-dispersal cells per (tag, method).\nCircles = nobgs, triangles = bgs. Lines join the same tag across methods.",
+      subtitle = sprintf("Medians over %d high-dispersal cells per (tag, method). Circles = nobgs, triangles = bgs.",
                           length(HIGH_DISP_CELLS))) +
   guides(colour = guide_legend(nrow = 2), shape = guide_legend(nrow = 2)) +
   theme_bw(11) +

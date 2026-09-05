@@ -101,8 +101,8 @@ for (i in seq_len(nrow(pooled))) with(pooled[i], say(
   if (is.na(Recall)) "NA" else sprintf("%.3f", Recall), if (is.na(Recall_SE)) "NA" else sprintf("%.3f", Recall_SE)))
 
 ## ---- 4. FP proportion as a function of cluster size (PK) -----------------------
-## Same env-as-replicate-axis logic as the PR pooling above: pool over
-## (rep, cell) within (tag, env, arm, size_bin) to get one FP proportion per
+## Same env-as-replicate-axis logic as the PR pooling above: pool over REP
+## within (tag, [cell,] env, arm, size_bin) to get one FP proportion per
 ## environment, then mean +- SE across the 10 environments for the final
 ## point. Bins fixed rather than data-driven (quantile bins would shift
 ## under -- and so be incomparable across -- different cells/arms/tags):
@@ -110,23 +110,50 @@ for (i in seq_len(nrow(pooled))) with(pooled[i], say(
 ## thresholds wide enough to keep bin counts usable while size 2 and 3 (the
 ## most common, and where detection differs most) get their own bins rather
 ## than being folded in.
-say("\n[4] FP proportion by cluster size, mean +- SE over ENV, by (tag, arm, size_bin)\n")
+##
+## [!] FIXED 2026-09-06 (external audit): the point estimate FP/(TP+FP)
+## excludes dedup-neutral rows (neither is_TP nor is_FP -- a duplicate claim
+## on an already-claimed true QTN, dropped rather than counted either way,
+## see R/04_score.R's .score_arm()), but the previous per-env proportion used
+## for the SE divided by .N -- ALL significant rows, INCLUDING those neutral
+## ones. Point and SE were therefore different estimators. Both now divide by
+## (TP+FP) at every level. Also now computed BOTH pooled-across-cells (as
+## before, for a single headline number) and cell-stratified (fp_by_size_cell)
+## -- the audit's other point, that pooling all selection/dispersal cells
+## together lets cluster-size trends partly reflect changing cell composition
+## rather than a within-cell size effect.
+say("\n[4] FP proportion by cluster size, mean +- SE over ENV, pooled and by-cell\n")
 SIZE_BREAKS <- c(1, 2, 3, 5, 10, 20, 50, Inf)
 SIZE_LABELS <- c("2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
 cluster_detail[, size_bin := cut(n_loci, breaks = SIZE_BREAKS, labels = SIZE_LABELS)]
+
+## pooled across cells
 per_env_size <- cluster_detail[, .(
-  n_sig = .N, TP = sum(is_TP), FP = sum(is_FP), FP_proportion = sum(is_FP) / .N
+  n_sig = .N, TP = sum(is_TP), FP = sum(is_FP),
+  FP_proportion = if ((sum(is_TP) + sum(is_FP)) > 0) sum(is_FP) / (sum(is_TP) + sum(is_FP)) else NA_real_
 ), by = .(tag, env, arm, size_bin)]
 fp_by_size <- per_env_size[, .(
-  n_envs = .N, n_sig = sum(n_sig),
+  n_envs = sum(!is.na(FP_proportion)), n_sig = sum(n_sig),
   FP_proportion = sum(FP) / (sum(TP) + sum(FP)),
   FP_proportion_SE = .se(FP_proportion)
 ), by = .(tag, arm, size_bin)]
+
+## cell-stratified (same denominator rule)
+per_env_size_cell <- cluster_detail[, .(
+  n_sig = .N, TP = sum(is_TP), FP = sum(is_FP),
+  FP_proportion = if ((sum(is_TP) + sum(is_FP)) > 0) sum(is_FP) / (sum(is_TP) + sum(is_FP)) else NA_real_
+), by = .(tag, cell, env, arm, size_bin)]
+fp_by_size_cell <- per_env_size_cell[, .(
+  n_envs = sum(!is.na(FP_proportion)), n_sig = sum(n_sig),
+  FP_proportion = sum(FP) / (sum(TP) + sum(FP)),
+  FP_proportion_SE = .se(FP_proportion)
+), by = .(tag, cell, arm, size_bin)]
 setorder(fp_by_size, tag, arm, size_bin)
 
 OUT <- file.path(stage_dir(STAGE), "pooled_pr.rds")
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
 saveRDS(list(per_replicate = all_scored, per_env = per_env, pooled = pooled,
-            cluster_detail = cluster_detail, per_env_size = per_env_size, fp_by_size = fp_by_size), OUT)
+            cluster_detail = cluster_detail, per_env_size = per_env_size, fp_by_size = fp_by_size,
+            per_env_size_cell = per_env_size_cell, fp_by_size_cell = fp_by_size_cell), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
