@@ -46,7 +46,15 @@ bd <- readRDS(BUNDLE_PATH)
 sc <- readRDS(SCAN_PATH)
 GTs <- bd$GTs; map <- bd$map; stage1 <- bd$stage1; LD_decay <- bd$LD_decay
 
-DMAX_CAP <- 5e5
+## [!] WAS 5e5, hardcoded separately from DISTANCE_THRESHOLD. Fixed 2026-09-05:
+## a peer session (NEMO simulation work) flagged that DCAP moved to 1e5
+## paper-wide (LDscnR-paper 8dbb09a, branch null-rework-two-basis), matching
+## the bundles' stage-2 distance_threshold -- module_sim's own
+## DISTANCE_THRESHOLD (00_config.R) was already 1e5, but this file's
+## qtn_ld_table/score_thresholds cap was a separate, stale constant that
+## predated the change. Referencing DISTANCE_THRESHOLD directly instead of a
+## second hardcoded value, so the two cannot drift apart again.
+DMAX_CAP <- DISTANCE_THRESHOLD
 RHO_R2 <- 0.75; RHO_D <- 0.95   ## score_thresholds()'s own defaults -- PK confirmed these are the intended values
 
 INPUTS <- c(BUNDLE_PATH, SCAN_PATH)
