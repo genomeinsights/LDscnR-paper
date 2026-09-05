@@ -54,7 +54,12 @@ if (any(!score_files$exists)) {
 
 INPUTS <- score_files[exists == TRUE, path]
 PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENVS_N, pooling = "counts",
-               se_axis = "env", fp_by_size = TRUE)
+               se_axis = "env", fp_by_size = TRUE,
+               ## [!] bumped 2026-09-06: matched fp_by_size denominator + cell
+               ## stratification, size_bin now starts at "1", and the new pooled
+               ## bootstrap CI -- logic changes stage_stale() cannot see any other
+               ## way -- forces a rerun instead of silently reusing pre-fix output.
+               pool_version = "2026-09-06-audit")
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -99,6 +104,52 @@ for (i in seq_len(nrow(pooled))) with(pooled[i], say(
   tag, cell, arm, n_envs, TP, FP, FN,
   if (is.na(Precision)) "NA" else sprintf("%.3f", Precision), if (is.na(Precision_SE)) "NA" else sprintf("%.3f", Precision_SE),
   if (is.na(Recall)) "NA" else sprintf("%.3f", Recall), if (is.na(Recall_SE)) "NA" else sprintf("%.3f", Recall_SE)))
+
+## ---- 3b. cluster bootstrap CI for the pooled ratios (external audit item 4) ----
+## ADDED 2026-09-06: `pooled`'s Precision/Recall/PR above is a ratio of counts
+## summed over ALL environments and reps, but its SE is the SE of the 10
+## per-environment ratios -- a fine descriptive summary, but not a formal CI
+## on the pooled ratio itself (the audit's point). Added alongside it, not
+## replacing it: a two-stage cluster bootstrap that resamples ENVIRONMENTS
+## (with replacement -- the genuine replicate axis, as established above) and,
+## within each resampled environment, resamples its RECOMBINATION MAPS/reps
+## (with replacement) -- exactly the audit's "resampling environments and
+## recombination maps" recommendation -- recomputing the pooled ratio each
+## time. Percentile (2.5%/97.5%) interval reported.
+say("[3b] cluster bootstrap (envs, then reps within env), N_BOOT = %d\n", N_BOOT <- 2000L)
+set.seed(SEEDS[["bundle"]])
+.boot_pooled <- function(sub) {
+  env_idx <- split(seq_len(nrow(sub)), sub$env)
+  envs <- names(env_idx)
+  n_env <- length(envs)
+  TPv <- sub$TP; FPv <- sub$FP; FNv <- sub$FN
+  Precision <- Recall <- PR <- numeric(N_BOOT)
+  for (b in seq_len(N_BOOT)) {
+    boot_envs <- sample(envs, n_env, replace = TRUE)
+    TP <- 0; FP <- 0; FN <- 0
+    for (e in boot_envs) {
+      idx <- env_idx[[e]]
+      ridx <- sample(idx, length(idx), replace = TRUE)
+      TP <- TP + sum(TPv[ridx]); FP <- FP + sum(FPv[ridx]); FN <- FN + sum(FNv[ridx])
+    }
+    Precision[b] <- if ((TP + FP) > 0) TP / (TP + FP) else NA_real_
+    Recall[b]    <- if ((TP + FN) > 0) TP / (TP + FN) else NA_real_
+    PR[b] <- Precision[b] * Recall[b]
+  }
+  list(Precision = Precision, Recall = Recall, PR = PR)
+}
+.ci <- function(v) stats::quantile(v, c(0.025, 0.975), na.rm = TRUE, names = FALSE)
+pooled_boot <- all_scored[, {
+  bt <- .boot_pooled(.SD)
+  pci <- .ci(bt$Precision); rci <- .ci(bt$Recall); prci <- .ci(bt$PR)
+  list(n_boot = N_BOOT,
+       Precision_lo = pci[1], Precision_hi = pci[2],
+       Recall_lo = rci[1], Recall_hi = rci[2],
+       PR_lo = prci[1], PR_hi = prci[2])
+}, by = .(tag, cell, arm)]
+setorder(pooled_boot, tag, cell, arm)
+pooled <- merge(pooled, pooled_boot, by = c("tag", "cell", "arm"), all.x = TRUE)
+setorder(pooled, tag, cell, arm)
 
 ## ---- 4. FP proportion as a function of cluster size (PK) -----------------------
 ## Same env-as-replicate-axis logic as the PR pooling above: pool over REP

@@ -61,7 +61,12 @@ INPUTS <- c(BUNDLE_PATH, SCAN_PATH)
 PARAMS <- list(size_floor = SIZE_FLOOR, dmax_cap = DMAX_CAP, rho_r2 = RHO_R2, rho_d = RHO_D,
                maf_min = 0.1, p_va_min = 0.05, max_bp = 2e6,
                single_snp_arms = TRUE, single_snp_bh_alpha = ALPHA, lfmm_consensus_arm = FALSE,
-               cluster_detail = TRUE)
+               cluster_detail = TRUE,
+               ## [!] bumped 2026-09-06: single-SNP arms now score each significant
+               ## marker as its own size-1 region (external audit item 1 / PK), a
+               ## logic change stage_stale() cannot see any other way -- forces a
+               ## rerun instead of silently reusing pre-fix score files.
+               single_snp_region_size = "per_marker_size1")
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
