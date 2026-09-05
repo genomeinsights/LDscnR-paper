@@ -26,14 +26,26 @@ pr <- pooled[cell %in% HIGH_DISP_CELLS, .(tag, cell, arm, Precision, Recall)]
 say("[0] %d (tag,cell,arm) panels, cells restricted to high dispersal: %s\n",
     nrow(pr), paste(HIGH_DISP_CELLS, collapse = ", "))
 
-ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes", "emmax_snp", "lfmm_snp")
 ## [!] FIXED 2026-09-06 (external audit, item 8): was "EMMAX representative" --
 ## the arm uses the consensus dosage across the cluster's markers, not a
 ## single representative SNP.
-ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes",
-                lfmm_simes = "LFMM Simes", emmax_snp = "EMMAX single-SNP", lfmm_snp = "LFMM single-SNP")
-ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A",
-                 lfmm_simes = "#7B1FA2", emmax_snp = "#F9A825", lfmm_snp = "#C0392B")
+##
+## [!] ADDED 2026-09-06 (PK: "single SNP included/excluded ... different
+## colors"): emmax_snp/lfmm_snp score every significant marker as its own
+## region (singletons INCLUDED); emmax_snp_clustered/lfmm_snp_clustered only
+## count a marker inside a real >=2-marker Stage-1 unit (singletons EXCLUDED,
+## the pre-fix behaviour kept as a comparator -- R/04_score.R). Colours pair
+## by hue: saturated = included, pastel = excluded.
+ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes",
+                "emmax_snp", "emmax_snp_clustered", "lfmm_snp", "lfmm_snp_clustered")
+ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes", lfmm_simes = "LFMM Simes",
+                emmax_snp = "EMMAX single-SNP (incl. singletons)",
+                emmax_snp_clustered = "EMMAX single-SNP (excl. singletons)",
+                lfmm_snp = "LFMM single-SNP (incl. singletons)",
+                lfmm_snp_clustered = "LFMM single-SNP (excl. singletons)")
+ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A", lfmm_simes = "#7B1FA2",
+                 emmax_snp = "#F9A825", emmax_snp_clustered = "#FFCC80",
+                 lfmm_snp = "#C0392B", lfmm_snp_clustered = "#EF9A9A")
 
 ## same beta grid as the reference figure (log-spaced, 0.25 to 4)
 BETA_GRID <- c(0.25, 0.35, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4)
@@ -49,6 +61,11 @@ med <- fb[, .(F_beta = median(F_beta)), by = .(arm, beta)]
 med[, arm := factor(arm, levels = ARM_LEVELS, labels = ARM_LABELS[ARM_LEVELS])]
 names(ARM_COLOURS) <- ARM_LABELS[names(ARM_COLOURS)]
 
+## [!] FIXED 2026-09-06: subtitle used to hardcode "6 (tag x cell) panels"
+## (2 tags x 3 high-dispersal cells) -- wrong once a cell is missing (bgs5
+## currently has only 2 of the 3 target high-dispersal cells). Now built
+## from the actual count.
+n_panels <- uniqueN(pr, by = c("tag", "cell"))
 p <- ggplot(med, aes(beta, F_beta, colour = arm)) +
   geom_line(linewidth = 0.6) +
   geom_point(size = 2) +
@@ -57,7 +74,7 @@ p <- ggplot(med, aes(beta, F_beta, colour = arm)) +
   labs(x = expression(beta ~ "  (< 1 weights precision, > 1 weights recall; log scale)"),
       y = expression("median " * F[beta]),
       title = "Which analysis is better depends entirely on beta",
-      subtitle = expression(F[beta] == frac((1+beta^2)*PR, beta^2*P + R) * "   -- medians over 6 (tag x cell) panels per method, high-dispersal cells only")) +
+      subtitle = bquote(F[beta] == frac((1+beta^2)*PR, beta^2*P + R) ~ "  -- medians over" ~ .(n_panels) ~ "(tag x cell) panels per method, high-dispersal cells only")) +
   theme_bw(11) +
   theme(panel.grid.minor = element_blank(), legend.position = "top")
 
