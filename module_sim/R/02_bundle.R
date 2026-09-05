@@ -152,6 +152,20 @@ LD_decay <- .cache_step(paste0("ld_decay_", combo_id), decay_fp, function() {
          c(list(gds = gds, el_data_folder = el_dir, ld_w_rho = RHO_GRID,
                 seed = SEEDS[["bundle"]]),
            DECAY_ARGS)) })
+## [!] CLEANED UP IMMEDIATELY. Found 2026-09-05 rebuilding for bgs5: nothing
+## ever removed these, and across the first 1400-combination grid they
+## (never read back downstream, per this section's own comment above)
+## accumulated to 382 GB before anyone noticed. el_data_folder still writes
+## them (needed internally during this call), but there is no reason to keep
+## the result once compute_LD_decay has returned.
+##
+## [!] el_dir IS A FILE PREFIX, NOT A DIRECTORY. compute_LD_decay writes
+## "<el_dir>Chr1.el"/"<el_dir>Chr2.el" literally concatenated (no path
+## separator) -- unlink(el_dir, recursive=TRUE) is a silent no-op against a
+## path that was never actually created, which is why the first attempt at
+## this cleanup (same day) did not work: measured 560 MB surviving one
+## combination's smoke test that should have logged this line. Glob instead.
+unlink(Sys.glob(paste0(el_dir, "*.el")))
 ld_ws <- LD_decay$ld_ws[map$marker, , drop = FALSE]
 ld95  <- if ("rho_0.95" %in% colnames(ld_ws)) "rho_0.95" else "0.95"
 map[, ld_w_095 := ld_ws[, ld95]]

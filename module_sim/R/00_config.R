@@ -57,9 +57,27 @@ PATHS <- list(
   ## module_3sp's 02_bundle.R explicitly calls out as "a DIFFERENT set...
   ## deliberately not used" for the kinship basis. Their own upstream,
   ## parsed_sim_data2, is ALSO already scored (same columns). The true raw
-  ## source is NEMO's own native per-file output, one tgz per (tag,chr,V,c,env):
-  raw_nemo_nobgs = file.path(NEMO_ROOT, "Nemo_out_nobgs"),
-  raw_nemo_bgs5  = file.path(NEMO_ROOT, "Nemo_out_bgs"),
+  ## source is NEMO's own native per-file output, one tgz per (tag,chr,V,c,env).
+  ##
+  ## [!] CORRECTED AGAIN, MORE SERIOUSLY, 2026-09-05 (PK: "We are at bgs5").
+  ## This pointed at Nemo_out_nobgs/Nemo_out_bgs from 2026-09-04 until now --
+  ## checked directly, Nemo_out_bgs's bgs arm has 3 deleterious loci in the
+  ## WHOLE GENOME (adapt_bgs_chr1_V0.5_c1_env1), far below even the
+  ## already-documented-unmeasurable bgs2 parameterization (200 loci, memory
+  ## nemo-bgs-unmeasurable-settings). Every module_sim result built against it
+  ## is archived, frozen, at ../module_sim_bgs2/ -- a numerically correct
+  ## measurement of an arm with no real BGS signal to find, not a code bug.
+  ## The correctly-parameterized dataset ("scenario B", 1720 deleterious loci
+  ## confirmed in the same spot-check) is bgs5 -- ONE directory holding BOTH
+  ## tags together (unlike the old separate Nemo_out_nobgs/Nemo_out_bgs), so
+  ## both PATHS entries below now point at the same place. bgs5 currently
+  ## covers 4 of CELLS_ALL's 7 cells (V0.5_c1, V0.5_c2, V1_c1.5, V2_c1) --
+  ## the other 3 (V0.5_c1.5, V1_c1, V2_c1.5) are still being simulated (PK);
+  ## grid drivers check archive existence and SKIP missing cells rather than
+  ## fail, so dropping the remaining archives into this same bgs5/ directory
+  ## needs no code change here or anywhere else.
+  raw_nemo_nobgs = file.path(NEMO_ROOT, "bgs5"),
+  raw_nemo_bgs5  = file.path(NEMO_ROOT, "bgs5"),
   ## Reference chromosome maps (position, type, allelic_values -- the genome
   ## MODEL, shared across every simulation replicate) and the spatial
   ## environment surfaces (one file per env index, shared across V/c/chr).
@@ -72,22 +90,30 @@ PATHS <- list(
   ## module_3sp's raw_3sp.RData, and what 02_bundle.R in R/ will read as ITS raw
   ## input. Same external-volume reasoning as raw_root: too large for git or for
   ## a full local copy once this widens past one file.
-  parsed = file.path(NEMO_ROOT, "module_sim_parsed"),
+  ##
+  ## [!] RENAMED 2026-09-05, moving to bgs5 as the raw source (see raw_nemo_bgs5
+  ## above) -- a fresh directory name rather than reusing "module_sim_parsed"
+  ## (now deleted) so a stray old file from the wrong raw source can never be
+  ## silently read; every parsed file here is bgs5-sourced by construction.
+  parsed = file.path(NEMO_ROOT, "module_sim_parsed_bgs5"),
   cache  = file.path(path.expand("~/gitlab/LDscnR-paper/module_sim"), "cache")
 )
 PATHS$el_dir <- file.path(PATHS$cache, "edge_lists")
 PATHS$untar  <- file.path(PATHS$cache, "untar")   # scratch for unpacked .tgz; not an output
 
 ## ---- 2. WHICH SLICE OF THE GRID THIS BUILD TARGETS -----------------------------
-## [!] OPEN DECISION, FLAGGED RATHER THAN GUESSED. The full grid is 4 selection
-## cells (V0.5_c1, V0.5_c2, V1_c1.5, V2_c1) x 2 BGS arms x 10 environments x 10
-## REPLICATES -- module_3sp has exactly one dataset; this module does not.
-## Building the whole grid through every stage before anything is verified would
-## repeat today's module_3sp lesson (rebuild small, verify, then scale) in the
-## worst possible way -- hours of compute before a single number can be checked.
+## Target grid: 7 cells (3 selection intensities x 3 dispersal levels, minus
+## V1_c2/V2_c2 -- never simulated) x 2 BGS arms x 10 environments x 10
+## REPLICATES. bgs5 currently HAS 4 of those 7 (V0.5_c1, V0.5_c2, V1_c1.5,
+## V2_c1); the other 3 (V0.5_c1.5, V1_c1, V2_c1.5) are still being simulated
+## (PK, 2026-09-05) -- grid drivers check archive existence and skip missing
+## cells rather than fail, so this list does not need editing when they land,
+## only the archives dropped into bgs5/.
 ##
-## Set to the SMALLEST cell that lets every stage be verified end to end. Widen
-## CELLS/TAGS/ENVS once 02-04 are confirmed correct on this one, not before.
+## CELLS below is a SINGLE-CELL DEFAULT for the per-stage scripts' own
+## Sys.getenv() fallback (smallest slice that lets one stage be verified end
+## to end without a grid driver) -- the actual grid drivers (run_grid.sh etc.)
+## carry their own CELLS_ALL array with all 7.
 CELLS <- "V2_c1"          # widen to c("V0.5_c1","V0.5_c2","V1_c1.5","V2_c1") once verified
 TAGS  <- "nobgs"          # other value is "bgs" (NOT "bgs5" -- that's just PATHS$raw_nemo_bgs5's
                             # own name; archive filenames and TARGET_TAG use "bgs", see

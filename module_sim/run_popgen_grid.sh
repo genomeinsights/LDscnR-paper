@@ -16,8 +16,17 @@ CONCURRENCY="${1:-4}"
 
 mkdir -p out/logs
 
+## SKIP, not FAIL, a (tag,cell,rep,env) whose bundle isn't built yet -- e.g.
+## a cell bgs5 doesn't have data for (00_config.R's raw_nemo_* comment: 3 of
+## the 7 target cells still being simulated, PK 2026-09-05). Checked against
+## the bundle file directly, so this needs no edit as cells/reps/envs land.
 run_combo() {
   local tag="$1" cell="$2" rep="$3" env="$4"
+  local bundle="out/02_bundle/bundle_${tag}_rep${rep}_${cell}_env${env}.rds"
+  if [ ! -f "$bundle" ]; then
+    echo "[$(date +%H:%M:%S)] ${tag} ${cell} rep${rep} env${env}: SKIP (no bundle yet)"
+    return 0
+  fi
   export SIM_TAG="$tag" SIM_CELL="$cell" SIM_REP="$rep" SIM_ENV="$env"
   logfile="out/logs/popgen_${tag}_${cell}_rep${rep}_env${env}.txt"
   if Rscript R/06_popgen_summary.R > "$logfile" 2>&1; then st=ok; else st=FAIL; fi

@@ -60,8 +60,23 @@ NEW_LOG=$([ -f "$LOG" ] && echo 0 || echo 1)
 TMPDIR_TIMING="$(mktemp -d out/.grid_timing_XXXXXX)"
 trap 'rm -rf "$TMPDIR_TIMING"' EXIT
 
+## SKIP, not FAIL, a cell bgs5 does not have yet -- 00_config.R's raw_nemo_*
+## comment: 3 of the 7 target cells (V0.5_c1.5, V1_c1, V2_c1.5) are still
+## being simulated (PK, 2026-09-05). Checking the archive directly rather
+## than a hardcoded "known missing" list, so dropping the real archives into
+## bgs5/ later makes this script pick them up with no edit here.
+NEMO_ROOT_CHECK="${SIM_NEMO_ROOT:-/Volumes/Nemo/Nemo_sim}"
+archive_exists() {
+  local tag="$1" cell="$2" rep="$3" env="$4"
+  [ -f "${NEMO_ROOT_CHECK}/bgs5/adapt_${tag}_chr${rep}_${cell}_env${env}.tgz" ]
+}
+
 run_combo() {
   local cell="$1" rep="$2" env="$3"
+  if ! archive_exists "$TAG" "$cell" "$rep" "$env"; then
+    echo "[$(date +%H:%M:%S)] ${TAG} ${cell} rep${rep} env${env}: SKIP (no archive yet)"
+    return 0
+  fi
   local combo_log="$TMPDIR_TIMING/${TAG}_${cell}_rep${rep}_env${env}.csv"
   export SIM_CELL="$cell" SIM_REP="$rep" SIM_ENV="$env"
   for pair in "R_parsing/01_parse_nemo.R:01_parse_nemo" "R/02_bundle.R:02_bundle" "R/03_scan.R:03_scan" "R/04_score.R:04_score"; do
