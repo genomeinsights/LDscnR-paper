@@ -56,13 +56,22 @@ mk_panel <- function(p) {
              colour = p$colour, hjust = ifelse(obs > x_max * 0.6, 1.05, -0.05),
              vjust = 1.3, size = 3.2, fontface = "bold") +
     scale_x_continuous(limits = c(0, x_max), expand = c(0.01, 0)) +
+    ## PLAIN ASCII hyphen with spaces, not "--" (rendered as two literal hyphens -- ggplot's
+    ## plain-text rendering, unlike LaTeX, never turns "--" into a dash) and not a Unicode
+    ## en-dash either (the cairo_pdf device's default font substituted it with "..." on this
+    ## machine -- a font/glyph fallback issue, not worth chasing when a hyphen is unambiguous).
     labs(x = "significant Stage-1 units per permutation draw", y = "permutation draws",
-        title = sprintf("%s -- %s", p$species, p$stat)) +
+        title = sprintf("%s - %s", p$species, p$stat)) +
     theme_bw(11) + theme(panel.grid.minor = element_blank(), plot.title = element_text(size = 11, face = "bold"))
 }
 
 panels <- lapply(PANELS, mk_panel)
-FIG <- (panels[[1]] | panels[[2]]) / (panels[[3]] | panels[[4]])
+## tag_levels = "a": panel labels a-d in reading order (top-left, top-right, bottom-left,
+## bottom-right), matching PANELS' own order -- the standard multi-panel convention, not
+## embedded in each panel's own title string.
+FIG <- ((panels[[1]] | panels[[2]]) / (panels[[3]] | panels[[4]])) +
+  plot_annotation(tag_levels = "a") &
+  theme(plot.tag = element_text(size = 13, face = "bold"))
 
 OUT_DIR <- file.path(PATHS$out, STAGE); dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 OUT_PDF <- file.path(PATHS$figures, "permutation_comparison_3sp_9sp.pdf")
