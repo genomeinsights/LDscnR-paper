@@ -116,16 +116,25 @@ GRM_METHOD     <- "GCTA"
 GRM_LDW_THRESHOLD <- 0.1
 GRM_LDW_OP        <- "<"
 
-## ---- COVARIATE: OPEN QUESTION (PK, 2026-09-07) ---------------------------------
-## 3sp's canonical EMMAX model has NO covariate beyond the GRM. The legacy 9sp
-## script's own EMMAX call includes `Covar = pheno$lineage`. NOT DECIDED: PK's
-## call was to flag this and decide once we have seen the GRM / population-
-## structure diagnostics (e.g. does GRM structure already separate lineages
-## cleanly, or does within-lineage variation need a covariate to avoid
-## confounding ecotype with lineage?). NULL is not a default -- it is a marker
-## that no decision has been made; every stage that fits EMMAX must check this
-## explicitly rather than silently assuming NULL means "no covariate, decided".
-EMMAX_COVAR <- NULL   # candidates once decided: NULL | "lineage" | "pop_locality"
+## ---- COVARIATE: DECIDED (PK, 2026-09-07) ----------------------------------------
+## SET to "lineage", confirming the legacy 9sp script's own choice, on the strength
+## of a direct check: LD-pruned PCA + a lineage x ecotype crosstab (149 individuals)
+## shows WL (39 Freshwater / 0 Marine) and WA (4 / 0) are ENTIRELY monomorphic for
+## ecotype, EL is 90% Freshwater (54/6), Admixed is 91% Marine (4/42). 43 of 149
+## individuals (WL+WA) carry NO within-lineage ecotype contrast at all -- ecotype is
+## almost a deterministic function of lineage over most of the sample, not
+## independently replicated across genetic backgrounds the way 3sp's regions are.
+## Without a covariate the GRM (built from genome-wide relatedness, itself
+## correlated with lineage) and the ecotype fixed effect are close to collinear over
+## most of the sample -- residualising ecotype on lineage before testing (the same
+## mechanism emmax()'s own Covar argument uses: `Y <- resid(lm(Y ~ Covar))`,
+## replicated manually here since emmax_fast() -- the 25x-faster scan this module
+## uses throughout, see emmax_fast.R -- has no Covar parameter) is the standard fix.
+## PC1/PC2 do NOT cleanly separate lineages as dominant axes (5%/4.2% variance
+## explained, wide overlapping spread) -- the confound is specifically with ecotype
+## SAMPLING within lineage, not raw genetic distance, so this is not "the GRM
+## already handles it via population structure" territory.
+EMMAX_COVAR <- "lineage"
 
 ## ---- 4. STAGE 03: CLUSTERING ----------------------------------------------------
 ## Same starting values as 3sp, same "not yet re-derived" caveat as DECAY_ARGS.
@@ -176,19 +185,26 @@ EMLG_ARGS      <- list(input = "auto", cor_th = 0.8, l_min = 10)
 BEST_SNP_ARGS  <- list(fill = TRUE, round_fill = TRUE)
 
 ## ---- 6. STAGE 06: NULLS -----------------------------------------------------------
-## Permutation scheme is a genuinely open question here, more so than for 3sp:
-## 3sp's "regional" scheme permutes phenotype within 4 regional localities. 9sp
-## has population structure on at least two axes that do not nest cleanly
-## (6 pop_locality regions x 4 lineages, and most populations are single-
-## ecotype -- see 00_config.R header). Whatever scheme is used must still
-## preserve the population/lineage membership that made permutation valid for
-## 3sp; which grouping variable to permute within is NOT yet decided, and
-## should be revisited together with EMMAX_COVAR above rather than in
-## isolation, since a covariate and a permutation grouping that answer the
-## same structure differently would be inconsistent.
+## DECIDED (PK, 2026-09-07), matched to EMMAX_COVAR rather than chosen
+## independently: permute ecotype WITHIN LINEAGE, at the POPULATION level (same
+## granularity as 3sp's perm_regional() -- individuals within one population
+## always share one permuted label, never permuted individually), analogous to
+## 3sp's "regional" scheme but conditioned on lineage instead of locality.
+##
+## WL and WA are entirely monomorphic for ecotype (see EMMAX_COVAR note), so
+## sample(ecotype) within those strata deterministically reproduces the observed
+## labels on every draw -- ZERO permutation variability from 43 of 149
+## individuals. This is not a bug to work around: those individuals cannot
+## validate an ecotype-specific signal via permutation regardless of scheme,
+## because there is no within-lineage ecotype contrast to permute. The null is
+## still valid; it is just correctly uninformative about that portion of the
+## sample. A sensitivity check restricting to EL + Admixed only (the two
+## lineages with real within-lineage contrast: 54/6 and 4/42) is worth running
+## alongside the full-sample result once stage 03 exists, to see whether the
+## reported signal holds up on the "cleaner" subset.
 NPERM_CONSENSUS <- 1000L
 NPERM_SIMES     <- 200L
-PERM_SCHEMES    <- NULL   # NOT DECIDED -- see note above
+PERM_SCHEMES    <- "lineage"
 
 ## ---- 7. STAGE 08: SENSITIVITY -------------------------------------------------
 SWEEP <- list(
