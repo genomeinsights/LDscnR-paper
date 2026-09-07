@@ -32,14 +32,16 @@ sc9 <- readRDS(file.path(PATHS$out, "03_EMMAX", "scan.rds"))
 ## one row per (species, statistic) -- keeps the four null objects and their labels together
 ## rather than four parallel variables that have to be kept in sync by hand.
 PANELS <- list(
-  list(species = "Three-spined", stat = "Consensus", null = sc3$consensus$null, colour = "#2C7FB8"),
-  list(species = "Three-spined", stat = "Simes",     null = sc3$simes$null,     colour = "#2C7FB8"),
-  list(species = "Nine-spined",  stat = "Consensus", null = sc9$consensus$null, colour = "#D95F02"),
-  list(species = "Nine-spined",  stat = "Simes",     null = sc9$simes$null,     colour = "#D95F02")
+  list(species = "Three-spined stickleback", stat = "Consensus", null = sc3$consensus$null, colour = "#2C7FB8"),
+  list(species = "Three-spined stickleback", stat = "Simes",     null = sc3$simes$null,     colour = "#2C7FB8"),
+  list(species = "Nine-spined stickleback",  stat = "Consensus", null = sc9$consensus$null, colour = "#D95F02"),
+  list(species = "Nine-spined stickleback",  stat = "Simes",     null = sc9$simes$null,     colour = "#D95F02")
 )
 
 mk_panel <- function(p) {
   surr <- p$null$surrogates; obs <- p$null$observed; pval <- p$null$p
+  B <- length(surr)
+  null_mean <- mean(surr)
   D <- data.table(x = surr)
   ## binwidth scaled to each panel's own range so the histogram shape is legible whether
   ## the range is ~0-140 (3sp) or ~0-360 (9sp) -- a fixed binwidth would over- or
@@ -48,21 +50,36 @@ mk_panel <- function(p) {
   ## headroom past the last bin's OWN right edge (not just past max(surr,obs)), so a bin
   ## that straddles max(surr,obs) is never truncated by scale_x_continuous()'s limit.
   x_max <- (ceiling(max(surr, obs) / bw) + 1) * bw
+  ## single text box (not two floating labels at each line) so the null-mean label never
+  ## collides with the observed label even when the two vlines sit close together in x
+  ## (9sp: observed 55 vs null mean 67.36 are only ~12 apart on a 0-360 axis) -- colour-
+  ## and linetype-coded lines let the reader connect each number in the box to its own line.
+  ##
+  ## FIXED at the top-right corner, not anchored to x = obs: all four panels are
+  ## right-skewed (tall bars near 0, thinning out towards x_max), so the top-right corner
+  ## is reliably empty in every panel -- unlike anchoring on obs, which put the box on top
+  ## of the histogram's own bulk once obs and the null mean sit close together within it
+  ## (9sp panels: the observed/null-mean pair sits inside the bulk of the distribution,
+  ## not off in an empty tail the way 3sp's does).
+  lbl <- sprintf("observed = %d\nnull mean = %.2f\np = %s", obs, null_mean,
+                 if (pval < 0.001) "<0.001" else sprintf("%.3f", pval))
   ggplot(D, aes(x)) +
     geom_histogram(binwidth = bw, boundary = 0, fill = "grey75", colour = "white", linewidth = 0.15) +
+    geom_vline(xintercept = null_mean, colour = "grey40", linetype = "dashed", linewidth = 0.7) +
     geom_vline(xintercept = obs, colour = p$colour, linewidth = 1) +
-    annotate("text", x = obs, y = Inf, label = sprintf("observed = %d\np = %s", obs,
-             if (pval < 0.001) "<0.001" else sprintf("%.3f", pval)),
-             colour = p$colour, hjust = ifelse(obs > x_max * 0.6, 1.05, -0.05),
-             vjust = 1.3, size = 3.2, fontface = "bold") +
+    annotate("text", x = x_max, y = Inf, label = lbl,
+             colour = p$colour, hjust = 1.05, vjust = 1.3, size = 3.2, fontface = "bold") +
     scale_x_continuous(limits = c(0, x_max), expand = c(0.01, 0)) +
     ## PLAIN ASCII hyphen with spaces, not "--" (rendered as two literal hyphens -- ggplot's
     ## plain-text rendering, unlike LaTeX, never turns "--" into a dash) and not a Unicode
     ## en-dash either (the cairo_pdf device's default font substituted it with "..." on this
     ## machine -- a font/glyph fallback issue, not worth chasing when a hyphen is unambiguous).
-    labs(x = "significant Stage-1 units per permutation draw", y = "permutation draws",
-        title = sprintf("%s - %s", p$species, p$stat)) +
-    theme_bw(11) + theme(panel.grid.minor = element_blank(), plot.title = element_text(size = 11, face = "bold"))
+    labs(x = "BH-significant Stage-1 units", y = "Number of permutation draws",
+        title = p$species,
+        subtitle = sprintf("%s (%s permutations)", p$stat, format(B, big.mark = ","))) +
+    theme_bw(11) + theme(panel.grid.minor = element_blank(),
+                          plot.title = element_text(size = 11, face = "bold"),
+                          plot.subtitle = element_text(size = 9.5, colour = "grey30"))
 }
 
 panels <- lapply(PANELS, mk_panel)
