@@ -131,3 +131,14 @@ module_3sp/out/**/*.rds
 # the same line as a pattern is NOT a comment in .gitignore syntax (only whole-line #
 # comments are), so this exclusion silently never matched until moved to its own line.
 module_3sp/out/run*.log
+
+# ---- module_9sp -------------------------------------------------------------
+# Same reasoning as module_3sp above: 9sp_data.rds (290 MB) is over GitHub's 100 MB
+# limit, lfmm_F.rds kept alongside it rather than split across two regimes.
+module_9sp/cache/
+module_9sp/data/*
+!module_9sp/data/PROVENANCE.csv
+!module_9sp/data/README.md
+module_9sp/out/**/*.rds
+!module_9sp/out/**/_receipt.rds
+module_9sp/out/run*.log
