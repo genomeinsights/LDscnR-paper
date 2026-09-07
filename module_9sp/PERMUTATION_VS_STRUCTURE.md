@@ -18,20 +18,59 @@ when the phenotype of interest is too confounded with the structure it's permute
 say anything about it specifically. That is what happened. 3sp's permutation test being able
 to speak at all is the thing that needed an explanation, not 9sp's being unable to.
 
-## Why 9sp and 3sp differ
+## 3sp vs. 9sp, side by side
 
-Both are stickleback panels run through the same pipeline (LD decay → Stage-1 LD clustering
-→ EMMAX consensus/Simes → within-group phenotype permutation), but the population structure
-underneath them is not comparable:
+Both are stickleback panels run through the identical pipeline (LD decay → Stage-1 LD
+clustering → EMMAX consensus/Simes → within-group phenotype permutation), so every row below
+is a like-for-like comparison, not a difference in method.
 
-| | 3sp (*Gasterosteus aculeatus*) | 9sp (*Pungitius pungitius*) |
-|---|---|---|
+| | 3sp (*G. aculeatus*) | 9sp (*P. pungitius*) |
+|---|---:|---:|
+| **Sample & structure** | | |
 | Individuals | 117 | 149 |
-| Populations / regions / lineages | a few regional localities, ecotype present in most | 30 populations, 6 localities, **4 lineages** |
-| Ecotype ~ structure confound | modelled with no covariate | ecotype ~ lineage R² = **0.722** |
+| Populations | a few, regional | 30 |
+| Regions / localities | 4 | 6 |
+| Lineages | — | 4 (Admixed, EL, WA, WL) |
+| Phenotype ~ structure covariate R² | — (no covariate used) | 0.722 (ecotype ~ lineage) |
 | Background LD | 0.055 | **0.301** |
-| GRM off-diagonal (mean, SD) | tighter | mean −0.009 to −0.012, SD **0.26–0.32** |
-| Marker-wise scan λ<sub>GC</sub> | **1.094** (healthy) | **0.868** (deflated) |
+| GRM off-diagonal: mean (SD) | −0.0098 (**0.0847**) | −0.009 to −0.012 (**0.26–0.32**) |
+| **Model calibration** | | |
+| Marker-wise scan λ<sub>GC</sub>, canonical GRM | **1.094** (healthy) | **0.868** (deflated) |
+| Marker-wise scan λ<sub>GC</sub>, leaner (greedy) GRM | not run | 0.957 (improves, doesn't fix result) |
+| REML h² for the real tested phenotype | 1.0000 (boundary) | 1.0000 (boundary) |
+| REML h², median over 5–8 random phenotypes | 0.166 | 0.000 |
+| **Consensus arm** | | |
+| Tested units | 1,356 | 4,547 |
+| Observed significant | **97** | **55** |
+| Permutation surrogate mean | 3.476 | **67.36** |
+| Permutation p | **0.0080** | 0.3117 |
+| Null-to-observed ratio | **3.6%** | **122.5%** |
+| **Simes arm** | | |
+| Observed significant | **74** | **18** |
+| Permutation surrogate mean | 2.95 | **59.12** |
+| Permutation p | **0.0149** | 0.7512 |
+| Null-to-observed ratio | **4.0%** | **328.4%** |
+
+Cells marked "not run" reflect what has actually been computed, not an assumption that 3sp
+would look the same — 3sp has never needed these diagnostics run on it, which is itself part
+of the contrast.
+
+### 9sp-only follow-ups (no 3sp analogue exists to compare against)
+
+These two checks were built specifically to chase down *why* 9sp's numbers above look the way
+they do; 3sp was never confounded enough to need either one.
+
+| | Consensus | Simes |
+|---|---:|---:|
+| **EL+Admixed subset** (106 of 149 individuals, own GRM) | | |
+| Observed significant | 6 | 10 |
+| Surrogate mean | 75.44 | 67.47 |
+| Permutation p | 0.7762 | 0.7015 |
+| Null-to-observed ratio | **1257.4%** | **674.8%** |
+| **GRM-structured null** (full 149, MVN(0,K) surrogate) | | |
+| Observed significant | 55 | 18 |
+| Surrogate mean | 0.07 | 0.03 |
+| p | **0.0010** | **0.0050** |
 
 The lineage confound is severe enough that two of 9sp's four lineages (WL, WA — 43 of 149
 individuals) are *entirely monomorphic for ecotype*: every WL and WA individual is
