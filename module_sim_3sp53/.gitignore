@@ -1,0 +1,30 @@
+# regenerable outputs (built by the R/0x scripts; dirs recreated at runtime)
+data/*
+figures/*
+!data/.gitkeep
+!figures/.gitkeep
+*.log
+
+# cache/ and out/: same convention as module_3sp's top-level .gitignore entry --
+# cache is large and fully regenerable (decay fits, edge lists), out/ keeps its
+# receipts (the audit trail of what ran) but not the heavy .rds payloads.
+# Two rds locations: the flat module_3sp-style stage receipt (out/<stage>/_receipt.rds)
+# and, since 2026-09-04, module_sim's per-combination target subdirectory
+# (out/<stage>/<tag_cell_rep>/_receipt.rds) -- both keep their receipt, neither
+# keeps a payload .rds at that level.
+cache/
+out/*/*.rds
+!out/*/_receipt.rds
+out/*/*/*.rds
+!out/*/*/_receipt.rds
+
+# [!] cache/ and out/ ABOVE became SYMLINKS 2026-09-05 (PK: "use the external
+# drive" -- the full reps x envs grid, 1400 combinations, filled both this
+# machine's and mini2's internal disks; both now point at /Volumes/Nemo or
+# /Volumes/T9). Git cannot see through a symlink to apply the directory-content
+# rules above, and committing the symlink itself would point every other
+# checkout at a path that only exists on this machine -- ignore it outright.
+# results/ is the deliberate exception: small, git-trackable summaries copied
+# out of the (now ignored) out/ tree, same convention as module_sim_LDscnR/results/.
+/cache
+/out
