@@ -64,16 +64,19 @@ pooled[, arm := factor(arm, levels = ARM_LEVELS)]
 pooled[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 
 ## long format: one row per (tag, cell, arm, metric), metric in {Recall,
-## Precision, PR, beta}, with its SE. PR = Precision*Recall; beta =
-## FN/(TP+FN) = 1-Recall, the Type II error rate (the natural counterpart to
-## ALPHA) -- both computed in R/05_pool.R alongside Precision/Recall.
+## Precision, PR}, with its SE. PR = Precision*Recall.
+##
+## [!] DROPPED 2026-09-08 (PK): the beta (Type II error) row was exactly
+## 1-Recall -- an exact affine transform, so it carried zero information the
+## Recall row didn't already have (PK: "so beta is not really needed
+## (redundant)?" -- confirmed). beta/beta_SE are still computed in
+## R/05_pool.R (harmless, not removed there) -- just not plotted here.
 long <- rbindlist(list(
   pooled[, .(tag, cell = cell_label, arm, metric = "Recall",    value = Recall,    SE = Recall_SE)],
   pooled[, .(tag, cell = cell_label, arm, metric = "Precision", value = Precision, SE = Precision_SE)],
-  pooled[, .(tag, cell = cell_label, arm, metric = "Precision x Recall", value = PR, SE = PR_SE)],
-  pooled[, .(tag, cell = cell_label, arm, metric = "beta (Type II error)", value = beta, SE = beta_SE)]
+  pooled[, .(tag, cell = cell_label, arm, metric = "Precision x Recall", value = PR, SE = PR_SE)]
 ))
-long[, metric := factor(metric, levels = c("Recall", "Precision", "Precision x Recall", "beta (Type II error)"))]
+long[, metric := factor(metric, levels = c("Recall", "Precision", "Precision x Recall"))]
 
 say("[1] %d (tag,cell,arm,metric) points ; %d Precision NAs (zero-TP-zero-FP cells -- see 05_pool.R)\n",
     nrow(long), sum(is.na(long$value) & long$metric == "Precision"))
