@@ -8,9 +8,17 @@
 ## closely as the simulated design allows. PK: "run the structured nulls...
 ## pull the same numbers as we have done in module_3sp and module_9sp."
 ##
-## TWO NULL SCHEMES, BOTH FED THROUGH THE SAME ld_outlier_perm() MACHINERY
-## module_3sp/9sp use (level = "units", the fast path -- no region assembly
-## per surrogate):
+## THREE NULL SCHEMES (group, mvn, spatial -- see below), all built on the
+## SAME machinery module_3sp/9sp's ld_outlier_perm() uses at level = "units"
+## (the fast path -- no region assembly per surrogate): .ld_outlier_tested_
+## units(), called directly here (via .run_null()/.perm_sizes(), not
+## ld_outlier_perm() itself) so each surrogate's full table of significant
+## units -- not just a count -- is available for the minimum-size sweep in
+## section "minimum stage-1-unit-size sweep" below (PK: "can we say that
+## larger stage-2 clusters are more likely to be true positives? We should
+## sweep for minimum cluster size"). Free given what ld_outlier_perm()
+## would compute anyway -- no extra emmax_fast() fits, just more of each
+## call's own output kept.
 ##
 ##   group   Population-level ENV VALUE permutation, stratified within a
 ##           discrete grouping factor -- the direct analog of module_3sp's
@@ -91,7 +99,12 @@ PARAMS <- list(size_floor = SIZE_FLOOR, alpha = ALPHA, unit_repr = UNIT_REPR,
                n_perm_simes = N_PERM_SIMES, n_groups = 5L,
                ## [!] bumped 2026-09-08: added the `spatial` null scheme --
                ## forces a rerun.
-               spatial_null = TRUE)
+               spatial_null = TRUE,
+               ## [!] bumped 2026-09-08: added the minimum-unit-size sweep
+               ## -- forces a rerun. Literal, not a reference to
+               ## SIZE_FLOOR_GRID (defined later in the file) -- keep the
+               ## two in sync by hand if the grid ever changes.
+               size_floor_grid = c(2, 3, 5, 10, 20, 50))
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -144,12 +157,66 @@ gen_spatial <- function() {
   as.numeric(stats::resid(stats::lm(s ~ y)))
 }
 
-.summarise_perm <- function(null, scheme, arm) {
-  data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV,
-            arm = arm, scheme = scheme, B = null$params$B, observed = null$observed,
-            mean_surrogate = mean(null$surrogates), p = null$p, realised_fdr = null$realised_fdr)
-}
 ROWS <- list()
+
+## ---- minimum stage-1-unit-size sweep: does raising the floor improve calibration? --
+## PK: "The permutation is an assertion independent of the truth, telling
+## that probably a large portion of the outlier regions are false
+## positives (but we know not all of them are). Can we say that larger
+## stage-2 clusters are more likely to be true positives? We should sweep
+## for minimum cluster size to see if the figure above improves?"
+##
+## Cluster size here is n_markers, the SAME size every FP-by-size figure
+## this session has used (R/04_score.R's n_loci -- the tested stage-1 unit,
+## not a further stage-2 grouping of units; this project's own cluster_
+## detail/fp_by_size analyses have always scored at the stage-1-unit level,
+## never re-aggregated to stage-2 regions, so this sweep matches what's
+## already being reported everywhere else rather than introducing a new
+## unit). FREE given what's already being computed above: no extra
+## emmax_fast() calls -- .ld_outlier_tested_units() is cheap, and each
+## surrogate's full table of significant units (with their sizes) is kept
+## instead of collapsed to a single count.
+SIZE_FLOOR_GRID <- c(2, 3, 5, 10, 20, 50)
+## [!] LDscnR:::, not a bare call -- these are internal (dot-prefixed,
+## unexported) functions; library(LDscnR) (unlike devtools::load_all(),
+## which some other scripts in this project rely on and which attaches
+## everything) does not put them on the search path.
+units_base <- LDscnR:::.ld_outlier_units(stage1, map, SIZE_FLOOR)
+
+.perm_sizes <- function(p_perm, B, statistic) {
+  lapply(seq_len(B), function(b) {
+    u <- LDscnR:::.ld_outlier_tested_units(stage1, map, p_perm(b), statistic, SIZE_FLOOR, ALPHA, units = units_base)
+    u$n_markers[u$significant]
+  })
+}
+.fdr_by_floor <- function(obs_units, surr_sizes, scheme, arm) {
+  obs_sizes <- obs_units$n_markers[obs_units$significant]
+  rbindlist(lapply(SIZE_FLOOR_GRID, function(f) {
+    n_obs  <- sum(obs_sizes >= f)
+    n_surr <- mean(vapply(surr_sizes, function(s) sum(s >= f), integer(1)))
+    data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV,
+              arm = arm, scheme = scheme, size_floor = f, n_obs = n_obs,
+              mean_surrogate = n_surr, realised_fdr = n_surr / max(n_obs, 1))
+  }))
+}
+SIZE_ROWS <- list()
+
+## Runs the surrogate loop ONCE (via .perm_sizes()) and derives BOTH the
+## headline realised_fdr (at SIZE_FLOOR, matching the original summary
+## format) and the full floor-sweep table from the SAME B draws -- calling
+## ld_outlier_perm() separately would redo every emmax_fast() fit a second
+## time for no reason.
+.run_null <- function(p_perm, B, statistic, obs_units, scheme, arm) {
+  say("    [%s]: %d surrogates\n", scheme, B)
+  surr_sizes <- .perm_sizes(p_perm, B, statistic)
+  sweep <- .fdr_by_floor(obs_units, surr_sizes, scheme, arm)
+  base <- sweep[size_floor == SIZE_FLOOR]
+  say("    realised_fdr (floor=%d) = %.3f\n", SIZE_FLOOR, base$realised_fdr)
+  list(summary = data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV,
+                            arm = arm, scheme = scheme, B = B, observed = base$n_obs,
+                            mean_surrogate = base$mean_surrogate, realised_fdr = base$realised_fdr),
+       sweep = sweep)
+}
 
 ## ---- 3. EMMAX consensus ---------------------------------------------------------
 say("\n[3] EMMAX consensus\n")
@@ -162,26 +229,17 @@ test_con <- ld_outlier_test(stage1, map, pu_obs, statistic = "unit", size_floor 
                             distance_threshold = REGION_ASSEMBLY$distance_threshold)
 say("    observed: %d significant units\n", sum(test_con$units$significant))
 
-say("    [group] null: %d population-group surrogates\n", N_PERM_CONSENSUS)
 p_perm_con_group <- function(bb) { set.seed(bb); emmax_fast(Pu, perm_group()) }
-null_con_group <- ld_outlier_perm(test_con, stage1, map, p_perm_con_group, GTs = GTs, LD_decay = LD_decay,
-                                  B = N_PERM_CONSENSUS, level = "units", verbose = TRUE)
-say("    realised_fdr = %.3f (p = %.4f)\n", null_con_group$realised_fdr, null_con_group$p)
-ROWS$con_group <- .summarise_perm(null_con_group, "group", "emmax_consensus")
+res_con_group <- .run_null(p_perm_con_group, N_PERM_CONSENSUS, "unit", test_con$units, "group", "emmax_consensus")
+ROWS$con_group <- res_con_group$summary; SIZE_ROWS$con_group <- res_con_group$sweep
 
-say("    [mvn] negative control: %d surrogates\n", N_PERM_CONSENSUS)
 p_perm_con_mvn <- function(bb) { set.seed(bb + 1e6); emmax_fast(Pu, gen_mvn()) }
-null_con_mvn <- ld_outlier_perm(test_con, stage1, map, p_perm_con_mvn, GTs = GTs, LD_decay = LD_decay,
-                                B = N_PERM_CONSENSUS, level = "units", verbose = TRUE)
-say("    realised_fdr = %.3f (p = %.4f)\n", null_con_mvn$realised_fdr, null_con_mvn$p)
-ROWS$con_mvn <- .summarise_perm(null_con_mvn, "mvn", "emmax_consensus")
+res_con_mvn <- .run_null(p_perm_con_mvn, N_PERM_CONSENSUS, "unit", test_con$units, "mvn", "emmax_consensus")
+ROWS$con_mvn <- res_con_mvn$summary; SIZE_ROWS$con_mvn <- res_con_mvn$sweep
 
-say("    [spatial] negative control: %d surrogates\n", N_PERM_CONSENSUS)
 p_perm_con_spatial <- function(bb) { set.seed(bb + 2e6); emmax_fast(Pu, gen_spatial()) }
-null_con_spatial <- ld_outlier_perm(test_con, stage1, map, p_perm_con_spatial, GTs = GTs, LD_decay = LD_decay,
-                                    B = N_PERM_CONSENSUS, level = "units", verbose = TRUE)
-say("    realised_fdr = %.3f (p = %.4f)\n", null_con_spatial$realised_fdr, null_con_spatial$p)
-ROWS$con_spatial <- .summarise_perm(null_con_spatial, "spatial", "emmax_consensus")
+res_con_spatial <- .run_null(p_perm_con_spatial, N_PERM_CONSENSUS, "unit", test_con$units, "spatial", "emmax_consensus")
+ROWS$con_spatial <- res_con_spatial$summary; SIZE_ROWS$con_spatial <- res_con_spatial$sweep
 
 ## ---- 4. EMMAX Simes ---------------------------------------------------------
 say("\n[4] EMMAX Simes\n")
@@ -193,36 +251,27 @@ test_sim <- ld_outlier_test(stage1, map, pm_obs, statistic = "simes", size_floor
                             distance_threshold = REGION_ASSEMBLY$distance_threshold)
 say("    observed: %d significant units\n", sum(test_sim$units$significant))
 
-say("    [group] null: %d population-group surrogates\n", N_PERM_SIMES)
 p_perm_sim_group <- function(bb) { set.seed(bb); emmax_fast(Pm, perm_group()) }
-null_sim_group <- ld_outlier_perm(test_sim, stage1, map, p_perm_sim_group, GTs = GTs, LD_decay = LD_decay,
-                                  B = N_PERM_SIMES, level = "units", verbose = TRUE)
-say("    realised_fdr = %.3f (p = %.4f)\n", null_sim_group$realised_fdr, null_sim_group$p)
-ROWS$sim_group <- .summarise_perm(null_sim_group, "group", "emmax_simes")
+res_sim_group <- .run_null(p_perm_sim_group, N_PERM_SIMES, "simes", test_sim$units, "group", "emmax_simes")
+ROWS$sim_group <- res_sim_group$summary; SIZE_ROWS$sim_group <- res_sim_group$sweep
 
-say("    [mvn] negative control: %d surrogates\n", N_PERM_SIMES)
 p_perm_sim_mvn <- function(bb) { set.seed(bb + 1e6); emmax_fast(Pm, gen_mvn()) }
-null_sim_mvn <- ld_outlier_perm(test_sim, stage1, map, p_perm_sim_mvn, GTs = GTs, LD_decay = LD_decay,
-                                B = N_PERM_SIMES, level = "units", verbose = TRUE)
-say("    realised_fdr = %.3f (p = %.4f)\n", null_sim_mvn$realised_fdr, null_sim_mvn$p)
-ROWS$sim_mvn <- .summarise_perm(null_sim_mvn, "mvn", "emmax_simes")
+res_sim_mvn <- .run_null(p_perm_sim_mvn, N_PERM_SIMES, "simes", test_sim$units, "mvn", "emmax_simes")
+ROWS$sim_mvn <- res_sim_mvn$summary; SIZE_ROWS$sim_mvn <- res_sim_mvn$sweep
 
-say("    [spatial] negative control: %d surrogates\n", N_PERM_SIMES)
 p_perm_sim_spatial <- function(bb) { set.seed(bb + 2e6); emmax_fast(Pm, gen_spatial()) }
-null_sim_spatial <- ld_outlier_perm(test_sim, stage1, map, p_perm_sim_spatial, GTs = GTs, LD_decay = LD_decay,
-                                    B = N_PERM_SIMES, level = "units", verbose = TRUE)
-say("    realised_fdr = %.3f (p = %.4f)\n", null_sim_spatial$realised_fdr, null_sim_spatial$p)
-ROWS$sim_spatial <- .summarise_perm(null_sim_spatial, "spatial", "emmax_simes")
+res_sim_spatial <- .run_null(p_perm_sim_spatial, N_PERM_SIMES, "simes", test_sim$units, "spatial", "emmax_simes")
+ROWS$sim_spatial <- res_sim_spatial$summary; SIZE_ROWS$sim_spatial <- res_sim_spatial$sweep
 
 ## ---- 5. save ------------------------------------------------------------------
 summary_row <- rbindlist(ROWS)
+size_sweep <- rbindlist(SIZE_ROWS)
 print(summary_row)
+print(size_sweep)
 OUT <- file.path(stage_dir(STAGE), sprintf("structnull_%s_rep%d_%s_env%d.rds",
                                            TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
-saveRDS(list(summary = summary_row, pop_groups = pos,
-            test_con = test_con, test_sim = test_sim,
-            null_con_group = null_con_group, null_con_mvn = null_con_mvn, null_con_spatial = null_con_spatial,
-            null_sim_group = null_sim_group, null_sim_mvn = null_sim_mvn, null_sim_spatial = null_sim_spatial), OUT)
+saveRDS(list(summary = summary_row, size_sweep = size_sweep, pop_groups = pos,
+            test_con = test_con, test_sim = test_sim), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT, target = combo_id)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE, combo_id))
