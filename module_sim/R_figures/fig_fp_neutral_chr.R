@@ -48,14 +48,16 @@ fp_neutral_size[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 SIZE_LABELS <- c("1", "2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
 fp_neutral_size[, size_bin := factor(size_bin, levels = SIZE_LABELS)]
 
-## [!] ADDED 2026-09-08 (PK: "in last figure (bottom panel) you don't really
-## need to add the SNP-based, since their cluster size can only be one").
-## emmax_snp/lfmm_snp (singletons INCLUDED) score every significant marker
-## as its own size-1 region by construction -- their n_loci is ALWAYS 1, so
-## a by-cluster-size breakdown has nothing to show for them beyond a single
-## point at bin "1", not a real trend. emmax_snp_clustered/lfmm_snp_clustered
-## DO span multiple size bins (a real cluster's size) and stay.
-fp_neutral_size_bottom <- fp_neutral_size[!arm %in% c("emmax_snp", "lfmm_snp")]
+## [!] emmax_snp/lfmm_snp were briefly dropped from this panel (PK: "you
+## don't really need to add the SNP-based, since their cluster size can
+## only be one") -- true at the time, since n_loci for these arms was the
+## trivial region length (always 1 for a single-marker region). REINSTATED
+## 2026-09-08 once R/04_score.R started recording the marker's TRUE
+## underlying Stage-1 cluster size instead (PK: "we should also include the
+## singleton clusters... how much reduction in FPs do we gain simply by
+## removing unclustered loci") -- size_bin "1" here now means a genuine
+## Stage-1 singleton (no LD neighbour at all), not just "was scored alone".
+fp_neutral_size_bottom <- fp_neutral_size
 
 say("[1] %d (tag,cell,arm) points, mean Chr2 FP count range %.3f-%.2f\n",
     nrow(fp_neutral), min(fp_neutral$mean_FP), max(fp_neutral$mean_FP))
@@ -83,7 +85,7 @@ p2 <- ggplot(fp_neutral_size_bottom, aes(size_bin, mean_FP, colour = arm, linety
   scale_y_log10() +
   labs(x = "stage-1 cluster size (n markers)", y = "mean FP count per environment (log scale)",
       title = "Same, by cluster size (pooled across cells)",
-      subtitle = "all Chr2 significant regions are FP by construction (no QTN on Chr2) -- no permutation, an assumption-free empirical false-discovery count. Unrestricted single-SNP (emmax_snp/lfmm_snp) omitted: their n_loci is always 1 by construction, nothing to show across size bins.") +
+      subtitle = "all Chr2 significant regions are FP by construction (no QTN on Chr2) -- no permutation, an assumption-free empirical false-discovery count. For emmax_snp/lfmm_snp, size bin is the marker's TRUE underlying Stage-1 cluster size (bin '1' = a genuine singleton, no LD neighbour at all), not the trivially-1 region it was scored as.") +
   theme_bw(11) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
         axis.text.x = element_text(size = 8))
