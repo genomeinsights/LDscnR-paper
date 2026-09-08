@@ -122,3 +122,16 @@ a directory that regenerates. The live pipeline (`module_sim/`) keeps
 running against `/Volumes/Nemo/Nemo_sim/bgs5/` and will pick up the
 remaining 3 cells automatically once their archives land (grid drivers skip
 missing cells rather than fail).
+
+## Superseded as the primary dataset, 2026-09-08 -- kept as a sensitivity check
+
+New, finer-resolution production simulations (`module_sim_3sp53/`, full
+7-cell coverage) landed and PK decided they're canonical for reported
+values from here -- **not because this dataset is wrong**, but because the
+newer one has better map resolution and full cell coverage. A direct
+reproducibility comparison (`module_sim_3sp53/README.md`) restricted to
+these 4 shared cells confirmed the two agree strongly on everything that
+matters for the paper's core claims (Precision r=0.93, Recall r=0.94, Fst
+r=1.00, identical method ranking) before making the switch -- this wasn't
+a default choice, it was checked. This module stays here specifically so a
+reviewer question about map-resolution sensitivity has a ready answer.
