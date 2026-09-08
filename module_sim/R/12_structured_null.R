@@ -88,7 +88,10 @@ say("[0] bundle: %d individuals x %s markers\n", nrow(GTs), format(ncol(GTs), bi
 INPUTS <- BUNDLE_PATH
 PARAMS <- list(size_floor = SIZE_FLOOR, alpha = ALPHA, unit_repr = UNIT_REPR,
                region_assembly = REGION_ASSEMBLY, n_perm_consensus = N_PERM_CONSENSUS,
-               n_perm_simes = N_PERM_SIMES, n_groups = 5L)
+               n_perm_simes = N_PERM_SIMES, n_groups = 5L,
+               ## [!] bumped 2026-09-08: added the `spatial` null scheme --
+               ## forces a rerun.
+               spatial_null = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -115,6 +118,29 @@ Lv <- pmax(eK$values, 0); Vk <- eK$vectors
 n_ind <- nrow(GTs)
 gen_mvn <- function() {
   s <- as.numeric(Vk %*% (sqrt(Lv) * stats::rnorm(n_ind)))
+  as.numeric(stats::resid(stats::lm(s ~ y)))
+}
+
+## ---- 2b. spatial MVN, orthogonalised against observed y -------------------------
+## ADDED 2026-09-08 (PK, on `group` being "very conservative": "the
+## environmental gradient is very slow, hence the strong correlation
+## between structure and env... is there a way to make the env orthogonal
+## to the observed and test that as a third alternative?"). Confirmed
+## directly (section 4 below / R/06_popgen_summary.R's new env_icc): ~88%
+## of env variance sits BETWEEN the 5 population groups, so `group`'s
+## within-group permutation barely perturbs the phenotype -- a weak null by
+## construction, not a property of the population-structure hypothesis
+## itself. `spatial` draws from genuine spatial autocorrelation (a Gaussian
+## kernel over individual (x,y), independent of the population-group
+## binning) and orthogonalises the SAME way as `mvn` -- structured_null()'s
+## own basis = "spatial" recipe, reused directly rather than reinvented.
+say("[2b] spatial MVN negative control (structured_null()'s basis = \"spatial\" recipe)\n")
+coords <- as.matrix(env[, .(x, y)])
+Dm <- as.matrix(stats::dist(coords)); l_bw <- stats::median(Dm[lower.tri(Dm)])
+eK_sp <- eigen(exp(-0.5 * (Dm / l_bw)^2), symmetric = TRUE)
+Lv_sp <- pmax(eK_sp$values, 0); Vk_sp <- eK_sp$vectors
+gen_spatial <- function() {
+  s <- as.numeric(Vk_sp %*% (sqrt(Lv_sp) * stats::rnorm(n_ind)))
   as.numeric(stats::resid(stats::lm(s ~ y)))
 }
 
@@ -150,6 +176,13 @@ null_con_mvn <- ld_outlier_perm(test_con, stage1, map, p_perm_con_mvn, GTs = GTs
 say("    realised_fdr = %.3f (p = %.4f)\n", null_con_mvn$realised_fdr, null_con_mvn$p)
 ROWS$con_mvn <- .summarise_perm(null_con_mvn, "mvn", "emmax_consensus")
 
+say("    [spatial] negative control: %d surrogates\n", N_PERM_CONSENSUS)
+p_perm_con_spatial <- function(bb) { set.seed(bb + 2e6); emmax_fast(Pu, gen_spatial()) }
+null_con_spatial <- ld_outlier_perm(test_con, stage1, map, p_perm_con_spatial, GTs = GTs, LD_decay = LD_decay,
+                                    B = N_PERM_CONSENSUS, level = "units", verbose = TRUE)
+say("    realised_fdr = %.3f (p = %.4f)\n", null_con_spatial$realised_fdr, null_con_spatial$p)
+ROWS$con_spatial <- .summarise_perm(null_con_spatial, "spatial", "emmax_consensus")
+
 ## ---- 4. EMMAX Simes ---------------------------------------------------------
 say("\n[4] EMMAX Simes\n")
 Pm <- emmax_setup(GTs, GRM)
@@ -174,6 +207,13 @@ null_sim_mvn <- ld_outlier_perm(test_sim, stage1, map, p_perm_sim_mvn, GTs = GTs
 say("    realised_fdr = %.3f (p = %.4f)\n", null_sim_mvn$realised_fdr, null_sim_mvn$p)
 ROWS$sim_mvn <- .summarise_perm(null_sim_mvn, "mvn", "emmax_simes")
 
+say("    [spatial] negative control: %d surrogates\n", N_PERM_SIMES)
+p_perm_sim_spatial <- function(bb) { set.seed(bb + 2e6); emmax_fast(Pm, gen_spatial()) }
+null_sim_spatial <- ld_outlier_perm(test_sim, stage1, map, p_perm_sim_spatial, GTs = GTs, LD_decay = LD_decay,
+                                    B = N_PERM_SIMES, level = "units", verbose = TRUE)
+say("    realised_fdr = %.3f (p = %.4f)\n", null_sim_spatial$realised_fdr, null_sim_spatial$p)
+ROWS$sim_spatial <- .summarise_perm(null_sim_spatial, "spatial", "emmax_simes")
+
 ## ---- 5. save ------------------------------------------------------------------
 summary_row <- rbindlist(ROWS)
 print(summary_row)
@@ -182,7 +222,7 @@ OUT <- file.path(stage_dir(STAGE), sprintf("structnull_%s_rep%d_%s_env%d.rds",
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)
 saveRDS(list(summary = summary_row, pop_groups = pos,
             test_con = test_con, test_sim = test_sim,
-            null_con_group = null_con_group, null_con_mvn = null_con_mvn,
-            null_sim_group = null_sim_group, null_sim_mvn = null_sim_mvn), OUT)
+            null_con_group = null_con_group, null_con_mvn = null_con_mvn, null_con_spatial = null_con_spatial,
+            null_sim_group = null_sim_group, null_sim_mvn = null_sim_mvn, null_sim_spatial = null_sim_spatial), OUT)
 write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT, target = combo_id)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE, combo_id))
