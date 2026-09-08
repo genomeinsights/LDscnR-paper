@@ -82,10 +82,9 @@ p <- ggplot(long, aes(cell, value, colour = arm, linetype = arm, group = arm)) +
   geom_line(alpha = 0.5, linewidth = 0.4, position = position_dodge(width = 0.4)) +
   geom_pointrange(aes(ymin = pmax(0, value - SE), ymax = pmin(1, value + SE)),
                   position = position_dodge(width = 0.4), size = 0.3, fatten = 2) +
-  facet_grid(metric ~ tag) +
+  facet_grid(metric ~ tag, scales = "free_y") +
   scale_colour_manual(values = ARM_COLOURS, name = "method") +
   scale_linetype_manual(values = ARM_LINETYPES, name = "method") +
-  scale_y_continuous(limits = c(0, 1)) +
   labs(x = NULL, y = NULL,
       title = "Pooled TP/FP scoring: Precision/Recall by cell (all chromosomes pooled -- sum TP/FP/FN, then one ratio)",
       subtitle = "mean +/- SE across the 10 environments (the replicate axis); cells sorted by dispersal (high->low) then selection intensity (high->low)") +
