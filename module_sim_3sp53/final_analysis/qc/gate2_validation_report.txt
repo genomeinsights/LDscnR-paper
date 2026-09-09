@@ -1,0 +1,10 @@
+[PASS] parsed$map$marker == colnames(parsed$GTs)
+[PASS] ld_units$map$marker == colnames(ld_units$GTs)
+[PASS] ld_units's marker SET is a subset of parsed's (post-Stage1 no reorder, only GRM/LD_decay added)
+[PASS] emmax$marker$marker == ld_units$map$marker (association stage read the same map, same order)
+[PASS] emmax per-marker p-vector length == n markers
+[PASS] GRM row/col count == n individuals analysed (kinship is individual x individual, built FROM grm_markers)
+[PASS] truth-scoring used the same n_tested as emmax's marker count (emmax_snp)
+[PASS] truth-scoring's detectable-QTN denominator is stable across all 4 methods
+
+GATE 2 PASS: marker order and record counts are consistent end to end (parsing -> LD/GRM -> association -> truth scoring) for bgs_V0.5_c2_rep1_env1
