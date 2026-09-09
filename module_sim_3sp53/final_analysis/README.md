@@ -6,9 +6,12 @@ untouched (see that document's "Preserve existing work" section -- in
 particular `R/14_random_removal_control.R` there currently has an uncommitted
 change that must not be overwritten, moved, restored, or reformatted).
 
-## Status: Phase 1 complete; Phase 2 partial (primary EMMAX arm only);
-## Phase 3 gates 1-4 ALL PASS -- the full 1,400-combination primary
-## EMMAX grid is complete.
+## Status: Phase 1 complete; Phase 2 primary EMMAX arm + LFMM portability
+## arm both complete; Phase 3 gates 1-4 ALL PASS -- the full 1,400-
+## combination primary EMMAX grid and the full 1,400-combination LFMM
+## grid are both complete, `results/` has pooled precision/recall with
+## bootstrap CIs for both arms, and 4 figures are built (2 named in the
+## instructions, 2 illustrative supplementary Manhattan figures).
 
 Implemented so far:
 
@@ -191,10 +194,49 @@ Implemented so far:
   5,600-row (1,400 combos x 4 methods) per-combo table, for rescoring
   without rereading 1,400 individual files.
 
-Not implemented: LFMM itself (deliberately deferred, split from the
-primary EMMAX arm so that can finish and be audited independently),
-Stage 2 / reported-region output, the truth-threshold sensitivity grid,
-or any final table/figure/manuscript macro.
+- `R/04_lfmm.R` -- the LFMM portability check (`lfmm_snp`, `lfmm_simes`
+  only, no consensus, per instructions). Full 1,400-combination grid run
+  (2026-09-09, `run_lfmm_grid.sh`): 1,400/1,400 complete, 0 failures.
+  `R/06_summarise.R` gained a second `bootstrap_arm()` call for
+  `LFMM_METHODS`, with its own within-engine reference (`lfmm_simes` vs
+  `lfmm_snp`, NOT vs `emmax_snp` -- LFMM is "retain only as a portability
+  analysis", not a candidate for the primary EMMAX contrast). Writes
+  `results/simulation_performance_lfmm.tsv` and `results/simulation_
+  lfmm_portability_contrast.tsv`. Grand-pooled: the same qualitative
+  Stage-1-helps-precision pattern survives the engine swap (`lfmm_snp`
+  0.134 -> `lfmm_simes` 0.150), though LFMM runs systematically
+  higher-recall/lower-precision than EMMAX at matched restriction (e.g.
+  unrestricted: 0.134/0.325 vs EMMAX's 0.174/0.216) -- expected from
+  `lfmm2`'s genomic-control correction behaving less conservatively than
+  EMMAX's kinship correction here, not a new finding.
+
+- `R_figures/figure_simulation_performance.R` / `figureS_simulation_
+  absolute_performance.R` -- the two figures named in the instructions'
+  "Final outputs" list (paired change vs `emmax_snp`, all 7 cells; and
+  absolute precision/recall, all 4 EMMAX methods).
+
+- `R_figures/manhattan_example_data.R` (shared helper, not a standalone
+  figure) + `R_figures/figureS_simulation_manhattan_example.R` /
+  `figureS_simulation_manhattan_tpfp.R` -- two illustrative supplementary
+  Manhattan figures, NOT named in the instructions' output list, built on
+  request. Both concatenate all 10 reps of ONE representative combo
+  (`nobgs/V0.5_c1`/env=3 -- the only one of the 10 environments where
+  every rep has >=1 significant EMMAX marker, found by a one-time scan)
+  into a 20-"chromosome" illustrative genome (rep r's Chr1/Chr2 become
+  chromosome 2r-1/2r, odd=real/even=near-neutral), EMMAX top / LFMM
+  bottom row. `..._example.R` colours every marker by which Stage-2
+  assembled outlier region it physically falls in (illustrative only --
+  Stage 2 is not what precision/recall are scored from); `..._tpfp.R`
+  instead colours by TP/FP status of the significant Stage-1
+  emmax_simes/lfmm_simes unit a marker belongs to, reproducing
+  `05_score_truth.R`'s hypothesis-level truth-linkage logic exactly (same
+  primitives/PARAMS) -- i.e. precisely what IS counted towards the pooled
+  precision/recall above, visualised directly.
+
+Not implemented: Stage 2 / reported-region output as a scored quantity
+(Stage 2 remains illustrative-only, per instructions), the truth-threshold
+sensitivity grid, the BGS validation figure/table, or any final
+table/manuscript macro.
 
 `LFMM_K=5`'s justification stop point IS resolved (2026-09-09, PK): the 80
 sampled populations fall into 5 discrete spatial groups (4 grid corners +
@@ -205,8 +247,8 @@ genotypes or phenotype (exactly the instructions' "structure diagnostic
 independent of association truth"), and was already confirmed
 independently during this project's structured-null work (`kmeans(k=5)`
 on coordinates recovers the identical grouping). See `00_config.R`'s
-`LFMM_K` comment. This unblocks LFMM's own stop point but does not by
-itself put LFMM in scope -- that's still a separate build/run decision.
+`LFMM_K` comment. LFMM was subsequently built and run in full (see
+`R/04_lfmm.R` above).
 
 ## Output roots (new, none overlapping old `module_sim_3sp53` paths)
 
