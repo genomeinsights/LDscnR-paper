@@ -99,15 +99,13 @@ assign_stage2_region <- function(map, regions, r) {
   lab
 }
 
-## Per-marker TP/FP/"ns" (not significant) label, reproducing
-## R/05_score_truth.R's hypothesis-level truth-linkage logic EXACTLY (same
-## primitives: flag_true_qtns/qtn_ld_table/score_thresholds/
-## LDscnR:::.ld_outlier_units, same PARAMS from 00_config.R) for ONE rep's
-## Stage-1 emmax_simes/lfmm_simes significant units -- i.e. precisely the
-## hypotheses R/06_summarise.R's pooled precision/recall are counted from,
-## not the (unscored) Stage-2 assembled regions.
-score_units_tpfp <- function(rep_bundle) {
-  lu <- rep_bundle$lu; map <- copy(rep_bundle$map); em <- rep_bundle$em; lf <- rep_bundle$lf
+## Shared truth-linkage computation, reproducing R/05_score_truth.R's setup
+## EXACTLY (same primitives: flag_true_qtns/qtn_ld_table/score_thresholds/
+## LDscnR:::.ld_outlier_units, same PARAMS from 00_config.R) for one rep --
+## factored out so both the Stage-1-unit scorer and the unrestricted
+## marker-wise scorer below start from the identical truth definition.
+.truth_linkage_for_rep <- function(rep_bundle) {
+  lu <- rep_bundle$lu; map <- copy(rep_bundle$map)
   GTs <- lu$GTs; stage1 <- lu$stage1
 
   p <- colSums(GTs) / nrow(GTs) / 2
@@ -123,19 +121,86 @@ score_units_tpfp <- function(rep_bundle) {
     qtn_lut <- qtn_ld_table(GTs, map, candidate_markers = map$marker, cores = 1)
   }
   qtn_lut_match <- qtn_lut[r2 > thr$r2min & dist_bp < thr$dmax & qtn_marker %in% detectable_qtn]
+  list(map = map, stage1 = stage1, qtn_lut_match = qtn_lut_match)
+}
 
-  units_base <- LDscnR:::.ld_outlier_units(stage1, map, SIZE_FLOOR)
+## Per-marker TP/FP label for ONE rep's Stage-1 emmax_simes/lfmm_simes
+## significant UNITS -- i.e. precisely the hypotheses R/06_summarise.R's
+## pooled precision/recall are counted from for the RESTRICTED methods, not
+## the (unscored) Stage-2 assembled regions. A marker is coloured by its
+## enclosing significant unit's truth-linkage status, not its own.
+score_units_tpfp <- function(rep_bundle) {
+  tl <- .truth_linkage_for_rep(rep_bundle)
+  em <- rep_bundle$em; lf <- rep_bundle$lf
+  units_base <- LDscnR:::.ld_outlier_units(tl$stage1, tl$map, SIZE_FLOOR)
   units_base_members <- stats::setNames(units_base$members, as.character(units_base$unit_id))
 
   .tpfp_for <- function(units_tbl) {
     sig_ids <- as.character(units_tbl$unit_id[units_tbl$significant])
     if (!length(sig_ids)) return(data.table(marker = character(), status = character()))
     members <- units_base_members[sig_ids]
-    linked_qtn <- lapply(members, function(mm) unique(qtn_lut_match[marker %in% mm, qtn_marker]))
+    linked_qtn <- lapply(members, function(mm) unique(tl$qtn_lut_match[marker %in% mm, qtn_marker]))
     truth_linked <- lengths(linked_qtn) > 0
-    rbindlist(Map(function(mm, tl) data.table(marker = mm, status = if (tl) "TP" else "FP"),
+    rbindlist(Map(function(mm, tlk) data.table(marker = mm, status = if (tlk) "TP" else "FP"),
                   members, truth_linked))
   }
 
   list(em = .tpfp_for(em$emmax_simes), lf = .tpfp_for(lf$lfmm_simes))
+}
+
+## Per-marker TP/FP label for ONE rep's UNRESTRICTED marker-wise
+## significant markers (emmax_snp/lfmm_snp) -- each significant marker is
+## its OWN hypothesis (no unit borrowing), matching 05_score_truth.R's
+## marker_members <- setNames(as.list(marker), marker) exactly. This is the
+## comparison case: does the unrestricted engine call many more markers
+## significant with no truth link at all, unlike the Stage-1-restricted
+## figure above?
+score_markers_tpfp <- function(rep_bundle) {
+  tl <- .truth_linkage_for_rep(rep_bundle)
+  em <- rep_bundle$em; lf <- rep_bundle$lf
+  truth_markers <- unique(tl$qtn_lut_match$marker)
+
+  .tpfp_for <- function(marker_tbl) {
+    sig <- marker_tbl$marker[marker_tbl$significant_snp]
+    if (!length(sig)) return(data.table(marker = character(), status = character()))
+    data.table(marker = sig, status = ifelse(sig %in% truth_markers, "TP", "FP"))
+  }
+
+  list(em = .tpfp_for(as.data.table(em$marker)), lf = .tpfp_for(as.data.table(lf$marker)))
+}
+
+## Per-marker TP/FP label at the STAGE-2 ASSEMBLED-REGION level: one whole
+## region is ONE hypothesis, so every marker physically inside it gets the
+## SAME status (truth-linked if ANY member marker links to a detectable
+## QTN). Requires build_example_genome(compute_stage2 = TRUE) (rep_bundle
+## must carry $test_em/$test_lf).
+##
+## This is deliberately DIFFERENT from score_units_tpfp(): a Stage-2 region
+## can merge several Stage-1 units, and scoring at the unit level can split
+## one visual "peak" into mixed TP (truth-linked unit) and FP (a merged-in
+## neighbouring unit that individually isn't) -- an artefact of Stage-1
+## granularity, not evidence the region call itself is wrong. Note this is
+## illustrative only: R/06_summarise.R's actual precision/recall are NOT
+## computed this way (CLAUDE_REANALYSIS_INSTRUCTIONS.md rejects the
+## dedup-neutral region-level metric for the primary score -- see
+## 05_score_truth.R's header). This function exists for this figure only.
+score_stage2_tpfp <- function(rep_bundle) {
+  stopifnot("rep_bundle needs $test_em/$test_lf -- call build_example_genome(compute_stage2 = TRUE)" =
+              !is.null(rep_bundle$test_em) && !is.null(rep_bundle$test_lf))
+  tl <- .truth_linkage_for_rep(rep_bundle)
+  map <- tl$map
+
+  .tpfp_for <- function(regions) {
+    if (nrow(regions) == 0) return(data.table(marker = character(), status = character()))
+    out <- list()
+    for (i in seq_len(nrow(regions))) {
+      hit <- map$Chr == regions$Chr[i] & map$Pos >= regions$from[i] & map$Pos <= regions$to[i]
+      region_markers <- map$marker[hit]
+      truth_linked <- any(region_markers %in% tl$qtn_lut_match$marker)
+      out[[i]] <- data.table(marker = region_markers, status = if (truth_linked) "TP" else "FP")
+    }
+    rbindlist(out)
+  }
+
+  list(em = .tpfp_for(rep_bundle$test_em$regions), lf = .tpfp_for(rep_bundle$test_lf$regions))
 }
