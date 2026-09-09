@@ -40,38 +40,54 @@ pooled[, cell_label := factor(cell_label, levels = cell_order$cell_label)]
 ## marker as its own region (singletons INCLUDED, the unrestricted
 ## benchmark); emmax_snp_clustered/lfmm_snp_clustered only count a marker if
 ## its Stage-1 unit clears SIZE_FLOOR (singletons EXCLUDED, the pre-fix
-## behaviour kept as an explicit comparator -- R/04_score.R). Colours pair by
-## hue: saturated = included, pastel = excluded.
+## behaviour kept as an explicit comparator -- R/04_score.R).
+##
+## [!] RESTYLED 2026-09-08 (PK): the unrestricted single-SNP arms
+## (emmax_snp/lfmm_snp) now share their engine's main-analysis colour
+## (emmax_snp = emmax_simes' colour, the closer methodological match -- both
+## are direct per-marker p-values, just aggregated differently, unlike
+## consensus which tests an entirely different statistic; lfmm_snp =
+## lfmm_simes' colour, unambiguous since LFMM has only one main arm) and are
+## drawn DASHED instead of a distinct hue -- distinguishes "same engine,
+## unrestricted single-marker calling" without adding more colours.
+## emmax_snp_clustered/lfmm_snp_clustered keep their own pastel colour,
+## solid, unchanged.
 ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes",
                 "emmax_snp", "emmax_snp_clustered", "lfmm_snp", "lfmm_snp_clustered")
 ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A", lfmm_simes = "#7B1FA2",
-                 emmax_snp = "#F9A825", emmax_snp_clustered = "#FFCC80",
-                 lfmm_snp = "#C0392B", lfmm_snp_clustered = "#EF9A9A")
+                 emmax_snp = "#26A69A", emmax_snp_clustered = "#FFCC80",
+                 lfmm_snp = "#7B1FA2", lfmm_snp_clustered = "#EF9A9A")
+ARM_LINETYPES <- c(emmax_consensus = "solid", emmax_simes = "solid", lfmm_simes = "solid",
+                   emmax_snp = "dashed", emmax_snp_clustered = "solid",
+                   lfmm_snp = "dashed", lfmm_snp_clustered = "solid")
 pooled[, arm := factor(arm, levels = ARM_LEVELS)]
 pooled[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 
 ## long format: one row per (tag, cell, arm, metric), metric in {Recall,
-## Precision, PR, beta}, with its SE. PR = Precision*Recall; beta =
-## FN/(TP+FN) = 1-Recall, the Type II error rate (the natural counterpart to
-## ALPHA) -- both computed in R/05_pool.R alongside Precision/Recall.
+## Precision, PR}, with its SE. PR = Precision*Recall.
+##
+## [!] DROPPED 2026-09-08 (PK): the beta (Type II error) row was exactly
+## 1-Recall -- an exact affine transform, so it carried zero information the
+## Recall row didn't already have (PK: "so beta is not really needed
+## (redundant)?" -- confirmed). beta/beta_SE are still computed in
+## R/05_pool.R (harmless, not removed there) -- just not plotted here.
 long <- rbindlist(list(
   pooled[, .(tag, cell = cell_label, arm, metric = "Recall",    value = Recall,    SE = Recall_SE)],
   pooled[, .(tag, cell = cell_label, arm, metric = "Precision", value = Precision, SE = Precision_SE)],
-  pooled[, .(tag, cell = cell_label, arm, metric = "Precision x Recall", value = PR, SE = PR_SE)],
-  pooled[, .(tag, cell = cell_label, arm, metric = "beta (Type II error)", value = beta, SE = beta_SE)]
+  pooled[, .(tag, cell = cell_label, arm, metric = "Precision x Recall", value = PR, SE = PR_SE)]
 ))
-long[, metric := factor(metric, levels = c("Recall", "Precision", "Precision x Recall", "beta (Type II error)"))]
+long[, metric := factor(metric, levels = c("Recall", "Precision", "Precision x Recall"))]
 
 say("[1] %d (tag,cell,arm,metric) points ; %d Precision NAs (zero-TP-zero-FP cells -- see 05_pool.R)\n",
     nrow(long), sum(is.na(long$value) & long$metric == "Precision"))
 
-p <- ggplot(long, aes(cell, value, colour = arm, group = arm)) +
+p <- ggplot(long, aes(cell, value, colour = arm, linetype = arm, group = arm)) +
   geom_line(alpha = 0.5, linewidth = 0.4, position = position_dodge(width = 0.4)) +
   geom_pointrange(aes(ymin = pmax(0, value - SE), ymax = pmin(1, value + SE)),
                   position = position_dodge(width = 0.4), size = 0.3, fatten = 2) +
-  facet_grid(metric ~ tag) +
+  facet_grid(metric ~ tag, scales = "free_y") +
   scale_colour_manual(values = ARM_COLOURS, name = "method") +
-  scale_y_continuous(limits = c(0, 1)) +
+  scale_linetype_manual(values = ARM_LINETYPES, name = "method") +
   labs(x = NULL, y = NULL,
       title = "Pooled TP/FP scoring: Precision/Recall by cell (all chromosomes pooled -- sum TP/FP/FN, then one ratio)",
       subtitle = "mean +/- SE across the 10 environments (the replicate axis); cells sorted by dispersal (high->low) then selection intensity (high->low)") +

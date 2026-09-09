@@ -48,7 +48,10 @@ b <- readRDS(BUNDLE_PATH)
 GTs <- b$GTs; map <- b$map; env <- b$env
 
 INPUTS <- BUNDLE_PATH
-PARAMS <- list(maf_min = 0.1, p_va_min = 0.05, fst_method = "W&C84")
+PARAMS <- list(maf_min = 0.1, p_va_min = 0.05, fst_method = "W&C84",
+               ## [!] bumped 2026-09-08: added env_icc (5-group kmeans
+               ## variance decomposition) -- forces a rerun.
+               env_icc = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -80,15 +83,54 @@ fst <- snpgdsFst(gds, population = factor(env$pop), method = "W&C84",
 say("    Fst = %.4f\n", fst$MeanFst)
 
 ## ---- 3. local adaptation proxy: breeding value ~ env, R^2 ----------------------
+## [!] FIXED 2026-09-08: found running module_sim_3sp53's full 7-cell grid
+## (bgs5's smaller 4-cell subset never happened to hit this) -- some QTN in
+## the new reference maps (rec_map<rep>.rds) carry allelic_values = NA (39/
+## 1400 combos affected, all in one cell/rep's map or another). GTs %*%
+## allelic_values propagated that NA into every individual's bv, making
+## sd(bv) NA and crashing the if() rather than returning NA_real_ as
+## intended. va_total already excludes these via na.rm=TRUE (line 67); bv
+## now does the same by construction -- QTN with an undefined effect size
+## cannot meaningfully contribute to a breeding value sum regardless (their
+## contribution is undefined, not zero), so excluding them is the correct
+## fix, not just a crash-avoidance one.
 say("[3] local adaptation: breeding value (all QTN) ~ environment, R^2\n")
-bv <- as.numeric(GTs[, qtn_rows, drop = FALSE] %*% map$allelic_values[qtn_rows])
-local_adapt_r2 <- if (n_qtn_total > 0 && sd(bv) > 0) cor(bv, env$env)^2 else NA_real_
+bv_rows <- qtn_rows[!is.na(map$allelic_values[qtn_rows])]
+if (length(bv_rows) < length(qtn_rows)) say("    [!] %d of %d QTN have NA allelic_values -- excluded from bv\n",
+                                            length(qtn_rows) - length(bv_rows), length(qtn_rows))
+bv <- as.numeric(GTs[, bv_rows, drop = FALSE] %*% map$allelic_values[bv_rows])
+local_adapt_r2 <- if (length(bv_rows) > 0 && sd(bv) > 0) cor(bv, env$env)^2 else NA_real_
 say("    R^2 = %s\n", if (is.na(local_adapt_r2)) "NA" else sprintf("%.4f", local_adapt_r2))
+
+## ---- 4. env ICC across the 5 spatial population groups -------------------------
+## ADDED 2026-09-08 (PK, on the structured-null "group" scheme being "very
+## conservative": "the environmental gradient is very slow, hence the strong
+## correlation between structure and env... we should have numbers on this
+## along with the Fst and Va's"). Same 5-group assignment as
+## R/12_structured_null.R (kmeans(k=5) on sampled-population (x,y) -- PK:
+## "sampled in the corners and in the middle"); duplicated here rather than
+## shared, matching this project's convention of self-contained per-stage
+## scripts. ICC = between-group / total variance of population-level env
+## means (one-way ANOVA decomposition) -- confirmed directly, ~0.88 on a
+## sample combo: within-group population-to-population variation in env is
+## roughly an order of magnitude smaller than between-group. High ICC is
+## exactly why R/12_structured_null.R's within-group permutation barely
+## perturbs the phenotype (swapping among near-identical values), making it
+## a conservative null.
+say("[4] env ICC across 5 spatial population groups\n")
+pos <- unique(env[, .(pop, x, y)])
+set.seed(1L)
+km <- kmeans(pos[, .(x, y)], centers = 5, nstart = 10)
+pos[, pop_group := km$cluster]
+e_grp <- merge(env, pos[, .(pop, pop_group)], by = "pop")
+ss <- summary(stats::aov(env ~ factor(pop_group), data = e_grp))[[1]]
+env_icc <- ss[1, "Sum Sq"] / sum(ss[, "Sum Sq"])
+say("    ICC (between-group / total env variance) = %.4f\n", env_icc)
 
 summary_row <- data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV,
   n_qtn_total = n_qtn_total, n_qtn_detectable = n_qtn_detectable,
   Va_total = va_total, Va_detectable = va_detectable,
-  Fst = fst$MeanFst, local_adapt_r2 = local_adapt_r2)
+  Fst = fst$MeanFst, local_adapt_r2 = local_adapt_r2, env_icc = env_icc)
 
 OUT <- file.path(stage_dir(STAGE), sprintf("popgen_%s_rep%d_%s_env%d.rds", TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
 dir.create(stage_dir(STAGE), recursive = TRUE, showWarnings = FALSE)

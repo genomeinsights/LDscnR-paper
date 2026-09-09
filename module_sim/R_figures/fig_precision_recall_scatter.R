@@ -35,8 +35,14 @@ say("[0] %d (tag,cell,arm) panels, cells restricted to high dispersal: %s\n",
 ## colors"): emmax_snp/lfmm_snp score every significant marker as its own
 ## region (singletons INCLUDED); emmax_snp_clustered/lfmm_snp_clustered only
 ## count a marker inside a real >=2-marker Stage-1 unit (singletons EXCLUDED,
-## the pre-fix behaviour kept as a comparator -- R/04_score.R). Colours pair
-## by hue: saturated = included, pastel = excluded.
+## the pre-fix behaviour kept as a comparator -- R/04_score.R).
+##
+## [!] RESTYLED 2026-09-08 (PK): emmax_snp/lfmm_snp now share their engine's
+## main-analysis colour (Simes -- the closer methodological match), for
+## consistency with the other figures in the series -- no line geom here
+## (this is a scatter, and the audit already removed the method-joining
+## line, see the FIXED note above) so there is no dashed/solid distinction
+## to make; only the colour harmonises.
 ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes",
                 "emmax_snp", "emmax_snp_clustered", "lfmm_snp", "lfmm_snp_clustered")
 ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes", lfmm_simes = "LFMM Simes",
@@ -45,8 +51,8 @@ ARM_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes"
                 lfmm_snp = "LFMM single-SNP (incl. singletons)",
                 lfmm_snp_clustered = "LFMM single-SNP (excl. singletons)")
 ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A", lfmm_simes = "#7B1FA2",
-                 emmax_snp = "#F9A825", emmax_snp_clustered = "#FFCC80",
-                 lfmm_snp = "#C0392B", lfmm_snp_clustered = "#EF9A9A")
+                 emmax_snp = "#26A69A", emmax_snp_clustered = "#FFCC80",
+                 lfmm_snp = "#7B1FA2", lfmm_snp_clustered = "#EF9A9A")
 
 med <- pr[, .(Precision = median(Precision), Recall = median(Recall)), by = .(tag, arm)]
 ## [!] FIXED 2026-09-06: was length(HIGH_DISP_CELLS) -- the TARGET count (3),

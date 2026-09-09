@@ -63,7 +63,11 @@ PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENV
                ## [!] bumped again 2026-09-06: added the neutral-chromosome
                ## (Chr2) FP analysis (PK: "analyse the neutral chromosomes
                ## separately, only FPs of course").
-               neutral_chr_fp = TRUE)
+               neutral_chr_fp = TRUE,
+               ## [!] bumped again 2026-09-08: neutral-chromosome by-size
+               ## zero-fill no longer offers size_bin "1" to arms that can
+               ## never structurally produce it.
+               neutral_chr_size1_fix = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -247,7 +251,26 @@ fp_neutral <- per_env_neutral[, .(n_envs = .N, total_FP = sum(FP), mean_FP = mea
 setorder(fp_neutral, tag, cell, arm)
 
 ## by cluster size, pooled across cells (same fixed bins as fp_by_size above)
-all_envs_arms_size <- CJ(tag = TAGS_ALL, env = seq_len(ENVS_N), arm = ALL_ARMS, size_bin = SIZE_LABELS)
+##
+## [!] FIXED 2026-09-08 (PK: "stage-1 cluster size 1 still looks like 0" for
+## the cluster-based/clustered-SNP arms -- "either count the single SNP
+## clusters there or remove it"). Zero-filling EVERY (arm,size_bin)
+## combination -- as before -- put a literal 0 at size_bin "1" for
+## emmax_consensus/emmax_simes/lfmm_simes/emmax_snp_clustered/
+## lfmm_snp_clustered too, even though none of them can EVER score a size-1
+## region (SIZE_FLOOR=2 excludes a genuine Stage-1 singleton from `units`
+## before scoring even starts) -- a real "0 FP measured" and a structural
+## "this was never possible" both rendered as the same flat zero, which
+## reads as "tested and found none" instead of "never tested." Only
+## emmax_snp/lfmm_snp can legitimately produce size_bin "1" (their n_loci is
+## the marker's true Stage-1 cluster size, R/04_score.R) -- the cross-join
+## below only offers "1" to those two, so a floor>=2 arm has no row there at
+## all rather than a misleading zero.
+SIZE1_CAPABLE_ARMS <- c("emmax_snp", "lfmm_snp")
+all_envs_arms_size <- rbindlist(list(
+  CJ(tag = TAGS_ALL, env = seq_len(ENVS_N), arm = intersect(ALL_ARMS, SIZE1_CAPABLE_ARMS), size_bin = SIZE_LABELS),
+  CJ(tag = TAGS_ALL, env = seq_len(ENVS_N), arm = setdiff(ALL_ARMS, SIZE1_CAPABLE_ARMS), size_bin = setdiff(SIZE_LABELS, "1"))
+))
 per_env_neutral_size <- neutral_detail[, .(FP = sum(is_FP)), by = .(tag, env, arm, size_bin)]
 per_env_neutral_size <- merge(all_envs_arms_size, per_env_neutral_size,
                               by = c("tag", "env", "arm", "size_bin"), all.x = TRUE)

@@ -49,7 +49,9 @@ if (any(!files$exists)) {
 }
 
 INPUTS <- files[exists == TRUE, path]
-PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENVS_N, bgs_effect = TRUE)
+PARAMS <- list(cells = CELLS_ALL, tags = TAGS_ALL, reps_n = REPS_N, envs_n = ENVS_N, bgs_effect = TRUE,
+               ## [!] bumped 2026-09-08: env_icc added to METRICS -- forces a rerun.
+               env_icc = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -58,7 +60,13 @@ say("\n[1] reading %d popgen summaries\n", length(INPUTS))
 all_summary <- rbindlist(lapply(INPUTS, readRDS))
 
 .se <- function(x) { x <- x[!is.na(x)]; if (length(x) > 1) sd(x) / sqrt(length(x)) else NA_real_ }
-METRICS <- c("n_qtn_total", "n_qtn_detectable", "Va_total", "Va_detectable", "Fst", "local_adapt_r2")
+## env_icc ADDED 2026-09-08 (PK: "numbers on this along with the Fst and
+## Va's") -- pools like any other metric here, but is NOT added to the
+## bgs_effect log2 comparison below: it's a property of population
+## positions and env values alone, neither of which differs by tag, so
+## bgs/nobgs at the same (cell,rep,env) should read near-identical by
+## construction, not a comparison worth a log2-effect column.
+METRICS <- c("n_qtn_total", "n_qtn_detectable", "Va_total", "Va_detectable", "Fst", "local_adapt_r2", "env_icc")
 
 say("[2] per-env mean, over REP within each (tag, cell, env) -- 10 reps each\n")
 per_env <- all_summary[, {

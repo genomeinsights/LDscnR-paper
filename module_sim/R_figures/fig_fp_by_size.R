@@ -23,25 +23,34 @@ SIZE_LABELS <- c("1", "2", "3", "4-5", "6-10", "11-20", "21-50", "50+")
 ## count a marker inside a real >=2-marker Stage-1 unit) -- see R/04_score.R.
 ## Their n_loci is always >= SIZE_FLOOR, same as the three cluster-based
 ## arms; only emmax_snp/lfmm_snp (singletons included) ever populate the "1"
-## bin. Colours pair by hue: saturated = included, pastel = excluded.
+## bin.
+##
+## [!] RESTYLED 2026-09-08 (PK): emmax_snp/lfmm_snp now share their engine's
+## main-analysis colour (Simes -- the closer methodological match) and are
+## drawn DASHED rather than a distinct hue. emmax_snp_clustered/
+## lfmm_snp_clustered keep their own pastel colour, solid, unchanged.
 ARM_LEVELS <- c("emmax_consensus", "emmax_simes", "lfmm_simes",
                 "emmax_snp", "emmax_snp_clustered", "lfmm_snp", "lfmm_snp_clustered")
 ARM_COLOURS <- c(emmax_consensus = "#1565C0", emmax_simes = "#26A69A", lfmm_simes = "#7B1FA2",
-                 emmax_snp = "#F9A825", emmax_snp_clustered = "#FFCC80",
-                 lfmm_snp = "#C0392B", lfmm_snp_clustered = "#EF9A9A")
+                 emmax_snp = "#26A69A", emmax_snp_clustered = "#FFCC80",
+                 lfmm_snp = "#7B1FA2", lfmm_snp_clustered = "#EF9A9A")
+ARM_LINETYPES <- c(emmax_consensus = "solid", emmax_simes = "solid", lfmm_simes = "solid",
+                   emmax_snp = "dashed", emmax_snp_clustered = "solid",
+                   lfmm_snp = "dashed", lfmm_snp_clustered = "solid")
 fp[, size_bin := factor(size_bin, levels = SIZE_LABELS)]
 fp[, arm := factor(arm, levels = ARM_LEVELS)]
 fp[, tag := factor(tag, levels = c("nobgs", "bgs"))]
 
 say("[1] %d (tag,arm,size_bin) points, n_sig range %d-%d\n", nrow(fp), min(fp$n_sig), max(fp$n_sig))
 
-p <- ggplot(fp, aes(size_bin, FP_proportion, colour = arm, group = arm)) +
+p <- ggplot(fp, aes(size_bin, FP_proportion, colour = arm, linetype = arm, group = arm)) +
   geom_line(alpha = 0.5, linewidth = 0.4, position = position_dodge(width = 0.4)) +
   geom_pointrange(aes(ymin = pmax(0, FP_proportion - FP_proportion_SE),
                      ymax = pmin(1, FP_proportion + FP_proportion_SE)),
                   position = position_dodge(width = 0.4), size = 0.3) +
   facet_wrap(~tag, nrow = 1) +
   scale_colour_manual(values = ARM_COLOURS, name = "method") +
+  scale_linetype_manual(values = ARM_LINETYPES, name = "method") +
   scale_y_continuous(limits = c(0, 1)) +
   labs(x = "stage-1 cluster size (n markers)", y = "FP proportion among significant clusters",
       title = "False-positive proportion falls with cluster size",
