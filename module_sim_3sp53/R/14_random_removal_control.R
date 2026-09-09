@@ -6,7 +6,8 @@
 ## fig_structured_null_sizesweep relative to that?"
 ##
 ## A matched-cardinality random-subset control for the `group`-null,
-## emmax_consensus arm. At each SIZE_FLOOR_GRID floor f: instead of
+## emmax_consensus OR emmax_simes arm (pass "simes" as the 3rd arg -- see
+## the 2026-09-09 update below). At each SIZE_FLOOR_GRID floor f: instead of
 ## restricting the candidate pool to Stage-1 units with n_markers>=f (what
 ## R/12 does), draw N_RANDOM random subsets of THE SAME CARDINALITY from
 ## the full candidate pool, ignoring size, and compute realised_fdr the
@@ -42,29 +43,44 @@
 ## dosage-specific noise/power effect (see ld_unit_matrix.R's own
 ## docstring: bigger units are a better-estimated, lower-noise summary
 ## variable -- more power for BOTH real signal and residual structure).
-## Not yet run: mvn/spatial schemes, emmax_simes arm -- Simes is the more
-## interesting one to check, since it IS a genuine multiple-comparisons
-## combination across a unit's markers (unlike consensus_dosage's single
-## averaged variable), so the proposed mechanism predicts it could differ.
+## [!] UPDATED 2026-09-09 -- PK: "run it on emmax_simes too." Added a 3rd
+## arg (default "consensus"). For "simes": per-marker EMMAX on GTs
+## directly (not the unit matrix), unit p-values via `.simes()`'s min(n*
+## p_(i)/i) over each unit's member markers -- EXACTLY R/12's EMMAX-Simes
+## section (Pm/pm_obs/statistic="simes"), a genuine multiple-comparisons
+## combination across a unit's markers, unlike consensus_dosage's single
+## averaged variable. N_PERM drops to 100 for simes, matching R/12's own
+## N_PERM_SIMES (vs N_PERM_CONSENSUS=200) -- Simes is markedly slower
+## per-draw (per-marker EMMAX + a .simes() pass per unit vs. one EMMAX
+## call on the small unit matrix), so this keeps wall-time comparable.
+## Output/pooling: consensus keeps the original rrc_<tag>_<cell>.rds name
+## (no `arm` column in those older rows -- add one when pooling, it's
+## implicitly "emmax_consensus"); simes writes rrc_<tag>_<cell>_simes.rds
+## and DOES carry an explicit `arm` column.
 ##
-## Usage: Rscript R/14_random_removal_control.R <tag> <cell>
-## Writes out/14_random_removal_control/rrc_<tag>_<cell>.rds. Pool all
-## per-cell files into results/random_removal_control_summary.rds with
+## Usage: Rscript R/14_random_removal_control.R <tag> <cell> [consensus|simes]
+## Writes out/14_random_removal_control/rrc_<tag>_<cell>[_simes].rds. Pool
+## all per-cell files into results/random_removal_control_summary.rds with
 ## rbindlist(lapply(Sys.glob("out/14_random_removal_control/rrc_*.rds"),
 ## readRDS), fill=TRUE) + saveRDS -- fill=TRUE matters, an early batch of
-## files was written with 2 extra now-dropped intermediate columns.
+## consensus files was written with 2 extra now-dropped intermediate
+## columns, and simes files carry the extra `arm` column consensus ones
+## don't.
 suppressMessages({library(data.table); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 TAG <- args[1]; CELL <- args[2]
-if (is.na(TAG) || is.na(CELL)) stop("Usage: Rscript R/14_random_removal_control.R <tag> <cell>")
+ARM <- if (length(args) >= 3 && !is.na(args[3])) args[3] else "consensus"
+if (is.na(TAG) || is.na(CELL)) stop("Usage: Rscript R/14_random_removal_control.R <tag> <cell> [consensus|simes]")
+if (!ARM %in% c("consensus", "simes")) stop("3rd arg must be \"consensus\" or \"simes\", got: ", ARM)
 SIZE_FLOOR <- 2L; ALPHA <- 0.05
 SIZE_FLOOR_GRID <- c(2, 3, 5, 10, 20, 50)
-N_PERM <- 200L      ## matches R/12's N_PERM_CONSENSUS
+N_PERM <- if (ARM == "consensus") 200L else 100L  ## matches R/12's N_PERM_CONSENSUS / N_PERM_SIMES
 N_RANDOM <- 100L    ## random subsets drawn per (combo, floor); vectorised rowSums makes this cheap
+STATISTIC <- if (ARM == "consensus") "unit" else "simes"
 
-say("=== R/14_random_removal_control: %s/%s, group null, emmax_consensus ===\n\n", TAG, CELL)
+say("=== R/14_random_removal_control: %s/%s, group null, emmax_%s ===\n\n", TAG, CELL, ARM)
 
 all_rows <- list()
 for (REP in 1:10) for (ENVN in 1:10) {
@@ -84,16 +100,21 @@ for (REP in 1:10) for (ENVN in 1:10) {
   units_base <- LDscnR:::.ld_outlier_units(stage1, map, SIZE_FLOOR)
   N_UNITS <- nrow(units_base)
 
-  um <- ld_unit_matrix(GTs, stage1, map, size_floor = SIZE_FLOOR, repr = "consensus")
-  Pu <- emmax_setup(um, GRM)
-  pu_obs <- emmax_fast(Pu, y)
-  obs_units <- LDscnR:::.ld_outlier_tested_units(stage1, map, pu_obs, "unit", SIZE_FLOOR, ALPHA, units = units_base)
+  if (ARM == "consensus") {
+    um <- ld_unit_matrix(GTs, stage1, map, size_floor = SIZE_FLOOR, repr = "consensus")
+    Pu <- emmax_setup(um, GRM)
+    p_obs <- emmax_fast(Pu, y)
+  } else {
+    Pu <- emmax_setup(GTs, GRM)
+    p_obs <- emmax_fast(Pu, y)
+  }
+  obs_units <- LDscnR:::.ld_outlier_tested_units(stage1, map, p_obs, STATISTIC, SIZE_FLOOR, ALPHA, units = units_base)
 
   sig_matrix <- matrix(FALSE, nrow = N_PERM, ncol = N_UNITS)
   for (b in seq_len(N_PERM)) {
     set.seed(b)
     p_perm <- emmax_fast(Pu, perm_group())
-    u <- LDscnR:::.ld_outlier_tested_units(stage1, map, p_perm, "unit", SIZE_FLOOR, ALPHA, units = units_base)
+    u <- LDscnR:::.ld_outlier_tested_units(stage1, map, p_perm, STATISTIC, SIZE_FLOOR, ALPHA, units = units_base)
     sig_matrix[b, ] <- u$significant
   }
 
@@ -112,7 +133,7 @@ for (REP in 1:10) for (ENVN in 1:10) {
     }))
 
     all_rows[[length(all_rows) + 1]] <- data.table(
-      tag = TAG, cell = CELL, rep = REP, env = ENVN, size_floor = f, pool_m = m,
+      tag = TAG, cell = CELL, arm = sprintf("emmax_%s", ARM), rep = REP, env = ENVN, size_floor = f, pool_m = m,
       n_obs_size = n_obs_size, n_surr_size = n_surr_size,
       n_random_draws_pos = sum(rnd$n_obs_r > 0),
       frac_random_draws_pos = mean(rnd$n_obs_r > 0),
@@ -132,6 +153,7 @@ print(out[n_obs_size > 0, .(n_combo = .N, mean_n_obs_size = mean(n_obs_size), me
 
 OUT_DIR <- file.path(PATHS$out, "14_random_removal_control")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
-OUT <- file.path(OUT_DIR, sprintf("rrc_%s_%s.rds", TAG, CELL))
+OUT <- file.path(OUT_DIR, if (ARM == "consensus") sprintf("rrc_%s_%s.rds", TAG, CELL)
+                          else sprintf("rrc_%s_%s_simes.rds", TAG, CELL))
 saveRDS(out, OUT)
 say("\nwrote %s (%d rows)\n", OUT, nrow(out))

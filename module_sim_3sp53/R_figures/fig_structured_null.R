@@ -13,9 +13,18 @@
 ## the number of genuine-discovery combos behind each mean (out of 200
 ## per cell x tag x scheme) so a thin/underpowered estimate is visible,
 ## not hidden.
+##
+## [!] SE errorbars added 2026-09-09 (PK: "add SE's if possible") --
+## computed from a SINGLE-LEVEL aggregation straight to (tag,cell,scheme)
+## pooling across BOTH arms and all (rep,env) combos at once (400 rows
+## before the n_obs>0 filter), rather than the previous two-stage "mean
+## of two arm-level means" -- simpler, and a well-defined n/SE needs one
+## aggregation level, not two nested means.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_structured_null ===\n\n")
+
+.se <- function(x) { x <- x[is.finite(x)]; if (length(x) < 2) return(NA_real_); stats::sd(x) / sqrt(length(x)) }
 
 SN_PATH <- file.path(PATHS$module, "results", "structured_null_summary.rds")
 if (!file.exists(SN_PATH)) stop("R/13_structnull_pool.R has not produced: ", SN_PATH)
@@ -27,11 +36,9 @@ SCHEME_LEVELS <- c("mvn", "group", "spatial")
 SCHEME_LABELS <- c(mvn = "mvn (negative control)", group = "group (5-population)", spatial = "spatial (individual)")
 SCHEME_COLOURS <- c(mvn = "#546E7A", group = "#1565C0", spatial = "#C62828")
 
-agg <- sw[, .(realised_fdr = mean(realised_fdr[n_obs > 0], na.rm = TRUE),
+agg <- sw[, .(realised_fdr = mean(realised_fdr[n_obs > 0], na.rm = TRUE), se = .se(realised_fdr[n_obs > 0]),
               n_pos = sum(n_obs > 0), n_total = .N),
-          by = .(tag, cell, arm, scheme)]
-agg <- agg[, .(realised_fdr = mean(realised_fdr, na.rm = TRUE), n_pos = sum(n_pos), n_total = sum(n_total)),
-           by = .(tag, cell, scheme)]  ## average the two arms together for one point per cell x scheme
+          by = .(tag, cell, scheme)]  ## pools both arms + all rep x env combos directly
 agg[, cell := factor(cell, levels = CELL_LEVELS)]
 agg[, scheme := factor(scheme, levels = SCHEME_LEVELS)]
 agg[, tag := factor(tag, levels = c("nobgs", "bgs"))]
@@ -41,14 +48,16 @@ say("[1] %d (tag,cell,scheme) points, n_pos range %d-%d of %d combos each\n",
 
 p <- ggplot(agg, aes(cell, realised_fdr, colour = scheme)) +
   geom_hline(yintercept = 1, linetype = "dashed", colour = "grey60", linewidth = 0.3) +
+  geom_errorbar(aes(ymin = realised_fdr - se, ymax = realised_fdr + se),
+               width = 0.2, position = position_dodge(width = 0.5), alpha = 0.6) +
   geom_point(aes(size = n_pos), position = position_dodge(width = 0.5), alpha = 0.85) +
   facet_grid(scheme ~ tag, scales = "free_y",
              labeller = labeller(scheme = SCHEME_LABELS)) +
   scale_colour_manual(values = SCHEME_COLOURS, guide = "none") +
-  scale_size_continuous(name = "genuine-discovery\ncombos (of 200)", range = c(1, 5)) +
-  labs(x = NULL, y = "realised FDR  (mean surrogate significant units / observed, n_obs>0 only)",
+  scale_size_continuous(name = "genuine-discovery\ncombos (of 400)", range = c(1, 5)) +
+  labs(x = NULL, y = "realised FDR (mean +/- SE, surrogate sig. units / observed, n_obs>0 only)",
        title = "Structured-null calibration check, full 1400-combo grid",
-       subtitle = "group is conservative as predicted by env ICC; mvn negative control holds; spatial reveals a dispersal-dependent\nisolation-by-distance confound. Point size = how many of 200 replicate combos had a genuine observed discovery (base floor).") +
+       subtitle = "group is conservative as predicted by env ICC; mvn negative control holds; spatial reveals a dispersal-dependent\nisolation-by-distance confound. Point size = how many of 400 (both arms x 200 rep-env) combos had a discovery.") +
   theme_bw(11) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
         axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "right")

@@ -14,23 +14,31 @@
 ## n_obs=0 and the ratio stops being an FDR estimate (36.5% of combos at
 ## floor=2, 95.2% at floor=50). The gap between the two lines below IS
 ## that artefact, drawn explicitly rather than left implicit.
+##
+## [!] SE ribbons added 2026-09-09 (PK: "add SE's if possible") -- sd/
+## sqrt(n) across the (tag,cell,rep,env,arm) combos contributing to each
+## mean; n shrinks fast with floor (2800 -> 134 for "corrected"), which
+## the ribbon should make visible on its own even without the printed
+## n-labels.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_structured_null_sizesweep ===\n\n")
+
+.se <- function(x) { x <- x[is.finite(x)]; if (length(x) < 2) return(NA_real_); stats::sd(x) / sqrt(length(x)) }
 
 SN_PATH <- file.path(PATHS$module, "results", "structured_null_summary.rds")
 if (!file.exists(SN_PATH)) stop("R/13_structnull_pool.R has not produced: ", SN_PATH)
 d <- readRDS(SN_PATH)
 sw <- d$size_sweep[scheme == "group"]
 
-naive <- sw[, .(realised_fdr = mean(realised_fdr, na.rm = TRUE), variant = "naive (pooled, all combos)"),
-            by = size_floor]
-corrected <- sw[, .(realised_fdr = mean(realised_fdr[n_obs > 0], na.rm = TRUE),
+naive <- sw[, .(realised_fdr = mean(realised_fdr, na.rm = TRUE), se = .se(realised_fdr),
+                variant = "naive (pooled, all combos)"), by = size_floor]
+corrected <- sw[, .(realised_fdr = mean(realised_fdr[n_obs > 0], na.rm = TRUE), se = .se(realised_fdr[n_obs > 0]),
                      n = sum(n_obs > 0), frac_pos = mean(n_obs > 0),
                      variant = "corrected (n_obs>0 only)"), by = size_floor]
 say("[1] naive vs corrected at each floor:\n")
-print(merge(naive[, .(size_floor, naive_fdr = realised_fdr)],
-            corrected[, .(size_floor, corrected_fdr = realised_fdr, frac_pos)], by = "size_floor"))
+print(merge(naive[, .(size_floor, naive_fdr = realised_fdr, naive_se = se)],
+            corrected[, .(size_floor, corrected_fdr = realised_fdr, corrected_se = se, frac_pos)], by = "size_floor"))
 
 both <- rbindlist(list(naive, corrected), fill = TRUE)
 both[, variant := factor(variant, levels = c("naive (pooled, all combos)", "corrected (n_obs>0 only)"))]
@@ -38,6 +46,7 @@ both[, variant := factor(variant, levels = c("naive (pooled, all combos)", "corr
 lab <- corrected[, .(size_floor, y = realised_fdr, lab = sprintf("n=%d\n(%.0f%%)", n, 100 * frac_pos))]
 
 p <- ggplot(both, aes(size_floor, realised_fdr, linetype = variant)) +
+  geom_ribbon(aes(ymin = realised_fdr - se, ymax = realised_fdr + se), alpha = 0.15, colour = NA, fill = "#1565C0") +
   geom_line(colour = "#1565C0", linewidth = 0.7) +
   geom_point(colour = "#1565C0", size = 2) +
   geom_text(data = lab, aes(size_floor, y, label = lab), inherit.aes = FALSE,
@@ -46,7 +55,7 @@ p <- ggplot(both, aes(size_floor, realised_fdr, linetype = variant)) +
   scale_linetype_manual(values = c("naive (pooled, all combos)" = "dashed",
                                     "corrected (n_obs>0 only)" = "solid"), name = NULL) +
   expand_limits(y = 0.9) +
-  labs(x = "minimum stage-1 unit size (markers)", y = "group-null realised FDR",
+  labs(x = "minimum stage-1 unit size (markers)", y = "group-null realised FDR (mean +/- SE)",
        title = "Minimum-cluster-size sweep: naive vs. n_obs-corrected",
        subtitle = "dashed = original pooled mean (mean_surrogate/max(n_obs,1) over ALL 2800 combos) -- collapses toward 0\nsimply because most combos stop having any real discovery at large floors, not because big clusters are cleaner.\nsolid = restricted to combos with a genuine discovery at that floor; labels show n (of 2800) and the surviving fraction.") +
   theme_bw(11) +
