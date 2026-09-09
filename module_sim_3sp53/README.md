@@ -69,52 +69,73 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
   summary rows (1400 combos x 2 arms x 3 schemes) and 50400 sweep rows
   (x7 size floors) in `results/structured_null_summary.rds`.
 
-  **`group`**: mean `realised_fdr` 0.70 (median 0.49) at the base floor,
-  cell means ranging 0.50 (`V2_c1`) - 0.80 (`V0.5_c1`) -- confirms the
-  conservative-per-ICC prediction, now on 400 replicate combos per cell
-  instead of 1.
+  **[!] CORRECTED 2026-09-09** -- PK: "are you accounting for the fact
+  that the number of false positives also drop by randomly removing
+  clusters from the outlier list?" No, not adequately, and it materially
+  changed two conclusions below. `realised_fdr = mean_surrogate /
+  max(n_obs, 1)` uses `max(n_obs,1)` to avoid dividing by zero when the
+  OBSERVED test finds no significant unit at all at some size floor. But
+  the eligible pool of Stage-1 units genome-wide collapses fast with floor
+  (mean ~2990 units at floor=2 down to ~2 at floor=50, some cells at 0 by
+  floor=50, checked directly against `.ld_outlier_units()`'s own candidate
+  table), so more and more combos hit `n_obs=0` as floor rises -- 36.5% at
+  floor=2, **95.2% at floor=50**. For those combos `realised_fdr` isn't
+  measuring an FDR at all; it collapses to the raw rate at which pure
+  permutation noise clears an ever-emptying pool, which mechanically
+  trends toward 0 regardless of whether real discoveries are more
+  trustworthy at large sizes. All numbers below are now reported
+  **conditional on `n_obs>0`** (the only combos where the ratio is a
+  genuine FDR estimate) -- the pre-correction pooled numbers are kept
+  alongside, in parentheses, to show how much they were inflated.
 
-  **`mvn` negative control**: holds cleanly at full scale -- mean 0.035
-  (median 0.03), range 0-0.17 across all 2800 (tag x arm x combo) draws.
-  The method itself is not a source of miscalibration anywhere in the grid.
+  **`group`**: mean `realised_fdr` 0.79 (was 0.70 pooled) at the base
+  floor. By cell: 0.66-0.95, `V0.5_c1` highest, `V2_c1` lowest -- same
+  ICC-conservatism conclusion as before, just a higher and more honest
+  number.
 
-  **`spatial`**: a genuinely new finding only visible at full-grid scale
-  (the 14-combo sample had n=1 per cell, too noisy to trust) -- a sharp,
-  dispersal-dependent split. `realised_fdr` stays low, same order as the
-  `mvn` negative control, in every high-dispersal (c1) cell: `V0.5_c1`
-  0.40, `V1_c1` 0.26, `V2_c1` 0.24. It explodes in every medium/low-
-  dispersal (c1.5/c2) cell: 6.8-13.5. At low dispersal, pure spatial
-  autocorrelation over individual coordinates -- no genotype, no genetic
-  signal at all -- alone generates *more* "significant" surrogate hits
-  than the real observed data contains. Independent of the group-ICC
-  argument (which only speaks to the 5 coarse spatial bins), this shows
-  isolation-by-distance itself, at fine spatial scale, is the dominant
-  false-positive driver at low dispersal, not just coarse population
-  membership.
+  **`mvn` negative control**: unaffected in substance -- 0.025 corrected
+  vs 0.035 pooled, still low and stable. The method itself is not a
+  source of miscalibration.
 
-  **Minimum-cluster-size sweep** (floors 2/3/5/10/20/50), now on 2800
-  (tag x cell x rep x env x arm) trajectories instead of 13:
-  `group`-null `realised_fdr` falls monotonically with floor in the
-  pooled mean (0.70 at floor=2 -> 0.03 at floor=50) and strictly
-  monotonically within 65% of individual trajectories (1826/2800) --
-  same conclusion as the sample run, now on 200x the data: larger
-  clusters are more trustworthy. Converges with the ground-truth-based
-  `fig_fp_by_size` finding on the same conclusion via an independent,
-  truth-free route, and the largest surviving clusters remain reasonable
-  candidates pending independent evidence (GO enrichment, known genes)
-  even where they don't clear a strict permutation FDR at the base floor.
+  **`spatial`**: the dispersal-dependent gradient **survives** the
+  correction, at somewhat smaller magnitude -- low in every high-
+  dispersal (c1) cell (`V0.5_c1` 0.30, `V1_c1` 0.22, `V2_c1` 0.19, all
+  comparable to `mvn`), 5.2-8.8 in every medium/low-dispersal (c1.5/c2)
+  cell (was 6.8-13.5 pooled). Isolation-by-distance alone still outbids
+  the real observed discoveries at low dispersal even correcting for pool
+  shrinkage.
 
-  The `nobgs`/`V1_c1` elevation flagged as an unexplained exception in the
-  14-combo sample (0.625-1.05 even at floor=50) is **resolved**, not
-  confirmed, by the full grid: averaged over its 200 replicate combos (10
-  reps x 10 envs x 2 arms), `realised_fdr` at floor=50 is 0.082, in line
-  with every other cell/tag. The earlier number was noise from a single
-  rep1/env1 draw, not a persistent property of that cell.
+  **Minimum-cluster-size sweep**, corrected -- restricted at each floor to
+  combos with a genuine discovery there (n=1777 at floor=2, falling to
+  n=134 at floor=50, since that's also how fast real discoveries become
+  rare, independent of the ratio issue): `group`-null `realised_fdr`
+  declines from 0.79 (floor=2) to 0.52 (floor=10) and then **plateaus**
+  around 0.52-0.57 through floor=50 -- a real, modest effect, NOT the
+  "falls to ~0" collapse originally reported (that was floor 20-50 being
+  95%+ dominated by zero-discovery combos). Monotone in 41.7% of
+  individual trajectories (676/1622 with >=2 floors to compare), not 65%.
+  Still directionally consistent with `fig_fp_by_size`'s ground-truth
+  finding (bigger clusters somewhat more trustworthy), but a much weaker
+  claim than "the null never produces one by floor=20-50" -- don't cite
+  this as strong evidence on its own; the ground-truth figure remains the
+  stronger leg of this argument.
 
-  No meaningful `tag` effect on `group`-null calibration (`bgs` 0.69 vs
-  `nobgs` 0.71) or `arm` effect (`emmax_consensus` 0.68 vs `emmax_simes`
-  0.72) -- expected, since these nulls calibrate the association-test
-  procedure itself, not something BGS status or arm choice should move.
+  **The `nobgs`/`V1_c1` anomaly was NOT resolved -- it was CONFIRMED, and
+  the earlier "resolved" claim was itself an artefact of the same
+  `max(n_obs,1)` problem.** Of its 200 replicate combos, only 16 ever
+  reach floor=50 with a genuine discovery; restricted to those, mean
+  `realised_fdr` = **0.937** -- the single worst cell x tag combination in
+  the entire 1400-combo grid at that floor, not "in line with everything
+  else." At every floor its corrected `realised_fdr` stays elevated
+  (0.75-0.94), never declining the way most other cells do (contrast
+  `bgs`/`V0.5_c2`, a comparably-powered cell, which runs 0.39-0.59 over
+  the same range). Genuinely anomalous, still unexplained, still not
+  investigated further -- carried forward again, this time with the right
+  number.
+
+  No meaningful `tag` effect on corrected `group`-null calibration (`bgs`
+  0.78 vs `nobgs` 0.80) or `arm` effect (`emmax_consensus` 0.75 vs
+  `emmax_simes` 0.83) -- both conclusions hold up under the correction.
 
 ## Not yet done
 
@@ -124,3 +145,14 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
   been cross-checked against an independent ground-truth signal the way
   the size-floor sweep was -- worth a look if it ends up load-bearing for
   the manuscript's low-dispersal discussion.
+- `nobgs`/`V1_c1`'s calibration anomaly (confirmed, not resolved -- see
+  the 2026-09-09 correction above) is still unexplained. Worth checking
+  whether it's specific to that one cell's demography or a more general
+  pattern once other cells get similarly scrutinised.
+- Any future size-floor (or similarly conditioned) analysis on this data
+  MUST report `realised_fdr` conditional on `n_obs>0` (or at minimum
+  alongside the `n_obs>0` fraction) -- the `max(n_obs,1)` convention in
+  `R/12_structured_null.R` silently makes the pooled ratio meaningless
+  once most combos stop producing genuine discoveries, which happens
+  faster than it looks (36.5% -> 95.2% zero-discovery across floor=2-50
+  here). This was the mistake corrected above.

@@ -189,6 +189,21 @@ units_base <- LDscnR:::.ld_outlier_units(stage1, map, SIZE_FLOOR)
     u$n_markers[u$significant]
   })
 }
+## [!] CAVEAT (added 2026-09-09, PK: "are you accounting for the fact
+## that the number of false positives also drop by randomly removing
+## clusters from the outlier list?") -- max(n_obs, 1) avoids a divide-by-
+## zero when the OBSERVED test has no significant unit at some floor, but
+## the eligible Stage-1-unit pool shrinks fast with floor (genome-wide,
+## checked directly: ~2990 units at floor=2 down to ~2 at floor=50), so
+## n_obs=0 becomes the MAJORITY case at large floors (36.5% of combos at
+## floor=2, 95.2% at floor=50 in the full 3sp53 grid). For those rows
+## realised_fdr is NOT an FDR estimate -- it's just mean_surrogate, the
+## rate pure noise clears an emptying pool. n_obs is kept in the output
+## specifically so downstream pooling can (and MUST) condition on
+## n_obs>0 rather than trust the pooled mean at face value -- see
+## module_sim_3sp53/README.md's 2026-09-09 correction for what this
+## changed (group null 0.70->0.79 at floor=2, plateaus at ~0.52 not ~0 by
+## floor=50; the nobgs/V1_c1 "resolved" claim was itself this same bug).
 .fdr_by_floor <- function(obs_units, surr_sizes, scheme, arm) {
   obs_sizes <- obs_units$n_markers[obs_units$significant]
   rbindlist(lapply(SIZE_FLOOR_GRID, function(f) {
