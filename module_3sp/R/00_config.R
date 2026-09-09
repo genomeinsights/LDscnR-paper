@@ -111,9 +111,10 @@ RHO_GRID <- c(seq(0.05, 0.95, by = 0.05), 0.99)   # ld_w columns computed in pla
 MAF_KEEP <- 0.1                   # markers with maf > MAF_KEEP are retained
 
 ## LFMM. THE PIPELINE DOES NOT COMPUTE THIS AND CANNOT. regen_3sp_data.R reads
-## lfmm_F.rds -- F-values over the full pre-MAF map, dated Sep 2025 -- and no script in
-## any repository produces it. So the LFMM engine is INHERITED, and a "from scratch"
-## rebuild is from scratch for everything except this.
+## lfmm_F.rds -- F-values over the full pre-MAF map, dated Sep 2025 -- and no current
+## script reproduces it (the code that originally produced it is preserved, not
+## reproducible as-is, in R/legacy_source.R). So the LFMM engine is INHERITED, and a
+## "from scratch" rebuild is from scratch for everything except this.
 ##   "inherit"   use lfmm_F.rds, hash it, and say so in the receipt (the honest default)
 ##   "omit"      drop the LFMM engine entirely; EMMAX-only pipeline, fully reproducible
 ## Set to "omit" only if PK decides the second engine is not worth an unreproducible root.

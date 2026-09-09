@@ -2,8 +2,9 @@
 ## module_3sp/R/04_lfmm.R
 ##
 ## THE LFMM ARM. Simes only -- LFMM's p-values are precomputed (LFMM_SOURCE =
-## "inherit" in 00_config.R: no script in any repository computes them, they
-## come from lfmm_F.rds, dated September 2025), so the consensus test, which
+## "inherit" in 00_config.R: they come from lfmm_F.rds, dated September 2025;
+## the code that originally produced it is preserved, for provenance rather
+## than re-execution, in R/legacy_source.R), so the consensus test, which
 ## refits the association on a NEW genotype column per cluster, is not
 ## available for this engine. That asymmetry is a property of what the engine
 ## ships, not a choice between statistics, and it is stated on the figure

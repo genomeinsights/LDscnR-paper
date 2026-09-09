@@ -98,7 +98,8 @@ MAF_KEEP <- 0.1   # matches the legacy 9sp script's own filter (map_9sp$maf > 0.
 ## lfmm_F.rds here is over 9sp's own FULL pre-MAF map (verify the exact
 ## pre/post-MAF alignment in 01_inputs.R/02_bundle.R the same way module_3sp's
 ## 04_lfmm.R does -- do not assume the same row-order logic transfers without
-## checking against THIS map).
+## checking against THIS map). The code that originally produced it is
+## preserved, for provenance rather than re-execution, in R/legacy_source.R.
 LFMM_SOURCE <- "inherit"
 
 ## ---- GRM: BASIS AND ESTIMATOR --------------------------------------------------

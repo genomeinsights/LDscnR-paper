@@ -23,5 +23,8 @@ needing any other repository to exist.
 which bytes were used without carrying the bytes.
 
 `lfmm_F.rds` deserves one more line: it holds LFMM F-values over the full pre-MAF map,
-dated September 2025, and **no script in any repository produces it**. Copying it here
-makes it present; it does not make it reproducible. See `LFMM_SOURCE` in `00_config.R`.
+dated September 2025. Copying it here makes it present; it does not make it reproducible
+here, since the LFMM run itself took place in another repository's environment. The code
+that originally produced it is preserved for provenance in `R/legacy_source.R` (not
+executable in this repository as-is; see that file's header). See `LFMM_SOURCE` in
+`00_config.R`.
