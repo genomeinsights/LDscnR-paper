@@ -63,7 +63,19 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
       TRUTH_RHO_R2, TRUTH_RHO_D, TRUTH_DMAX_CAP)
   thr <- score_thresholds(b$LD_decay$decay_sum, rho_r2 = TRUTH_RHO_R2, rho_d = TRUTH_RHO_D, dmax_cap = TRUTH_DMAX_CAP)
   say("    r2min=%.4f, dmax=%.0f bp\n", thr$r2min, thr$dmax)
-  qtn_lut <- qtn_ld_table(GTs, map, candidate_markers = map$marker, cores = 1)
+  ## [!] GUARDED 2026-09-09 -- found in gate 3 (bgs/V1_c1/rep1/env1): a raw
+  ## run can save ZERO QTN loci at all (confirmed separately -- each run
+  ## saves only a small, variable subset of the reference map's 101 QTN, see
+  ## qc/offset_propagation_check.R's header). When there are no QTN on the
+  ## map, qtn_ld_table() has nothing to compute distances/r2 to and returns
+  ## a genuinely EMPTY data.table with NO COLUMNS (not just zero rows), so
+  ## qtn_lut[r2 > ...] errors ("Object 'r2' not found amongst []") instead
+  ## of just returning zero matches. Skip the call entirely in that case.
+  if (sum(map$type == "QTN") == 0L) {
+    qtn_lut <- data.table(marker = character(), qtn_marker = character(), r2 = numeric(), dist_bp = numeric())
+  } else {
+    qtn_lut <- qtn_ld_table(GTs, map, candidate_markers = map$marker, cores = 1)
+  }
   qtn_lut_match <- qtn_lut[r2 > thr$r2min & dist_bp < thr$dmax & qtn_marker %in% detectable_qtn]
   say("    %s marker-QTN pairs pass the match thresholds (of %s within max_bp)\n",
       format(nrow(qtn_lut_match), big.mark = ","), format(nrow(qtn_lut), big.mark = ","))
