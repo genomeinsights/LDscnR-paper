@@ -170,37 +170,69 @@ score_markers_tpfp <- function(rep_bundle) {
 }
 
 ## Per-marker TP/FP label at the STAGE-2 ASSEMBLED-REGION level: one whole
-## region is ONE hypothesis, so every marker physically inside it gets the
-## SAME status (truth-linked if ANY member marker links to a detectable
-## QTN). Requires build_example_genome(compute_stage2 = TRUE) (rep_bundle
-## must carry $test_em/$test_lf).
+## region is ONE hypothesis (05_score_truth.R's PRIMARY estimand as of
+## 2026-09-10), so every marker belonging to one of the region's ACTUAL
+## constituent discovered-cluster members shares that region's status --
+## NOT every marker physically inside its [Chr,from,to] bounds, which
+## could let an untested intervening marker lend truth credit to the
+## region (a real bug, fixed here and in 05_score_truth.R together:
+## CLAUDE_REANALYSIS_INSTRUCTIONS.md, "Update after inspection of the
+## Stage-2 Manhattan figures"). Reproduces 05_score_truth.R's
+## .run_stage2()/.assemble_regions_from_units() exactly (same
+## ld_prune_and_eMLG() call, same cl_sig/mk_sig/ms_sig/sub construction)
+## rather than calling the ld_outlier_test() wrapper and approximating
+## membership from its $regions bounds -- does NOT need
+## build_example_genome(compute_stage2 = TRUE).
 ##
-## This is deliberately DIFFERENT from score_units_tpfp(): a Stage-2 region
-## can merge several Stage-1 units, and scoring at the unit level can split
-## one visual "peak" into mixed TP (truth-linked unit) and FP (a merged-in
-## neighbouring unit that individually isn't) -- an artefact of Stage-1
-## granularity, not evidence the region call itself is wrong. Note this is
-## illustrative only: R/06_summarise.R's actual precision/recall are NOT
-## computed this way (CLAUDE_REANALYSIS_INSTRUCTIONS.md rejects the
-## dedup-neutral region-level metric for the primary score -- see
-## 05_score_truth.R's header). This function exists for this figure only.
+## This is deliberately DIFFERENT from score_units_tpfp(): a Stage-2
+## region can merge several Stage-1 units, and scoring at the unit level
+## can split one visual "peak" into mixed TP (truth-linked unit) and FP (a
+## merged-in neighbouring unit that individually isn't) -- an artefact of
+## Stage-1 granularity, not evidence the region call itself is wrong.
+## Returns region-level TP/FP counts (n_tp_em/n_fp_em/n_tp_lf/n_fp_lf) in
+## addition to the per-marker $em/$lf status tables used for colouring --
+## the counts are what the figure's subtitle must report prominently, not
+## coloured-marker totals (CLAUDE_REANALYSIS_INSTRUCTIONS.md: "Print TP/FP
+## region counts prominently; label coloured-marker totals separately if
+## retained").
 score_stage2_tpfp <- function(rep_bundle) {
-  stopifnot("rep_bundle needs $test_em/$test_lf -- call build_example_genome(compute_stage2 = TRUE)" =
-              !is.null(rep_bundle$test_em) && !is.null(rep_bundle$test_lf))
   tl <- .truth_linkage_for_rep(rep_bundle)
-  map <- tl$map
+  lu <- rep_bundle$lu; em <- rep_bundle$em; lf <- rep_bundle$lf
+  GTs <- lu$GTs; stage1 <- tl$stage1
 
-  .tpfp_for <- function(regions) {
-    if (nrow(regions) == 0) return(data.table(marker = character(), status = character()))
-    out <- list()
-    for (i in seq_len(nrow(regions))) {
-      hit <- map$Chr == regions$Chr[i] & map$Pos >= regions$from[i] & map$Pos <= regions$to[i]
-      region_markers <- map$marker[hit]
-      truth_linked <- any(region_markers %in% tl$qtn_lut_match$marker)
-      out[[i]] <- data.table(marker = region_markers, status = if (truth_linked) "TP" else "FP")
-    }
-    rbindlist(out)
+  .run_stage2 <- function(cl_sub) {
+    if (!nrow(cl_sub)) return(list())
+    mk_sub <- unlist(cl_sub$members, use.names = FALSE)
+    ms_sub <- as.data.table(stage1$map_snp)[marker %chin% mk_sub]
+    sub <- structure(list(map_snp = ms_sub, clusters = cl_sub, pruned = cl_sub$core_snp),
+                     class = "ld_complexity_reduction")
+    pr <- ld_prune_and_eMLG(GTs = GTs[, mk_sub, drop = FALSE], stage1 = sub,
+                            ld_w_col = "ld_w_095", ld_w_threshold = 0,
+                            LD_decay = lu$LD_decay, min_r2_rho = stage1$params$rho,
+                            score_threshold = REGION_ASSEMBLY$score_threshold,
+                            distance_threshold = REGION_ASSEMBLY$distance_threshold,
+                            compute_unflagged_eMLG = FALSE, min_n_loci_eMLG = 1,
+                            min_n_loci_flag = 1, cores = 1)
+    g <- as.data.table(pr$groups)
+    stats::setNames(g$members, as.character(seq_len(nrow(g))))
+  }
+  .region_members_for <- function(units_tbl) {
+    sig <- units_tbl[units_tbl$significant == TRUE]
+    if (!nrow(sig)) return(list())
+    cl <- as.data.table(stage1$clusters)
+    nl <- if ("n_loci" %in% names(cl)) cl$n_loci else cl$n_snps
+    .run_stage2(cl[nl >= SIZE_FLOOR][as.integer(sig$unit_id)])
+  }
+  .tpfp_for <- function(region_members) {
+    if (!length(region_members)) return(list(status = data.table(marker = character(), status = character()), n_tp = 0L, n_fp = 0L))
+    truth_linked <- vapply(region_members, function(mm) length(unique(tl$qtn_lut_match[marker %in% mm, qtn_marker])) > 0, logical(1))
+    status <- rbindlist(Map(function(mm, tlk) data.table(marker = mm, status = if (tlk) "TP" else "FP"),
+                            region_members, truth_linked))
+    list(status = status, n_tp = sum(truth_linked), n_fp = sum(!truth_linked))
   }
 
-  list(em = .tpfp_for(rep_bundle$test_em$regions), lf = .tpfp_for(rep_bundle$test_lf$regions))
+  em_out <- .tpfp_for(.region_members_for(em$emmax_simes))
+  lf_out <- .tpfp_for(.region_members_for(lf$lfmm_simes))
+  list(em = em_out$status, lf = lf_out$status,
+      n_tp_em = em_out$n_tp, n_fp_em = em_out$n_fp, n_tp_lf = lf_out$n_tp, n_fp_lf = lf_out$n_fp)
 }

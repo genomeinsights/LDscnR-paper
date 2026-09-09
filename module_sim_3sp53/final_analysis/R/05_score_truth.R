@@ -17,15 +17,33 @@
 ##  - Va_j = 2 p_j (1-p_j) a_j^2, p_j from the analysed individuals.
 ##  - Detectable QTN: MAF>0.10 AND >=5% of the chromosome's total QTN Va
 ##    (flag_true_qtns()'s own definition, called with those exact defaults).
-##  - A significant marker is truth-linked when it satisfies rho_r2=0.75/
-##    rho_d=0.95-derived (r2min, dmax) to >=1 detectable QTN.
+##
+## PRIMARY estimand (2026-09-10 update): Stage-2 ASSEMBLED REGIONS.
+##  - A reported region is TP when >=1 marker belonging to one of its
+##    constituent DISCOVERED Stage-1 clusters (not every marker physically
+##    between the region bounds) satisfies rho_r2=0.75/rho_d=0.95-derived
+##    (r2min, dmax) to >=1 detectable QTN. Otherwise FP.
+##  - When several discovered clusters merge into one region, the region
+##    counts ONCE (one TP candidate region, not one TP plus FP calls).
+##  - Region precision = TP regions / (TP regions + FP regions); region
+##    recall = unique detectable QTN recovered / all detectable QTN.
+##  - `emmax_snp_region`/`lfmm_snp_region` make the unrestricted
+##    marker-wise comparator's reported-call unit comparable to Simes/
+##    consensus's: every phenotype-blind Stage-1 cluster (including
+##    singletons) containing >=1 BH-significant marker is "discovered"
+##    and fed through the SAME Stage-2 assembly -- this changes only
+##    reporting, never marker p-values or marker-wise BH.
+##
+## DIAGNOSTIC (marker-/Stage-1-unit-level, retained to show why region
+## assembly is necessary, NOT the primary estimand):
+##  - A significant marker is truth-linked when it satisfies the same
+##    (r2min, dmax) criteria to >=1 detectable QTN.
 ##  - A significant Stage-1 unit is truth-linked when >=1 member marker is.
-##  - Precision = truth-linked significant hypotheses / all significant
-##    hypotheses (no dedup).
-##  - Recall = unique detectable QTN recovered by >=1 significant hypothesis
-##    / all detectable QTN.
-##  - Conditional recall = same numerator / detectable QTN covered by >=1
-##    ELIGIBLE Stage-1 unit (a coverage diagnostic, separate from power loss).
+##  - Diagnostic precision = truth-linked significant hypotheses / all
+##    significant hypotheses (no dedup).
+##  - Conditional recall = recovered-QTN numerator / detectable QTN covered
+##    by >=1 ELIGIBLE Stage-1 unit (a coverage diagnostic, separate from
+##    test-power loss).
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
@@ -49,7 +67,7 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   PARAMS <- list(va_share_detectable = VA_SHARE_DETECTABLE, maf_keep = MAF_KEEP,
                  truth_rho_r2 = TRUTH_RHO_R2, truth_rho_d = TRUTH_RHO_D, truth_dmax_cap = TRUTH_DMAX_CAP,
                  size_floor = SIZE_FLOOR, have_lfmm = have_lfmm,
-                 region_assembly = REGION_ASSEMBLY, region_scoring_version = 1L)
+                 region_assembly = REGION_ASSEMBLY, region_scoring_version = 2L)
   if (!force && !stage_stale(STAGE, INPUTS, PARAMS, target = combo_id)) {
     return(readRDS(file.path(stage_dir(STAGE, combo_id), "truth_scores.rds")))
   }
@@ -158,53 +176,84 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
 
   score_list <- list(res_snp, res_snp_ns, res_sim, res_con)
 
-  ## ---- Stage-2 assembled-region scoring (illustrative-turned-real, PK 2026-09-10) --
-  ## Hypothesis = one WHOLE Stage-2 region (member markers = every marker
-  ## physically inside [Chr,from,to]), not one Stage-1 unit. Fixes a real
-  ## artefact of unit-level scoring: Stage-2 can merge a truth-linked unit
-  ## with an adjacent non-linked one, so one reported region could show
-  ## mixed TP/FP at the unit level even though it is reported as ONE call.
-  ## $regions is recomputed here by re-feeding the ALREADY-SAVED p-values
-  ## (em$marker$p is pm_obs verbatim; em$emmax_consensus$p is pu_obs
-  ## verbatim for statistic="unit", where each unit IS one test, no
-  ## combination) back into ld_outlier_test() -- this re-runs ONLY Stage
-  ## 2's dynamic-cut/eMLG assembly, NOT the expensive EMMAX/LFMM
-  ## regression itself. Every region row is already a significant call by
-  ## construction (Stage 2 only assembles significant units), so ALL
-  ## region ids are "significant" hypotheses -- reuses the SAME generic
-  ## .score() scorer above with sig_ids = every region id.
-  .region_members <- function(regions) {
-    if (nrow(regions) == 0) return(list())
-    mm <- vector("list", nrow(regions))
-    for (i in seq_len(nrow(regions))) {
-      hit <- map$Chr == regions$Chr[i] & map$Pos >= regions$from[i] & map$Pos <= regions$to[i]
-      mm[[i]] <- map$marker[hit]
-    }
-    stats::setNames(mm, as.character(seq_len(nrow(regions))))
+  ## ---- Stage-2 assembled-region scoring -- the PRIMARY estimand (PK 2026-09-10) ---
+  ## Hypothesis = one WHOLE Stage-2 region; member markers = the ACTUAL
+  ## constituent discovered-cluster members (via ld_prune_and_eMLG()'s own
+  ## $groups$members), NOT every marker physically between the region's
+  ## [Chr,from,to] bounds. The bounds-sweep version used until now was a
+  ## real bug: "an intervening, untested marker could otherwise lend truth
+  ## credit to the region" (CLAUDE_REANALYSIS_INSTRUCTIONS.md, "Update
+  ## after inspection of the Stage-2 Manhattan figures"). .run_stage2()
+  ## below is ld_outlier_test()'s own "stage2_discovered" branch, called
+  ## directly (same cl_sig/mk_sig/ms_sig/sub construction, same
+  ## ld_prune_and_eMLG() call) so we get $groups$members verbatim instead
+  ## of reconstructing membership by physical-position approximation.
+  ##
+  ## Two seeding routes, per the instructions' "Testing unit versus
+  ## reported-call unit" section:
+  ##  - .assemble_regions_from_units(): Simes/consensus -- seed Stage 2
+  ##    with the BH-significant STAGE-1 UNITS (as ld_outlier_test() does).
+  ##  - .assemble_regions_from_markers(): unrestricted marker-wise
+  ##    (emmax_snp/lfmm_snp) -- mark EVERY phenotype-blind Stage-1 cluster,
+  ##    INCLUDING SINGLETONS, as discovered when it contains >=1
+  ##    BH-significant marker, then run the SAME assembly. This changes
+  ##    only reporting/scoring, never marker p-values or marker-wise BH --
+  ##    it makes the unrestricted comparator's reported-call unit
+  ##    genuinely comparable to Simes/consensus's, instead of comparing
+  ##    "every significant SNP" against "one assembled region."
+  ##
+  ## Every region is already a significant call by construction, so ALL
+  ## region ids are "significant" hypotheses for the generic .score()
+  ## scorer above.
+  .run_stage2 <- function(cl_sub) {
+    if (!nrow(cl_sub)) return(list())
+    mk_sub <- unlist(cl_sub$members, use.names = FALSE)
+    ms_sub <- as.data.table(stage1$map_snp)[marker %chin% mk_sub]
+    sub <- structure(list(map_snp = ms_sub, clusters = cl_sub, pruned = cl_sub$core_snp),
+                     class = "ld_complexity_reduction")
+    pr <- ld_prune_and_eMLG(GTs = GTs[, mk_sub, drop = FALSE], stage1 = sub,
+                            ld_w_col = "ld_w_095", ld_w_threshold = 0,
+                            LD_decay = b$LD_decay, min_r2_rho = stage1$params$rho,
+                            score_threshold = REGION_ASSEMBLY$score_threshold,
+                            distance_threshold = REGION_ASSEMBLY$distance_threshold,
+                            compute_unflagged_eMLG = FALSE, min_n_loci_eMLG = 1,
+                            min_n_loci_flag = 1, cores = 1)
+    g <- as.data.table(pr$groups)
+    stats::setNames(g$members, as.character(seq_len(nrow(g))))
   }
-  .region_test <- function(p_obs, statistic) {
-    ld_outlier_test(stage1, map, p_obs, statistic = statistic, size_floor = SIZE_FLOOR,
-                    alpha = ALPHA, assembly = "stage2_discovered", GTs = GTs,
-                    LD_decay = b$LD_decay, score_threshold = REGION_ASSEMBLY$score_threshold,
-                    distance_threshold = REGION_ASSEMBLY$distance_threshold)
+  .assemble_regions_from_units <- function(sig_units_tbl) {
+    sig_units <- sig_units_tbl[sig_units_tbl$significant == TRUE]
+    if (!nrow(sig_units)) return(list())
+    cl <- as.data.table(stage1$clusters)
+    nl <- if ("n_loci" %in% names(cl)) cl$n_loci else cl$n_snps
+    .run_stage2(cl[nl >= SIZE_FLOOR][sig_units$unit_id])
+  }
+  .assemble_regions_from_markers <- function(sig_markers) {
+    if (!length(sig_markers)) return(list())
+    cl <- as.data.table(stage1$clusters)
+    disc <- vapply(cl$members, function(mm) any(mm %chin% sig_markers), logical(1))
+    .run_stage2(cl[disc])
   }
 
-  sim_regions <- .region_test(em$marker$p, "simes")$regions
-  sim_region_members <- .region_members(sim_regions)
+  snp_region_members <- .assemble_regions_from_markers(em$marker$marker[em$marker$significant_snp])
+  res_snp_region <- .score("emmax_snp_region", snp_region_members, names(snp_region_members),
+                           em$marker$n_tested, NA_real_)
+
+  sim_region_members <- .assemble_regions_from_units(em$emmax_simes)
   res_sim_region <- .score("emmax_simes_region", sim_region_members, names(sim_region_members),
                            nrow(em$emmax_simes), NA_real_)
 
-  con_regions <- .region_test(em$emmax_consensus$p, "unit")$regions
-  con_region_members <- .region_members(con_regions)
+  con_region_members <- .assemble_regions_from_units(em$emmax_consensus)
   res_con_region <- .score("emmax_consensus_region", con_region_members, names(con_region_members),
                            nrow(em$emmax_consensus), NA_real_)
 
-  score_list <- c(score_list, list(res_sim_region, res_con_region))
+  score_list <- c(score_list, list(res_snp_region, res_sim_region, res_con_region))
 
-  ## lfmm_snp / lfmm_simes / lfmm_simes_region -- only when R/04_lfmm.R has
-  ## been run for this combo. NO lfmm_consensus (instructions: "no LFMM
-  ## consensus-dosage analysis") and no lfmm_snp_nonsingleton (not in the
-  ## instructions' LFMM scope, unlike emmax_snp_nonsingleton).
+  ## lfmm_snp / lfmm_simes / lfmm_snp_region / lfmm_simes_region -- only
+  ## when R/04_lfmm.R has been run for this combo. NO lfmm_consensus
+  ## (instructions: "no LFMM consensus-dosage analysis") and no
+  ## lfmm_snp_nonsingleton (not in the instructions' LFMM scope, unlike
+  ## emmax_snp_nonsingleton).
   if (have_lfmm) {
     lfmm_marker_members <- stats::setNames(as.list(lf$marker$marker), lf$marker$marker)
     res_lfmm_snp <- .score("lfmm_snp", lfmm_marker_members, lf$marker$marker[lf$marker$significant_snp],
@@ -214,12 +263,15 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
     bh_crit_lfmm_sim <- { qv <- lf$lfmm_simes$p[lf$lfmm_simes$significant]; if (length(qv)) max(qv) else NA_real_ }
     res_lfmm_sim <- .score("lfmm_simes", lfmm_sim_members, sig_lfmm_sim, nrow(lf$lfmm_simes), bh_crit_lfmm_sim)
 
-    lfmm_sim_regions <- .region_test(lf$marker$p, "simes")$regions
-    lfmm_sim_region_members <- .region_members(lfmm_sim_regions)
+    lfmm_snp_region_members <- .assemble_regions_from_markers(lf$marker$marker[lf$marker$significant_snp])
+    res_lfmm_snp_region <- .score("lfmm_snp_region", lfmm_snp_region_members, names(lfmm_snp_region_members),
+                                  lf$marker$n_tested, NA_real_)
+
+    lfmm_sim_region_members <- .assemble_regions_from_units(lf$lfmm_simes)
     res_lfmm_sim_region <- .score("lfmm_simes_region", lfmm_sim_region_members, names(lfmm_sim_region_members),
                                   nrow(lf$lfmm_simes), NA_real_)
 
-    score_list <- c(score_list, list(res_lfmm_snp, res_lfmm_sim, res_lfmm_sim_region))
+    score_list <- c(score_list, list(res_lfmm_snp, res_lfmm_sim, res_lfmm_snp_region, res_lfmm_sim_region))
   }
 
   scores <- rbindlist(score_list)
