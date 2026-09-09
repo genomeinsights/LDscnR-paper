@@ -17,9 +17,18 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); library(digest)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-STAGE <- "02_build_ld_units"
 
 build_ld_units <- function(tag, cell, rep, env, force = FALSE) {
+  ## [!] LOCAL, not the top-level global -- run_combo.R sources 01/02/03/05
+  ## into ONE process, and each script's own top-level `STAGE <- "..."`
+  ## would otherwise all resolve to whichever was sourced LAST by the time
+  ## any of these functions actually gets CALLED (a free-variable-at-call-
+  ## time bug, not at-define-time) -- every stage's output would silently
+  ## land under the last-sourced script's directory. Found running the
+  ## first real chained combo (nobgs/V0.5_c1/rep1/env1): build_ld_units()
+  ## wrote to 05_score_truth/'s directory. Binding STAGE locally in every
+  ## stage function (here and in 03_emmax.R/05_score_truth.R) fixes it.
+  STAGE <- "02_build_ld_units"
   combo_id <- sprintf("%s_%s_rep%d_env%d", tag, cell, rep, env)
   parsed_file <- file.path(PATHS$parsed, sprintf("nemo_%s_rep%d_%s_env%d.rds", tag, rep, cell, env))
   if (!file.exists(parsed_file)) stop("R/01_parse_nemo.R has not produced: ", basename(parsed_file),

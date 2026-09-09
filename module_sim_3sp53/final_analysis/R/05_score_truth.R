@@ -29,9 +29,9 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-STAGE <- "05_score_truth"
 
 score_truth <- function(tag, cell, rep, env, force = FALSE) {
+  STAGE <- "05_score_truth"   ## LOCAL -- see 02_build_ld_units.R's comment on this exact bug
   combo_id <- sprintf("%s_%s_rep%d_env%d", tag, cell, rep, env)
   emmax_file <- file.path(stage_dir("03_emmax", combo_id), "emmax.rds")
   ld_units_file <- file.path(stage_dir("02_build_ld_units", combo_id), "ld_units.rds")

@@ -28,9 +28,9 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-STAGE <- "03_emmax"
 
 run_emmax <- function(tag, cell, rep, env, force = FALSE) {
+  STAGE <- "03_emmax"   ## LOCAL -- see 02_build_ld_units.R's comment on this exact bug
   combo_id <- sprintf("%s_%s_rep%d_env%d", tag, cell, rep, env)
   ld_units_file <- file.path(stage_dir("02_build_ld_units", combo_id), "ld_units.rds")
   if (!file.exists(ld_units_file)) stop("R/02_build_ld_units.R has not produced: ", ld_units_file)
