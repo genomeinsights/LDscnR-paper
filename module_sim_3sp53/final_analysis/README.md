@@ -59,6 +59,21 @@ Implemented so far:
   association -> truth scoring for one combination
   (`bgs/V0.5_c2/rep1/env1`). Report: `qc/gate2_validation_report.txt`,
   scores: `qc/gate2_truth_scores_bgs_V0.5_c2_rep1_env1.tsv`.
+- `qc/offset_propagation_check.R` -- PK: "Don't we only have to fix what
+  has to do with TP/FPs LD/distance to QTN... would only require one to
+  update the map data, no need to rerun the EMMAX/LFMM analyses?" Checked
+  directly rather than assumed: **no** -- confirmed the parser fix requires
+  a full Stage-1/GRM/association rerun, not just a truth-column remap.
+  Genotypes are unaffected by the bug, but a QTN's ~100kb+ position shift
+  moves its sort-order position relative to many neighbouring markers,
+  which `ld_complexity_reduction()`'s LD-decay windowing uses -- Stage-1
+  clustering (and hence the GRM basis, `stage1_pruned`) genuinely differs
+  between old and corrected parsing. Result on `bgs/V0.5_c2/rep1/env1`:
+  GRM differs (max abs diff 1.15e-02, 6534 vs 6569 markers selected for
+  kinship); `emmax_snp`'s p-value differs for ALL 17,713 markers common to
+  both parses (max abs diff 3.15e-02) -- not just markers near a QTN,
+  since EMMAX's kinship correction is a global adjustment. Log:
+  `qc/offset_propagation_check.txt`.
 
 Not implemented: Phase 3 gates 3-4 (14-combination grid; full 1,400-grid),
 LFMM itself (deliberately deferred, split from the primary EMMAX arm so

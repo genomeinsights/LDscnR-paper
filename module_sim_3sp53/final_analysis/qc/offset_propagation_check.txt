@@ -1,0 +1,79 @@
+corrected: 17718 markers (4 QTN) ; old-offset: 17718 markers (4 QTN)
+
+--- corrected ---
+Filtering SNPs to MAF > 0.1 for background-LD and decay-curve fitting (edge lists remain unfiltered).
+Background LD: 0.428
+Estimating LD-decay
+Predicting a from chromosome size
+Not enough unique chromosome sizes to predict, using median
+Current slide covers the following rho range (using predicted background a):
+     min_rho median_rho   max_rho
+       <num>      <num>     <num>
+1: 0.9669562  0.9683833 0.9698105
+Suggested slide windows in SNPs for target rho:
+   target   median    p90      max
+   <char>    <num>  <num>    <num>
+1:   0.99 1616.234 1676.5 1691.566
+Chr1: 2063 components
+Chr2: 2200 components
+<ld_complexity_reduction>
+
+Markers:
+  input markers: 17,718 
+  clusters / pruned markers:6,534 (36.9% kept)
+  chromosomes: 2 
+
+Cluster sizes:
+  median =1 range = [1, 80]
+  singleton clusters:3840 (58.8%)
+
+Representative median r2 (non-singleton clusters):
+  median =0.932 range = [0.7, 1]
+
+Stored components:
+  map_snp, clusters, pruned
+
+--- old_offset ---
+Filtering SNPs to MAF > 0.1 for background-LD and decay-curve fitting (edge lists remain unfiltered).
+Background LD: 0.426
+Estimating LD-decay
+Predicting a from chromosome size
+Not enough unique chromosome sizes to predict, using median
+Current slide covers the following rho range (using predicted background a):
+     min_rho median_rho  max_rho
+       <num>      <num>    <num>
+1: 0.9734643  0.9746152 0.975766
+Suggested slide windows in SNPs for target rho:
+   target   median      p90      max
+   <char>    <num>    <num>    <num>
+1:   0.99 1289.348 1337.327 1349.322
+Chr1: 2080 components
+Chr2: 2236 components
+<ld_complexity_reduction>
+
+Markers:
+  input markers: 17,718 
+  clusters / pruned markers:6,569 (37.1% kept)
+  chromosomes: 2 
+
+Cluster sizes:
+  median =1 range = [1, 80]
+  singleton clusters:3868 (58.9%)
+
+Representative median r2 (non-singleton clusters):
+  median =0.933 range = [0.703, 1]
+
+Stored components:
+  map_snp, clusters, pruned
+
+=== COMPARISON ===
+GRM identical: FALSE (max abs diff 1.15e-02)
+n grm_markers: corrected=6534, old=6569, identical SET (by nemo_marker): FALSE
+markers in both (by nemo identity): 17713 of 17718 (new) / 17718 (old)
+emmax_snp p-value identical for common markers: FALSE (max abs diff 3.15e-02, 17713 differ by >1e-10)
+
+QTN present as QTN-type in BOTH parses (by nemo identity): 4
+  quant.49: unit size new=0 old=30, SAME MEMBER SET (by nemo identity): FALSE
+  quant.68: unit size new=0 old=18, SAME MEMBER SET (by nemo identity): FALSE
+  quant.92: unit size new=0 old=1, SAME MEMBER SET (by nemo identity): FALSE
+  quant.100: unit size new=0 old=1, SAME MEMBER SET (by nemo identity): FALSE
