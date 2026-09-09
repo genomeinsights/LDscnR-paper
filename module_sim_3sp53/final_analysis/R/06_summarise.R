@@ -48,6 +48,20 @@ REFERENCE_METHOD <- "emmax_snp"   ## "its unrestricted marker-wise engine" -- th
 LFMM_METHODS <- c("lfmm_snp", "lfmm_simes")
 LFMM_REFERENCE_METHOD <- "lfmm_snp"
 
+## Stage-2 assembled-region scoring (05_score_truth.R, added 2026-09-10):
+## one WHOLE region = one hypothesis, fixing the unit-level artefact where
+## a single reported region can contain both a truth-linked AND a
+## non-linked Stage-1 unit, showing mixed TP/FP for what is really one
+## call. Reported as a PAIRED contrast against its own unit-level
+## counterpart (region vs unit, SAME method, same bootstrap draw) -- a
+## different comparison in kind from REFERENCE_METHOD above (different
+## methods, same scoring granularity).
+REGION_PAIRS <- list(
+  c(region = "emmax_simes_region", unit = "emmax_simes"),
+  c(region = "emmax_consensus_region", unit = "emmax_consensus"),
+  c(region = "lfmm_simes_region", unit = "lfmm_simes")
+)
+
 ## ---- 1. load every combo's truth scores into one table -----------------------
 load_all_scores <- function() {
   rows <- list()
@@ -190,13 +204,63 @@ bootstrap_arm <- function(dt, point, methods, reference_method, B, seed_offset =
   list(performance = rbindlist(perf_rows), contrasts = rbindlist(contrast_rows))
 }
 
+## ---- 3c. region-vs-unit granularity contrasts (paired, SAME bootstrap draw) ---
+## Different in kind from bootstrap_arm()'s contrasts: those compare
+## different METHODS at a shared scoring granularity against one common
+## reference; this compares the SAME method's two scoring granularities
+## (region vs unit) against EACH OTHER, pair by pair -- so there is no
+## single shared reference_method, and pairs is a list of (region, unit)
+## name pairs instead. Absolute performance rows are produced ONLY for the
+## region-level methods (the unit-level ones already have one from
+## bootstrap_arm() above); this arm exists for the paired contrast.
+granularity_arm <- function(dt, point, pairs, B, seed_offset = 0) {
+  methods <- unique(unlist(lapply(pairs, unname)))
+  rep_dt <- rep_level_stats(dt)
+  strata <- unique(dt[, .(tag, cell)])
+  perf_rows <- list(); contrast_rows <- list()
+  for (i in seq_len(nrow(strata))) {
+    tg <- strata$tag[i]; cl <- strata$cell[i]
+    say("    %s/%s\n", tg, cl)
+    rd <- rep_dt[tag == tg & cell == cl]
+    boot <- map_cluster_bootstrap_stratum(rd, B, seed = SEEDS[["bootstrap"]] + seed_offset + i, methods = methods)
+    pt <- point[tag == tg & cell == cl]
+    for (m in vapply(pairs, `[[`, character(1), "region")) {
+      bm <- boot[method == m]; pr <- pt[method == m]
+      perf_rows[[length(perf_rows) + 1]] <- data.table(
+        tag = tg, cell = cl, method = m, n_tested = pr$n_tested, n_significant = pr$n_significant,
+        TP = pr$TP, FP = pr$FP, FN = pr$FN, n_detectable_qtn = pr$n_detectable_qtn, n_recovered = pr$n_recovered,
+        coverage = pr$coverage,
+        precision = pr$precision, precision_ci_lo = ci(bm$precision)[1], precision_ci_hi = ci(bm$precision)[2],
+        recall = pr$recall, recall_ci_lo = ci(bm$recall)[1], recall_ci_hi = ci(bm$recall)[2])
+    }
+    for (pair in pairs) {
+      m_region <- pair[["region"]]; m_unit <- pair[["unit"]]
+      b_region <- boot[method == m_region][order(b)]
+      b_unit <- boot[method == m_unit][order(b)]
+      d_prec <- b_region$precision - b_unit$precision
+      d_rec <- b_region$recall - b_unit$recall
+      pt_r <- point[tag == tg & cell == cl & method == m_region]
+      pt_u <- point[tag == tg & cell == cl & method == m_unit]
+      contrast_rows[[length(contrast_rows) + 1]] <- data.table(
+        tag = tg, cell = cl, method = m_region, reference_method = m_unit,
+        diff_precision = pt_r$precision - pt_u$precision, diff_precision_ci_lo = ci(d_prec)[1], diff_precision_ci_hi = ci(d_prec)[2],
+        diff_recall = pt_r$recall - pt_u$recall, diff_recall_ci_lo = ci(d_rec)[1], diff_recall_ci_hi = ci(d_rec)[2])
+    }
+  }
+  list(performance = rbindlist(perf_rows), contrasts = rbindlist(contrast_rows))
+}
+
 ## ---- driver --------------------------------------------------------------------
 summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
   say("[1] loading all 1400 combos' truth scores\n")
   dt <- load_all_scores()
   have_lfmm <- all(LFMM_METHODS %in% dt$method)
-  say("    %d rows (%d combos x %d EMMAX methods%s)\n", nrow(dt), nrow(dt) / (length(METHODS) + have_lfmm * length(LFMM_METHODS)),
-      length(METHODS), if (have_lfmm) sprintf(" + %d LFMM methods", length(LFMM_METHODS)) else "")
+  region_methods_present <- unique(unlist(lapply(REGION_PAIRS, unname)))
+  have_region <- all(region_methods_present %in% dt$method)
+  n_methods_seen <- length(unique(dt$method))
+  say("    %d rows (%d combos x %d methods: %d EMMAX%s%s)\n", nrow(dt), nrow(dt) / n_methods_seen, n_methods_seen,
+      length(METHODS), if (have_lfmm) sprintf(" + %d LFMM", length(LFMM_METHODS)) else "",
+      if (have_region) sprintf(" + %d Stage-2-region", length(region_methods_present)) else "")
 
   say("\n[2] point estimates (pooled counts, one row per cell x tag x method)\n")
   point <- pooled_point(dt)
@@ -213,6 +277,14 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
     arm_lfmm <- bootstrap_arm(dt, point, LFMM_METHODS, LFMM_REFERENCE_METHOD, B, seed_offset = 5000)
     performance_lfmm <- arm_lfmm$performance
     contrasts_lfmm <- arm_lfmm$contrasts
+  }
+
+  performance_region <- NULL; contrasts_region <- NULL
+  if (have_region) {
+    say("\n[3c] Stage-2 region-vs-unit granularity contrasts (B=%d per stratum)\n", B)
+    arm_region <- granularity_arm(dt, point, REGION_PAIRS, B, seed_offset = 6000)
+    performance_region <- arm_region$performance
+    contrasts_region <- arm_region$contrasts
   }
 
   sensitivity <- NULL
@@ -248,6 +320,7 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
 
   list(point = point, performance = performance, contrasts = contrasts,
        performance_lfmm = performance_lfmm, contrasts_lfmm = contrasts_lfmm,
+       performance_region = performance_region, contrasts_region = contrasts_region,
        sensitivity = sensitivity, raw = dt)
 }
 
@@ -262,6 +335,11 @@ if (sys.nframe() == 0L) {
     fwrite(res$performance_lfmm, "results/simulation_performance_lfmm.tsv", sep = "\t")
     fwrite(res$contrasts_lfmm, "results/simulation_lfmm_portability_contrast.tsv", sep = "\t")
     written <- paste0(written, ", results/simulation_performance_lfmm.tsv, results/simulation_lfmm_portability_contrast.tsv")
+  }
+  if (!is.null(res$performance_region)) {
+    fwrite(res$performance_region, "results/simulation_performance_region.tsv", sep = "\t")
+    fwrite(res$contrasts_region, "results/simulation_region_granularity_contrast.tsv", sep = "\t")
+    written <- paste0(written, ", results/simulation_performance_region.tsv, results/simulation_region_granularity_contrast.tsv")
   }
   saveRDS(res, "results/simulation_summary_full.rds")
   say("\nwrote %s\n", written)
