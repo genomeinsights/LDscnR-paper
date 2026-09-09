@@ -34,19 +34,28 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   STAGE <- "05_score_truth"   ## LOCAL -- see 02_build_ld_units.R's comment on this exact bug
   combo_id <- sprintf("%s_%s_rep%d_env%d", tag, cell, rep, env)
   emmax_file <- file.path(stage_dir("03_emmax", combo_id), "emmax.rds")
+  lfmm_file <- file.path(stage_dir("04_lfmm", combo_id), "lfmm.rds")
   ld_units_file <- file.path(stage_dir("02_build_ld_units", combo_id), "ld_units.rds")
   if (!file.exists(emmax_file)) stop("R/03_emmax.R has not produced: ", emmax_file)
+  ## LFMM is OPTIONAL -- R/04_lfmm.R is a separate, later stage (instructions:
+  ## "so that the primary EMMAX analysis can finish and be audited without
+  ## rerunning LFMM"). Score whatever is present; a combo scored before LFMM
+  ## was run for it is simply re-scored (force=TRUE, or a fresh receipt once
+  ## lfmm.rds first appears -- lfmm_file's presence is part of PARAMS below,
+  ## so its mtime/existence changing invalidates the cached truth_scores.rds).
+  have_lfmm <- file.exists(lfmm_file)
 
-  INPUTS <- c(emmax_file, ld_units_file)
+  INPUTS <- c(emmax_file, ld_units_file, if (have_lfmm) lfmm_file)
   PARAMS <- list(va_share_detectable = VA_SHARE_DETECTABLE, maf_keep = MAF_KEEP,
                  truth_rho_r2 = TRUTH_RHO_R2, truth_rho_d = TRUTH_RHO_D, truth_dmax_cap = TRUTH_DMAX_CAP,
-                 size_floor = SIZE_FLOOR)
+                 size_floor = SIZE_FLOOR, have_lfmm = have_lfmm)
   if (!force && !stage_stale(STAGE, INPUTS, PARAMS, target = combo_id)) {
     return(readRDS(file.path(stage_dir(STAGE, combo_id), "truth_scores.rds")))
   }
 
   say("=== %s: %s/%s/rep%d/env%d ===\n\n", STAGE, tag, cell, rep, env)
   em <- readRDS(emmax_file)
+  lf <- if (have_lfmm) readRDS(lfmm_file) else NULL
   b  <- readRDS(ld_units_file)
   GTs <- b$GTs; map <- copy(b$map); stage1 <- b$stage1
 
@@ -146,7 +155,24 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   bh_crit_con <- { qv <- em$emmax_consensus$p[em$emmax_consensus$significant]; if (length(qv)) max(qv) else NA_real_ }
   res_con <- .score("emmax_consensus", con_members, sig_con, nrow(em$emmax_consensus), bh_crit_con)
 
-  scores <- rbindlist(list(res_snp, res_snp_ns, res_sim, res_con))
+  score_list <- list(res_snp, res_snp_ns, res_sim, res_con)
+
+  ## lfmm_snp / lfmm_simes -- only when R/04_lfmm.R has been run for this
+  ## combo. NO lfmm_consensus (instructions: "no LFMM consensus-dosage
+  ## analysis") and no lfmm_snp_nonsingleton (not in the instructions'
+  ## LFMM scope, unlike emmax_snp_nonsingleton).
+  if (have_lfmm) {
+    lfmm_marker_members <- stats::setNames(as.list(lf$marker$marker), lf$marker$marker)
+    res_lfmm_snp <- .score("lfmm_snp", lfmm_marker_members, lf$marker$marker[lf$marker$significant_snp],
+                           lf$marker$n_tested, lf$marker$bh_crit_p_snp)
+    lfmm_sim_members <- .unit_members(lf$lfmm_simes)
+    sig_lfmm_sim <- as.character(lf$lfmm_simes$unit_id[lf$lfmm_simes$significant])
+    bh_crit_lfmm_sim <- { qv <- lf$lfmm_simes$p[lf$lfmm_simes$significant]; if (length(qv)) max(qv) else NA_real_ }
+    res_lfmm_sim <- .score("lfmm_simes", lfmm_sim_members, sig_lfmm_sim, nrow(lf$lfmm_simes), bh_crit_lfmm_sim)
+    score_list <- c(score_list, list(res_lfmm_snp, res_lfmm_sim))
+  }
+
+  scores <- rbindlist(score_list)
   scores[, `:=`(tag = tag, cell = cell, rep = rep, env = env)]
   print(scores[, .(method, n_tested, n_significant, TP, FP, FN, precision, recall, conditional_recall)])
 
