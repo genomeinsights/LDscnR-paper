@@ -189,6 +189,21 @@ units_base <- LDscnR:::.ld_outlier_units(stage1, map, SIZE_FLOOR)
     u$n_markers[u$significant]
   })
 }
+## [!] CAVEAT (added 2026-09-09, ported from module_sim_3sp53 after PK
+## caught it there: "are you accounting for the fact that the number of
+## false positives also drop by randomly removing clusters from the
+## outlier list?") -- max(n_obs, 1) avoids a divide-by-zero when the
+## OBSERVED test has no significant unit at some floor, but the eligible
+## Stage-1-unit pool shrinks fast with floor, so n_obs=0 becomes the
+## MAJORITY case at large floors (confirmed in module_sim_3sp53's full
+## grid: 36.5% of combos at floor=2, 95.2% at floor=50). For those rows
+## realised_fdr is NOT an FDR estimate -- it's just mean_surrogate, the
+## rate pure noise clears an emptying pool. This script is DORMANT
+## (module_sim/ isn't the live pipeline -- see module_sim_3sp53/, whose
+## R/12_structured_null.R and README.md carry the actual fix and the
+## corrected numbers); n_obs is kept in the output so it CAN be
+## conditioned on if this ever gets rerun for real, but don't trust the
+## unconditional realised_fdr from this copy at face value.
 .fdr_by_floor <- function(obs_units, surr_sizes, scheme, arm) {
   obs_sizes <- obs_units$n_markers[obs_units$significant]
   rbindlist(lapply(SIZE_FLOOR_GRID, function(f) {
