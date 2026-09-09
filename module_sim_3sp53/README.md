@@ -57,33 +57,70 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
     groups (the direct analog of module_3sp's regional-locality / module_
     9sp's lineage stratification) -- conservative, per the ICC above.
   - `mvn`: `s ~ MVN(0, GRM)`, orthogonalised against observed y -- a
-    negative control. Stays low and stable (~0.01-0.09) everywhere: the
-    method itself is not the source of miscalibration.
+    negative control.
   - `spatial`: `s ~ MVN(0, Gaussian kernel over individual (x,y))`,
     orthogonalised the same way -- isolates spatial confounding
-    independent of the 5-group binning; often the most anti-conservative
-    of the three, consistent with real spatial autocorrelation (not just
-    coarse group membership) driving false positives.
+    independent of the 5-group binning.
 
-  Run on a REPRESENTATIVE 14-combo sample (all 7 cells x 2 tags, rep=1
-  env=1 fixed), matching module_3sp/9sp's own scale (one calibration check
-  per dataset) rather than an exhaustive 1400-combo resweep. Also includes
-  a truth-free minimum-stage-1-unit-size sweep (floors 2/3/5/10/20/50):
-  `realised_fdr` under the `group` null falls monotonically with cluster
-  size in 12 of 13 combos with real observed discoveries -- often from
-  ~0.2-0.5 at floor=2 to 0 (the null never produces one) by floor=20-50.
-  Converges with the ground-truth-based FP-by-size finding (`fig_fp_by_
-  size`) on the same conclusion via an independent, truth-free route:
-  larger clusters are more trustworthy, and the largest surviving ones are
-  reasonable candidates pending independent evidence (GO enrichment,
-  known genes) even where they don't clear a strict permutation FDR.
-  One exception worth carrying forward, not smoothed over:
-  `nobgs`/`V1_c1` stayed elevated (0.625-1.05) even at floor=50.
+  Run 2026-09-08 22:53-23:50 (mini, concurrency 8) across the **full
+  1400-combo grid** (7 cells x 2 tags x 10 reps x 10 envs), 0 failures --
+  supersedes the earlier 14-combo representative-sample run (rep=1/env=1
+  per cell x tag) that this section originally described. Pooled to 8400
+  summary rows (1400 combos x 2 arms x 3 schemes) and 50400 sweep rows
+  (x7 size floors) in `results/structured_null_summary.rds`.
+
+  **`group`**: mean `realised_fdr` 0.70 (median 0.49) at the base floor,
+  cell means ranging 0.50 (`V2_c1`) - 0.80 (`V0.5_c1`) -- confirms the
+  conservative-per-ICC prediction, now on 400 replicate combos per cell
+  instead of 1.
+
+  **`mvn` negative control**: holds cleanly at full scale -- mean 0.035
+  (median 0.03), range 0-0.17 across all 2800 (tag x arm x combo) draws.
+  The method itself is not a source of miscalibration anywhere in the grid.
+
+  **`spatial`**: a genuinely new finding only visible at full-grid scale
+  (the 14-combo sample had n=1 per cell, too noisy to trust) -- a sharp,
+  dispersal-dependent split. `realised_fdr` stays low, same order as the
+  `mvn` negative control, in every high-dispersal (c1) cell: `V0.5_c1`
+  0.40, `V1_c1` 0.26, `V2_c1` 0.24. It explodes in every medium/low-
+  dispersal (c1.5/c2) cell: 6.8-13.5. At low dispersal, pure spatial
+  autocorrelation over individual coordinates -- no genotype, no genetic
+  signal at all -- alone generates *more* "significant" surrogate hits
+  than the real observed data contains. Independent of the group-ICC
+  argument (which only speaks to the 5 coarse spatial bins), this shows
+  isolation-by-distance itself, at fine spatial scale, is the dominant
+  false-positive driver at low dispersal, not just coarse population
+  membership.
+
+  **Minimum-cluster-size sweep** (floors 2/3/5/10/20/50), now on 2800
+  (tag x cell x rep x env x arm) trajectories instead of 13:
+  `group`-null `realised_fdr` falls monotonically with floor in the
+  pooled mean (0.70 at floor=2 -> 0.03 at floor=50) and strictly
+  monotonically within 65% of individual trajectories (1826/2800) --
+  same conclusion as the sample run, now on 200x the data: larger
+  clusters are more trustworthy. Converges with the ground-truth-based
+  `fig_fp_by_size` finding on the same conclusion via an independent,
+  truth-free route, and the largest surviving clusters remain reasonable
+  candidates pending independent evidence (GO enrichment, known genes)
+  even where they don't clear a strict permutation FDR at the base floor.
+
+  The `nobgs`/`V1_c1` elevation flagged as an unexplained exception in the
+  14-combo sample (0.625-1.05 even at floor=50) is **resolved**, not
+  confirmed, by the full grid: averaged over its 200 replicate combos (10
+  reps x 10 envs x 2 arms), `realised_fdr` at floor=50 is 0.082, in line
+  with every other cell/tag. The earlier number was noise from a single
+  rep1/env1 draw, not a persistent property of that cell.
+
+  No meaningful `tag` effect on `group`-null calibration (`bgs` 0.69 vs
+  `nobgs` 0.71) or `arm` effect (`emmax_consensus` 0.68 vs `emmax_simes`
+  0.72) -- expected, since these nulls calibrate the association-test
+  procedure itself, not something BGS status or arm choice should move.
 
 ## Not yet done
 
-- The 3 remaining structured-null combos' worth of coverage is thin (14
-  combos, not the full grid) -- treat cell-level patterns as indicative,
-  not final, until/unless a wider sweep is run.
 - `env_icc`'s implications haven't been folded back into `module_sim`'s
   own live pipeline or `module_sim_bgs5`'s archive.
+- The `spatial`-null finding above (dispersal-dependent blowup) hasn't
+  been cross-checked against an independent ground-truth signal the way
+  the size-floor sweep was -- worth a look if it ends up load-bearing for
+  the manuscript's low-dispersal discussion.
