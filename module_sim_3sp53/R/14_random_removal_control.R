@@ -32,16 +32,27 @@
 ## better" result on its own). Caught and fixed before any conclusion was
 ## drawn from it -- see module_sim_3sp53/README.md's 2026-09-09 write-up.
 ##
-## SCOPE (as of first run): tag="bgs" only, 4 of 7 cells (V0.5_c1, V0.5_c2,
-## V1_c1.5, V2_c1 -- a spread across the dispersal/variance grid), full
-## 10x10 rep x env grid per cell (100 combos), group-null / emmax_consensus
-## only. Not yet run: nobgs, the remaining 3 cells, mvn/spatial, Simes.
+## SCOPE: full grid as of 2026-09-09 -- all 7 cells x both tags (bgs,
+## nobgs), full 10x10 rep x env grid per cell (100 combos each, 1400
+## total), group-null / emmax_consensus only. Result (see README.md for
+## the full write-up): H0 ("size-based restriction beats a matched-
+## cardinality random one") is REJECTED, identically in bgs and nobgs --
+## which is itself informative: it rules out a recombination/BGS-specific
+## structure confound as the driver and points instead at a consensus_
+## dosage-specific noise/power effect (see ld_unit_matrix.R's own
+## docstring: bigger units are a better-estimated, lower-noise summary
+## variable -- more power for BOTH real signal and residual structure).
+## Not yet run: mvn/spatial schemes, emmax_simes arm -- Simes is the more
+## interesting one to check, since it IS a genuine multiple-comparisons
+## combination across a unit's markers (unlike consensus_dosage's single
+## averaged variable), so the proposed mechanism predicts it could differ.
 ##
 ## Usage: Rscript R/14_random_removal_control.R <tag> <cell>
-## Writes out/14_random_removal_control/rrc_<tag>_<cell>.rds. Pool the
-## per-cell files into results/random_removal_control_summary.rds by hand
-## (rbindlist + saveRDS) once all target cells are run -- small enough
-## (600 rows/cell) that a dedicated pooling stage isn't worth it yet.
+## Writes out/14_random_removal_control/rrc_<tag>_<cell>.rds. Pool all
+## per-cell files into results/random_removal_control_summary.rds with
+## rbindlist(lapply(Sys.glob("out/14_random_removal_control/rrc_*.rds"),
+## readRDS), fill=TRUE) + saveRDS -- fill=TRUE matters, an early batch of
+## files was written with 2 extra now-dropped intermediate columns.
 suppressMessages({library(data.table); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
 
