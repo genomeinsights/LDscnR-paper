@@ -138,27 +138,30 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
   "random looks better" result on its own -- caught before trusting it).
 
   **Result: H0 REJECTED**, and completely -- run on the **full grid**
-  (all 7 cells x both tags, 10x10 rep x env each = 1400 combos,
-  `emmax_consensus`/`group` only). Identical at floor=2 everywhere, by
-  construction (floor=2 IS the full pool). Beyond that, random is equal
-  or BETTER than size-based restriction at every floor, in every cell,
-  in BOTH tags, gap widening with floor:
+  (all 7 cells x both tags x both arms, `emmax_consensus` AND
+  `emmax_simes`, 10x10 rep x env each = 2800 combos, `group` null only).
+  Identical at floor=2 everywhere, by construction (floor=2 IS the full
+  pool). Beyond that, random is equal or BETTER than size-based
+  restriction at every floor, in every cell, in BOTH tags, in BOTH arms,
+  gap widening with floor (mean +/- SE across combos):
 
-  | floor | size (bgs) | random (bgs) | size (nobgs) | random (nobgs) |
+  | floor | size (consensus, bgs) | random (consensus, bgs) | size (simes, bgs) | random (simes, bgs) |
   |---|---|---|---|---|
-  | 3  | 0.669 | 0.637 | 0.699 | 0.692 |
-  | 5  | 0.651 | 0.499 | 0.618 | 0.538 |
-  | 10 | 0.525 | 0.372 | 0.562 | 0.409 |
-  | 20 | 0.470 | 0.269 | 0.511 | 0.346 |
-  | 50 | 0.344 | 0.197 | 0.656 | 0.396 |
+  | 3  | 0.669 +/- 0.031 | 0.637 +/- 0.025 | 0.763 +/- 0.041 | 0.711 +/- 0.030 |
+  | 5  | 0.651 +/- 0.032 | 0.499 +/- 0.019 | 0.683 +/- 0.034 | 0.560 +/- 0.021 |
+  | 10 | 0.525 +/- 0.028 | 0.372 +/- 0.019 | 0.601 +/- 0.029 | 0.451 +/- 0.022 |
+  | 20 | 0.470 +/- 0.030 | 0.269 +/- 0.020 | 0.561 +/- 0.033 | 0.385 +/- 0.025 |
+  | 50 | 0.344 +/- 0.054 | 0.197 +/- 0.039 | 0.486 +/- 0.052 | 0.350 +/- 0.041 |
 
-  (`fig_random_removal_control.pdf`.) **Size-based restriction shows no
-  advantage over randomly restricting to the same number of clusters --
-  if anything it is consistently worse.** The plateau reported just
-  above is therefore NOT evidence that big clusters are specifically
-  more trustworthy; it is mostly (perhaps entirely) an artefact of
-  restricting the candidate pool at all, something ANY same-sized
-  restriction produces, size-based or not.
+  (`nobgs` tracks `bgs` closely in both arms -- see `fig_random_removal_
+  control.pdf`, faceted `arm x tag`, 4 panels, all four telling the same
+  story.) **Size-based restriction shows no advantage over randomly
+  restricting to the same number of clusters, in EITHER arm -- if
+  anything it is consistently worse.** The plateau reported just above is
+  therefore NOT evidence that big clusters are specifically more
+  trustworthy; it is mostly (perhaps entirely) an artefact of restricting
+  the candidate pool at all, something ANY same-sized restriction
+  produces, size-based or not.
 
   **Reconciling with `fig_fp_by_size` (ground truth), and a correction to
   the mechanism first proposed for this.** Checked directly rather than
@@ -191,18 +194,35 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
   from the same noise reduction, independent of BGS or recombination
   specifics -- which is exactly why `bgs` and `nobgs` look the same.
 
+  **[!] UPDATED 2026-09-09 -- PK: "run it on emmax_simes too."** This
+  mechanism, as first stated, predicted `emmax_simes` could behave
+  differently: Simes IS a genuine multiple-comparisons combination across
+  a unit's markers (`min(n*p_(i)/i)`), not a single noise-reduced
+  variable, so the "one lower-noise variable = more power" story doesn't
+  directly apply. **It didn't behave differently** -- the table above
+  shows `emmax_simes` rejecting H0 exactly the same way, same direction,
+  similar magnitude, in both tags. So the specific `consensus_dosage`
+  noise-reduction story is at best incomplete as a full explanation (it
+  correctly predicts the DIRECTION for consensus, but the same direction
+  shows up somewhere its own logic doesn't obviously reach). The more
+  defensible, general statement -- and the one this section should be
+  read as making -- is simply: **bigger Stage-1 units get more
+  statistical power under BOTH tested combining rules, for real signal
+  and for residual structure alike, and no combining rule tried so far
+  escapes it.** Whether that's Simes gaining power from more terms in its
+  own combination, or something else again, hasn't been pinned down.
+
   This does **not** call `fig_fp_by_size` itself into question -- it is
   unaffected, a separate ground-truth analysis. What it retracts is the
   claim that the permutation-based size-floor sweep independently
   corroborates it via "a truth-free route": it doesn't. Size predicts
   truth (only checkable with ground truth) but does not validate itself
   against a permutation null, because the null gets the same power
-  boost. **Still not run:** `mvn`/`spatial` schemes, `emmax_simes` arm --
-  the `group`/`emmax_consensus` result is now complete (full grid) and
-  the effect is large and consistent, but the mechanism explanation above
-  (a property of `consensus_dosage` specifically) predicts `emmax_simes`
-  -- a different combining rule, genuinely multi-comparison across a
-  unit's markers -- could behave differently, and hasn't been checked.
+  boost. **Still not run:** `mvn`/`spatial` schemes -- `group` is now
+  complete across both arms and both tags (full grid) and the effect is
+  large, consistent, and no longer explained by a single tidy mechanism,
+  so it's worth seeing whether it shows up under the other two null
+  schemes too before treating it as fully general.
 
   **The `nobgs`/`V1_c1` anomaly was NOT resolved -- it was CONFIRMED, and
   the earlier "resolved" claim was itself an artefact of the same
@@ -241,15 +261,9 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
   faster than it looks (36.5% -> 95.2% zero-discovery across floor=2-50
   here). This was the mistake corrected above.
 - `R/14_random_removal_control.R`'s matched-cardinality-random check is
-  now complete for `group`/`emmax_consensus` (full 7-cell x 2-tag grid),
-  but still not run for `mvn`/`spatial` or `emmax_simes` --
-  `emmax_simes` is the more important of the two to check, since the
-  proposed mechanism (a `consensus_dosage`-specific noise/power effect)
-  predicts it could behave differently (Simes IS a genuine multiple-
-  comparisons combination across a unit's markers, unlike consensus's
-  single averaged variable). `results/random_removal_control_summary.rds`
-  holds the full pooled output; extend by rerunning
-  `R/14_random_removal_control.R <tag> <cell>` with the arm changed to
-  Simes (not currently a script argument -- would need a small edit) and
-  `rbindlist()`-ing the new `out/14_random_removal_control/rrc_*.rds`
-  files in with it.
+  now complete for `group` in BOTH arms (`emmax_consensus`,
+  `emmax_simes`; full 7-cell x 2-tag grid, 2800 combos), but still not
+  run for `mvn`/`spatial`. Script now takes the arm as an optional 3rd
+  argument (`Rscript R/14_random_removal_control.R <tag> <cell>
+  [consensus|simes]`). `results/random_removal_control_summary.rds` holds
+  the full pooled output (with an `arm` column).
