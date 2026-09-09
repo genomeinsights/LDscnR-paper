@@ -10,13 +10,14 @@ suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 say("=== figureS_simulation_region_vs_unit_performance ===\n\n")
 
-pe <- fread("results/simulation_performance.tsv")
-pl <- fread("results/simulation_performance_lfmm.tsv")
+## simulation_performance.tsv/_lfmm.tsv are now the PRIMARY region-level
+## tables (2026-09-10 update) -- unit-level diagnostics moved to
+## simulation_performance_diagnostic.tsv.
+pd <- fread("results/simulation_performance_diagnostic.tsv")
 pr <- fread("results/simulation_performance_region.tsv")
 pf <- rbindlist(list(
-  pe[method %in% c("emmax_simes", "emmax_consensus")],
-  pl[method == "lfmm_simes"],
-  pr
+  pd[method %in% c("emmax_simes", "emmax_consensus", "lfmm_simes")],
+  pr[method %in% c("emmax_simes_region", "emmax_consensus_region", "lfmm_simes_region")]
 ), use.names = TRUE, fill = TRUE)
 
 CELL_LEVELS <- c("V0.5_c1", "V1_c1", "V2_c1", "V0.5_c1.5", "V1_c1.5", "V2_c1.5", "V0.5_c2")

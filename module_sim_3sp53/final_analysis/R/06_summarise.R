@@ -38,27 +38,43 @@
 suppressMessages({library(data.table)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 
-METHODS <- c("emmax_snp", "emmax_snp_nonsingleton", "emmax_simes", "emmax_consensus")
-REFERENCE_METHOD <- "emmax_snp"   ## "its unrestricted marker-wise engine" -- the contrast baseline
+## PRIMARY estimand (2026-09-10 update): Stage-2 ASSEMBLED REGIONS. One
+## region = one hypothesis, member markers = the actual constituent
+## discovered-cluster members (05_score_truth.R). emmax_snp_region uses
+## the SAME "mark every phenotype-blind cluster containing >=1
+## significant marker as discovered, then assemble" procedure as
+## emmax_simes_region/emmax_consensus_region, so the unrestricted
+## comparator is genuinely comparable -- not "every significant SNP" vs
+## "one assembled region."
+METHODS <- c("emmax_snp_region", "emmax_simes_region", "emmax_consensus_region")
+REFERENCE_METHOD <- "emmax_snp_region"
 
 ## LFMM is "retain only as a portability analysis" (instructions) -- a SEPARATE
-## arm with its own within-engine baseline (lfmm_simes vs lfmm_snp), not mixed
-## into the primary EMMAX methods/contrasts above. Does the same phenotype-
-## blind Stage-1 restriction still help when the association engine changes?
-LFMM_METHODS <- c("lfmm_snp", "lfmm_simes")
-LFMM_REFERENCE_METHOD <- "lfmm_snp"
+## arm with its own within-engine baseline (region-level, same as above).
+LFMM_METHODS <- c("lfmm_snp_region", "lfmm_simes_region")
+LFMM_REFERENCE_METHOD <- "lfmm_snp_region"
 
-## Stage-2 assembled-region scoring (05_score_truth.R, added 2026-09-10):
-## one WHOLE region = one hypothesis, fixing the unit-level artefact where
-## a single reported region can contain both a truth-linked AND a
-## non-linked Stage-1 unit, showing mixed TP/FP for what is really one
-## call. Reported as a PAIRED contrast against its own unit-level
-## counterpart (region vs unit, SAME method, same bootstrap draw) -- a
-## different comparison in kind from REFERENCE_METHOD above (different
-## methods, same scoring granularity).
+## DIAGNOSTIC (marker-/Stage-1-unit-level): retained ONLY to show why
+## region assembly is necessary (instructions: "Marker- and Stage-1-
+## unit-level scores are retained only to show why region assembly is
+## necessary"), never as the primary estimand. Same METHODS/REFERENCE
+## shape as before this update, just no longer written to
+## results/simulation_performance.tsv.
+DIAG_METHODS <- c("emmax_snp", "emmax_snp_nonsingleton", "emmax_simes", "emmax_consensus")
+DIAG_REFERENCE_METHOD <- "emmax_snp"
+LFMM_DIAG_METHODS <- c("lfmm_snp", "lfmm_simes")
+LFMM_DIAG_REFERENCE_METHOD <- "lfmm_snp"
+
+## Region-vs-unit granularity contrast: SAME method, region scoring vs its
+## own unit-level diagnostic counterpart (paired, same bootstrap draw) --
+## the direct evidence for "why region assembly is necessary." Different
+## in kind from REFERENCE_METHOD above (different methods, same
+## granularity).
 REGION_PAIRS <- list(
+  c(region = "emmax_snp_region", unit = "emmax_snp"),
   c(region = "emmax_simes_region", unit = "emmax_simes"),
   c(region = "emmax_consensus_region", unit = "emmax_consensus"),
+  c(region = "lfmm_snp_region", unit = "lfmm_snp"),
   c(region = "lfmm_simes_region", unit = "lfmm_simes")
 )
 
@@ -258,9 +274,10 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
   region_methods_present <- unique(unlist(lapply(REGION_PAIRS, unname)))
   have_region <- all(region_methods_present %in% dt$method)
   n_methods_seen <- length(unique(dt$method))
-  say("    %d rows (%d combos x %d methods: %d EMMAX%s%s)\n", nrow(dt), nrow(dt) / n_methods_seen, n_methods_seen,
-      length(METHODS), if (have_lfmm) sprintf(" + %d LFMM", length(LFMM_METHODS)) else "",
-      if (have_region) sprintf(" + %d Stage-2-region", length(region_methods_present)) else "")
+  say("    %d rows (%d combos x %d methods: %d region-level primary (EMMAX)%s + %d diagnostic (EMMAX)%s)\n",
+      nrow(dt), nrow(dt) / n_methods_seen, n_methods_seen,
+      length(METHODS), if (have_lfmm) sprintf(" + %d region-level primary (LFMM)", length(LFMM_METHODS)) else "",
+      length(DIAG_METHODS), if (have_lfmm) sprintf(" + %d diagnostic (LFMM)", length(LFMM_DIAG_METHODS)) else "")
 
   say("\n[2] point estimates (pooled counts, one row per cell x tag x method)\n")
   point <- pooled_point(dt)
@@ -277,6 +294,22 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
     arm_lfmm <- bootstrap_arm(dt, point, LFMM_METHODS, LFMM_REFERENCE_METHOD, B, seed_offset = 5000)
     performance_lfmm <- arm_lfmm$performance
     contrasts_lfmm <- arm_lfmm$contrasts
+  }
+
+  ## DIAGNOSTIC arms (marker-/Stage-1-unit-level) -- retained only to show
+  ## why region assembly is necessary, never the primary estimand.
+  say("\n[3a-diag] diagnostic (marker/unit-level) EMMAX arm: map-cluster bootstrap (B=%d per stratum)\n", B)
+  arm_diag <- bootstrap_arm(dt, point, DIAG_METHODS, DIAG_REFERENCE_METHOD, B, seed_offset = 7000)
+  performance_diagnostic <- arm_diag$performance
+  contrasts_diagnostic <- arm_diag$contrasts
+
+  performance_lfmm_diagnostic <- NULL; contrasts_lfmm_diagnostic <- NULL
+  have_lfmm_diag <- all(LFMM_DIAG_METHODS %in% dt$method)
+  if (have_lfmm_diag) {
+    say("\n[3b-diag] diagnostic (marker-level) LFMM arm: map-cluster bootstrap (B=%d per stratum)\n", B)
+    arm_lfmm_diag <- bootstrap_arm(dt, point, LFMM_DIAG_METHODS, LFMM_DIAG_REFERENCE_METHOD, B, seed_offset = 8000)
+    performance_lfmm_diagnostic <- arm_lfmm_diag$performance
+    contrasts_lfmm_diagnostic <- arm_lfmm_diag$contrasts
   }
 
   performance_region <- NULL; contrasts_region <- NULL
@@ -318,8 +351,12 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
     print(sensitivity)
   }
 
+  performance_diag_all <- rbindlist(list(performance_diagnostic, performance_lfmm_diagnostic), use.names = TRUE, fill = TRUE)
+  contrasts_diag_all <- rbindlist(list(contrasts_diagnostic, contrasts_lfmm_diagnostic), use.names = TRUE, fill = TRUE)
+
   list(point = point, performance = performance, contrasts = contrasts,
        performance_lfmm = performance_lfmm, contrasts_lfmm = contrasts_lfmm,
+       performance_diagnostic = performance_diag_all, contrasts_diagnostic = contrasts_diag_all,
        performance_region = performance_region, contrasts_region = contrasts_region,
        sensitivity = sensitivity, raw = dt)
 }
@@ -327,6 +364,7 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
 if (sys.nframe() == 0L) {
   res <- summarise_grid()
   dir.create("results", showWarnings = FALSE)
+  ## PRIMARY estimand: Stage-2 assembled regions (2026-09-10 update)
   fwrite(res$performance, "results/simulation_performance.tsv", sep = "\t")
   fwrite(res$contrasts, "results/simulation_method_contrasts.tsv", sep = "\t")
   if (!is.null(res$sensitivity)) fwrite(res$sensitivity, "results/simulation_bootstrap_sensitivity.tsv", sep = "\t")
@@ -336,6 +374,11 @@ if (sys.nframe() == 0L) {
     fwrite(res$contrasts_lfmm, "results/simulation_lfmm_portability_contrast.tsv", sep = "\t")
     written <- paste0(written, ", results/simulation_performance_lfmm.tsv, results/simulation_lfmm_portability_contrast.tsv")
   }
+  ## DIAGNOSTIC (marker-/Stage-1-unit-level): retained only to show why
+  ## region assembly is necessary, never the primary estimand.
+  fwrite(res$performance_diagnostic, "results/simulation_performance_diagnostic.tsv", sep = "\t")
+  fwrite(res$contrasts_diagnostic, "results/simulation_diagnostic_contrasts.tsv", sep = "\t")
+  written <- paste0(written, ", results/simulation_performance_diagnostic.tsv, results/simulation_diagnostic_contrasts.tsv")
   if (!is.null(res$performance_region)) {
     fwrite(res$performance_region, "results/simulation_performance_region.tsv", sep = "\t")
     fwrite(res$contrasts_region, "results/simulation_region_granularity_contrast.tsv", sep = "\t")

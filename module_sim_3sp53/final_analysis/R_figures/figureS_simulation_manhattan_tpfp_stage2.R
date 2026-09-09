@@ -2,9 +2,13 @@
 ##
 ## Third variant of the illustrative TP/FP Manhattan: same example genome,
 ## same colour scheme, but scored at the STAGE-2 ASSEMBLED-REGION level --
-## a whole region is ONE hypothesis, so every marker inside a region shares
-## its status (TP if ANY member marker links to a detectable QTN, else
-## FP). manhattan_example_data.R's score_stage2_tpfp().
+## a whole region is ONE hypothesis (05_score_truth.R's PRIMARY estimand as
+## of 2026-09-10), so every marker belonging to one of the region's ACTUAL
+## constituent discovered-cluster members shares its status (TP if ANY
+## member links to a detectable QTN, else FP). manhattan_example_data.R's
+## score_stage2_tpfp() -- which reproduces 05_score_truth.R's region
+## assembly exactly (constituent-cluster members, not the region's
+## physical [Chr,from,to] bounds swept over the full map).
 ##
 ## Motivation (PK): scoring at the Stage-1-UNIT level
 ## (figureS_simulation_manhattan_tpfp.R) can show both TP and FP markers
@@ -14,36 +18,37 @@
 ## that shouldn't be there." Scoring at the region level removes that
 ## artefact for this illustration.
 ##
-## Still illustrative only -- R/06_summarise.R's actual pooled
-## precision/recall remain hypothesis-level on Stage-1 units (or plain
-## markers for the unrestricted arm), NOT Stage-2 regions, per
-## CLAUDE_REANALYSIS_INSTRUCTIONS.md's explicit rejection of the
-## dedup-neutral region-level metric for the primary simulation score.
+## The subtitle reports TP/FP REGION counts (the actual scored quantity),
+## not coloured-member-marker totals, per CLAUDE_REANALYSIS_INSTRUCTIONS.md
+## ("Print TP/FP region counts prominently; label coloured-marker totals
+## separately if retained") -- member-marker counts are given separately,
+## in the console log only, as plotting-coverage context.
 suppressMessages({library(data.table); library(ggplot2); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 source(file.path(PATHS$module, "R_figures", "manhattan_example_data.R"))
 say("=== figureS_simulation_manhattan_tpfp_stage2 ===\n\n")
 
-g <- build_example_genome(compute_stage2 = TRUE)
+g <- build_example_genome(compute_stage2 = FALSE)
 dt <- g$dt
 
 status_em <- list(); status_lf <- list()
+n_tp_region <- 0L; n_fp_region <- 0L
 for (r in names(g$rep_data)) {
   rd <- g$rep_data[[r]]
   rn <- as.integer(r)
   tpfp <- score_stage2_tpfp(rd)
+  n_tp_region <- n_tp_region + tpfp$n_tp_em + tpfp$n_tp_lf
+  n_fp_region <- n_fp_region + tpfp$n_fp_em + tpfp$n_fp_lf
   if (nrow(tpfp$em)) status_em[[r]] <- tpfp$em[, .(marker, rep = rn, status)]
   if (nrow(tpfp$lf)) status_lf[[r]] <- tpfp$lf[, .(marker, rep = rn, status)]
 }
 status_em <- if (length(status_em)) rbindlist(status_em) else data.table(marker = character(), rep = integer(), status = character())
 status_lf <- if (length(status_lf)) rbindlist(status_lf) else data.table(marker = character(), rep = integer(), status = character())
 
-n_tp <- sum(status_em$status == "TP") + sum(status_lf$status == "TP")
-n_fp <- sum(status_em$status == "FP") + sum(status_lf$status == "FP")
-say("EMMAX (Stage-2 regions): %d TP, %d FP region-member markers across %d reps\n",
-    sum(status_em$status == "TP"), sum(status_em$status == "FP"), length(g$reps))
-say("LFMM  (Stage-2 regions): %d TP, %d FP region-member markers across %d reps\n",
-    sum(status_lf$status == "TP"), sum(status_lf$status == "FP"), length(g$reps))
+say("REGION counts (the scored quantity) across %d reps: %d TP, %d FP\n", length(g$reps), n_tp_region, n_fp_region)
+say("  (member-marker totals, plotting-coverage context only -- EMMAX: %d/%d TP/FP markers, LFMM: %d/%d TP/FP markers)\n",
+    sum(status_em$status == "TP"), sum(status_em$status == "FP"),
+    sum(status_lf$status == "TP"), sum(status_lf$status == "FP"))
 
 dt[, status := NA_character_]
 dt[engine == "EMMAX"][status_em, status := i.status, on = c("marker", "rep")] -> em_rows
@@ -75,7 +80,7 @@ p <- ggplot(dt) +
   scale_x_continuous(breaks = g$chr_mid$mid, labels = g$chr_mid$global_chr) +
   labs(x = "Chromosome (odd = real, grey/even = near-neutral; 2 per rep x 10 reps)", y = expression(-log[10](q)),
        title = sprintf("%s / %s / env %d -- Stage-2 assembled regions, scored as ONE hypothesis each", g$tag, g$cell, g$envn),
-       subtitle = sprintf("+ = QTN; every marker in a region shares that region's status, TP (%d) vs FP (%d) -- compare to figureS_simulation_manhattan_tpfp.R's unit-level mixed colouring within one peak; grey78 = no called region", n_tp, n_fp)) +
+       subtitle = sprintf("+ = QTN; %d TP regions vs %d FP regions (the scored quantity, EMMAX+LFMM combined) -- coloured markers show constituent membership only, not a per-marker score; compare to figureS_simulation_manhattan_tpfp.R's unit-level mixed colouring within one peak; grey78 = no called region", n_tp_region, n_fp_region)) +
   theme_bw(10) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
         plot.subtitle = element_text(size = 8, colour = "grey30"),

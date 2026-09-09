@@ -6,11 +6,16 @@ untouched (see that document's "Preserve existing work" section -- in
 particular `R/14_random_removal_control.R` there currently has an uncommitted
 change that must not be overwritten, moved, restored, or reformatted).
 
-## Status: Phase 1 complete; Phase 2 primary EMMAX arm + LFMM portability
-## arm + Stage-2 region-level scoring arm all complete; Phase 3 gates 1-4
-## ALL PASS -- the full 1,400-combination grid has pooled precision/recall
-## with bootstrap CIs for all three arms, and 6 figures are built (2 named
-## in the instructions, 4 illustrative supplementary Manhattan figures).
+## Status: Phase 1 complete; Phase 2 complete under the 2026-09-10 revised
+## primary estimand -- STAGE-2 ASSEMBLED REGIONS are now the primary
+## scoring/reporting unit for every method, including the unrestricted
+## marker-wise comparator (emmax_snp_region/lfmm_snp_region, made
+## comparable via post hoc Stage-2 assembly of every discovered
+## phenotype-blind cluster). Marker-/Stage-1-unit-level scores are
+## retained as diagnostics only. Phase 3 gates 1-4 ALL PASS -- the full
+## 1,400-combination grid has pooled region precision/recall with
+## bootstrap CIs, and 7 figures are built (2 named in the instructions, 5
+## illustrative/supplementary).
 
 Implemented so far:
 
@@ -162,101 +167,140 @@ Implemented so far:
   2000 replicates x 4 methods, plus the crossed sensitivity) takes well
   under a second.
 
-  **Grand-pooled result** (all cells/tags together, `results/simulation_
-  bootstrap_sensitivity.tsv`): the primary (map-cluster) CIs for
-  `emmax_snp` (precision 0.174, CI [0.156, 0.194]) and `emmax_consensus`
-  (0.214, CI [0.204, 0.225]) do NOT overlap -- a real, defensible
-  precision improvement from phenotype-blind Stage-1 clustering at the
-  grand-pooled level. The crossed sensitivity bootstrap widens every CI
-  substantially (`emmax_consensus`: [0.177, 0.281]) without reversing the
-  ordering -- conclusions are not an artefact of conditioning on the ten
-  observed environmental surfaces, though the crossed CIs do overlap more,
-  as expected once the environmental axis is also treated as sampled.
-  Recall shows the expected trade-off in the other direction (`emmax_snp`
-  0.216 > `emmax_consensus` 0.176).
+  **PRIMARY ESTIMAND REVISED 2026-09-10 (PK)**: Stage-2 ASSEMBLED REGIONS,
+  not Stage-1 units or markers, are the primary scoring/reporting unit --
+  see `05_score_truth.R`'s entry below for the full rationale and the real
+  bug this fixed. The grand-pooled numbers below are the CURRENT
+  (region-level) results; the marker-/unit-level numbers this section
+  reported before 2026-09-10 are superseded and now live only in
+  `results/simulation_performance_diagnostic.tsv`.
 
-  **Per-cell result is genuinely heterogeneous** (`results/simulation_
-  method_contrasts.tsv`, 56 rows) -- NOT a uniform "Stage-1 always helps."
-  Some cells show a large, CI-excludes-zero precision GAIN for
-  `emmax_consensus` over `emmax_snp` (`nobgs/V0.5_c1`: +0.226, CI [0.143,
-  0.309]; `nobgs/V1_c1`: +0.185 [0.102, 0.240]); others show a genuine,
-  CI-excludes-zero LOSS (`nobgs/V1_c1.5`: -0.076 [-0.138, -0.024];
-  `nobgs/V2_c1.5`: -0.107 [-0.193, -0.038]); several show no detectable
-  difference. Kept as-is, not smoothed into the grand-pooled number --
-  per instructions, "if some regimes fail, that is part of the method's
-  operating range and belongs in the result."
+  **Grand-pooled result** (all cells/tags together): `emmax_snp_region`
+  precision 0.124 -> `emmax_simes_region` 0.163 -> `emmax_consensus_region`
+  0.175 -- monotonic, matching the central question, with `emmax_snp_region`
+  now a genuinely comparable reported-call baseline (post hoc Stage-2
+  assembly of every discovered phenotype-blind cluster, not a raw
+  significant-marker count). Recall shows the expected trade-off in the
+  other direction (0.230 -> 0.190 -> 0.176). LFMM region arm: `lfmm_snp_
+  region` 0.110 -> `lfmm_simes_region` 0.129 precision, 0.341 -> 0.296
+  recall -- same qualitative pattern survives the engine swap.
 
-  `results/simulation_performance.tsv` (56 rows, one per cell x tag x
-  method): the primary output table -- pooled TP/FP/FN, precision/recall
-  with CIs, coverage, test counts. `results/simulation_summary_full.rds`
-  caches the full pooled/point/contrast/sensitivity objects plus the raw
-  5,600-row (1,400 combos x 4 methods) per-combo table, for rescoring
-  without rereading 1,400 individual files.
+  **Per-cell result** (`results/simulation_method_contrasts.tsv`, 42
+  rows): precision CI excludes zero (a real gain) in 7/14 strata for
+  `emmax_simes_region` vs `emmax_snp_region`, with no CI-excludes-zero
+  LOSSES -- e.g. `nobgs/V1_c1`: +0.343 [0.262, 0.418]; `nobgs/V0.5_c1`:
+  +0.264 [0.194, 0.327]. Recall CI excludes zero (a real cost) in 11/14
+  strata, consistently negative. This per-cell picture is now MORE
+  consistent/one-directional than the old unit-level story was -- region
+  assembly does not just fix the unrestricted comparator's scoring
+  artefact, it changes the substantive per-cell conclusion. Kept as-is,
+  not smoothed into the grand-pooled number -- per instructions, "if some
+  regimes fail, that is part of the method's operating range and belongs
+  in the result."
+
+  `results/simulation_performance.tsv` (42 rows, one per cell x tag x
+  region method): the PRIMARY output table -- pooled TP/FP/FN region
+  counts, region precision/recall with CIs, coverage, test counts.
+  `results/simulation_performance_diagnostic.tsv` / `simulation_
+  diagnostic_contrasts.tsv`: the marker-/Stage-1-unit-level DIAGNOSTIC
+  arm (`emmax_snp`, `emmax_snp_nonsingleton`, `emmax_simes`,
+  `emmax_consensus`, plus `lfmm_snp`/`lfmm_simes`), retained only to show
+  why region assembly is necessary, never the primary estimand.
+  `results/simulation_performance_region.tsv` / `simulation_region_
+  granularity_contrast.tsv`: paired region-vs-unit contrasts for the SAME
+  method (same bootstrap draw) -- the direct evidence for that "why."
+  `results/simulation_summary_full.rds` caches everything, including the
+  raw per-combo table, for rescoring without rereading 1,400 files.
 
 - `R/04_lfmm.R` -- the LFMM portability check (`lfmm_snp`, `lfmm_simes`
   only, no consensus, per instructions). Full 1,400-combination grid run
   (2026-09-09, `run_lfmm_grid.sh`): 1,400/1,400 complete, 0 failures.
   `R/06_summarise.R` gained a second `bootstrap_arm()` call for
-  `LFMM_METHODS`, with its own within-engine reference (`lfmm_simes` vs
-  `lfmm_snp`, NOT vs `emmax_snp` -- LFMM is "retain only as a portability
-  analysis", not a candidate for the primary EMMAX contrast). Writes
-  `results/simulation_performance_lfmm.tsv` and `results/simulation_
-  lfmm_portability_contrast.tsv`. Grand-pooled: the same qualitative
-  Stage-1-helps-precision pattern survives the engine swap (`lfmm_snp`
-  0.134 -> `lfmm_simes` 0.150), though LFMM runs systematically
-  higher-recall/lower-precision than EMMAX at matched restriction (e.g.
-  unrestricted: 0.134/0.325 vs EMMAX's 0.174/0.216) -- expected from
-  `lfmm2`'s genomic-control correction behaving less conservatively than
-  EMMAX's kinship correction here, not a new finding.
+  `LFMM_METHODS` (now `lfmm_snp_region`/`lfmm_simes_region`, region-level
+  since the 2026-09-10 update), with its own within-engine reference
+  (`lfmm_simes_region` vs `lfmm_snp_region`, NOT vs `emmax_snp_region` --
+  LFMM is "retain only as a portability analysis", not a candidate for
+  the primary EMMAX contrast). Writes `results/simulation_performance_
+  lfmm.tsv` and `results/simulation_lfmm_portability_contrast.tsv`. See
+  the grand-pooled numbers above.
 
 - `R_figures/figure_simulation_performance.R` / `figureS_simulation_
   absolute_performance.R` -- the two figures named in the instructions'
-  "Final outputs" list (paired change vs `emmax_snp`, all 7 cells; and
-  absolute precision/recall, all 4 EMMAX methods).
+  "Final outputs" list (paired STAGE-2 REGION change vs `emmax_snp_region`,
+  all 7 cells; and absolute Stage-2 region precision/recall, all 3 primary
+  region methods -- updated 2026-09-10 for the revised primary estimand).
+
+- `R/05_score_truth.R` -- Stage-2 assembled regions became the PRIMARY
+  scoring unit here (2026-09-10, PK, after inspecting the illustrative
+  Manhattan figures below). `emmax_snp_region`/`emmax_simes_region`/
+  `emmax_consensus_region`/`lfmm_snp_region`/`lfmm_simes_region` each
+  score one WHOLE Stage-2 region as one hypothesis. Two seeding routes
+  (instructions' "Testing unit versus reported-call unit"): Simes/
+  consensus seed Stage 2 with their BH-significant Stage-1 UNITS, as
+  before; the unrestricted marker-wise comparators instead mark EVERY
+  phenotype-blind Stage-1 cluster -- INCLUDING SINGLETONS -- as
+  discovered when it contains >=1 BH-significant marker, then run the
+  SAME assembly, so `emmax_snp_region`/`lfmm_snp_region` are genuinely
+  comparable reported-call units, not "every significant SNP" scored
+  against "one assembled region." Both routes call `.run_stage2()`,
+  which reproduces `ld_outlier_test()`'s own `"stage2_discovered"` branch
+  directly (same `cl_sig`/`mk_sig`/`ms_sig`/`sub` construction, same
+  `ld_prune_and_eMLG()` call) to get `pr$groups$members` -- the ACTUAL
+  constituent discovered-cluster membership -- rather than approximating
+  a region's markers from its `[Chr,from,to]` bounds.
+
+  **Real bug fixed by this same update**: the first region-scoring pass
+  (still in git history) assigned every marker PHYSICALLY BETWEEN a
+  region's bounds to that region, including untested/non-significant
+  intervening markers that were never part of any discovered cluster --
+  "an intervening, untested marker could otherwise lend truth credit to
+  the region." Fixed by using `pr$groups$members` throughout. Validated
+  before the full rescore on the illustrative `nobgs/V0.5_c1/env3` combo,
+  all 10 reps x 5 methods (`qc/validate_stage2_v2_PK.R`, not committed):
+  every region's members are an exact subset of its seed clusters' union,
+  every seed cluster's members land in exactly one output region (never
+  split across two) -- `subset_ok`/`partition_ok` TRUE and
+  `clusters_split == 0` in all 50 checked rows.
+
+  Marker-/Stage-1-unit-level scores (`emmax_snp`, `emmax_snp_
+  nonsingleton`, `emmax_simes`, `emmax_consensus`, `lfmm_snp`,
+  `lfmm_simes`) are retained as DIAGNOSTICS ONLY, to show why region
+  assembly is necessary -- never the primary estimand.
 
 - `R_figures/manhattan_example_data.R` (shared helper, not a standalone
-  figure) + four illustrative supplementary Manhattan figures, NOT named
-  in the instructions' output list, built on request. All four concatenate
+  figure) + five illustrative supplementary Manhattan figures, NOT named
+  in the instructions' output list, built on request. All five concatenate
   all 10 reps of ONE representative combo (`nobgs/V0.5_c1`/env=3 -- the
   only one of the 10 environments where every rep has >=1 significant
   EMMAX marker, found by a one-time scan) into a 20-"chromosome"
   illustrative genome (rep r's Chr1/Chr2 become chromosome 2r-1/2r,
   odd=real/even=near-neutral), EMMAX top / LFMM bottom row:
   - `figureS_simulation_manhattan_example.R` -- every marker coloured by
-    which Stage-2 assembled outlier region it physically falls in.
+    which Stage-2 assembled outlier region it physically falls in
+    (purely visual grouping, not a truth-scoring claim -- unlike the
+    scoring below, span-based colouring is fine here).
   - `figureS_simulation_manhattan_tpfp.R` -- coloured by TP/FP of the
-    significant Stage-1 emmax_simes/lfmm_simes UNIT a marker belongs to.
+    significant Stage-1 emmax_simes/lfmm_simes UNIT a marker belongs to
+    (diagnostic-level scoring, for comparison against the region-level
+    figure below).
   - `figureS_simulation_manhattan_tpfp_unrestricted.R` -- same TP/FP
     colouring for the UNRESTRICTED marker-wise engines (emmax_snp/
     lfmm_snp) instead -- shows the FP freckling Stage-1 restriction
-    removes (this combo: TP 1331/FP 394 restricted vs TP 667/FP 1052
-    unrestricted).
+    removes (this combo, diagnostic level: TP 1331/FP 394 restricted vs
+    TP 667/FP 1052 unrestricted).
   - `figureS_simulation_manhattan_tpfp_stage2.R` -- coloured by TP/FP of
-    the whole STAGE-2 REGION a marker falls in (one region = one
-    hypothesis). Built because the unit-level figure can show mixed
-    TP/FP inside a single visual peak when Stage 2 merges a truth-linked
-    unit with an adjacent non-linked one (PK) -- this fixes that.
+    the whole STAGE-2 REGION a marker's constituent cluster belongs to
+    (the PRIMARY scoring, `score_stage2_tpfp()`, using the same
+    corrected `.run_stage2()` logic as `05_score_truth.R`). Built
+    because the unit-level figure can show mixed TP/FP inside a single
+    visual peak when Stage 2 merges a truth-linked unit with an adjacent
+    non-linked one (PK) -- this fixes that. The subtitle reports TP/FP
+    REGION counts (this combo: 45 TP / 24 FP regions, EMMAX+LFMM
+    combined), not coloured-member-marker totals, per instructions
+    ("print TP/FP region counts prominently").
   `manhattan_example_data.R`'s `.truth_linkage_for_rep()` reproduces
   `05_score_truth.R`'s truth definition exactly (same primitives/PARAMS)
   throughout.
-
-- Stage-2 assembled-region scoring is now ALSO a real, pooled result, not
-  only illustrative (`05_score_truth.R`/`06_summarise.R`, 2026-09-10, on
-  request after the figures above made the unit-level artefact visible):
-  `emmax_simes_region`/`emmax_consensus_region`/`lfmm_simes_region` score
-  one WHOLE Stage-2 region as one hypothesis (member markers = everything
-  physically inside its span), recomputed per combo by re-feeding the
-  already-saved p-values back through `ld_outlier_test()` (only Stage 2's
-  assembly reruns, not the EMMAX/LFMM regression). `06_summarise.R`'s new
-  `granularity_arm()` reports each region method's own pooled CI AND a
-  PAIRED region-vs-unit contrast for the SAME method (same bootstrap
-  draw) -- `results/simulation_performance_region.tsv` /
-  `results/simulation_region_granularity_contrast.tsv`. Grand-pooled:
-  region-level scoring raises BOTH precision AND recall for all three
-  methods (e.g. `emmax_simes` 0.194->0.209 precision, 0.190->0.250
-  recall) -- a genuine definitional widening (a region's members are a
-  strict superset of its constituent units' members), not just a
-  cosmetic fix; per-cell effect is heterogeneous like everywhere else.
 
 Not implemented: the truth-threshold sensitivity grid, the BGS validation
 figure/table, or any final table/manuscript macro.
