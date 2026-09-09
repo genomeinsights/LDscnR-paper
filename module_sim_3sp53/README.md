@@ -119,65 +119,90 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
   PK: "if we randomly remove the same number of outlier clusters (but
   independently of size), would we also see a decline in FPs, and is the
   decline in fig_structured_null_sizesweep relative to that?"** This is
-  the right control and the answer changes the conclusion again, this
-  time in direction, not just magnitude. `R/14_random_removal_control.R`:
-  instead of restricting the candidate pool to units with `n_markers >=
-  floor`, draw `N_RANDOM=100` random subsets of the exact SAME
-  cardinality from the full pool, ignoring size, and compute
-  `realised_fdr` the same way (same `n_obs>0` conditioning -- this had to
-  be re-verified per draw, not per-combo mean-then-floor, which silently
-  reintroduces the identical `max(.,1)` artefact just fixed: checked
-  directly, 88%/100% of combos had a mean random `n_obs` below 1 at
-  floor=20/50, which would have manufactured a spurious "random looks
-  better" result on its own before the per-draw fix caught it).
+  the right control, framed as a hypothesis test:
 
-  Run on `bgs`, the full 10x10 rep x env grid (100 combos), for 4 of the 7
-  cells (`V0.5_c1`, `V0.5_c2`, `V1_c1.5`, `V2_c1` -- a spread across the
-  dispersal/variance grid), `emmax_consensus` only. **Identical at
-  floor=2 in every cell, by construction** (floor=2 IS the full pool, so
-  "random, same cardinality" trivially equals "size >= 2"). Beyond that,
-  in **every one of the 4 cells checked**, random is equal or BETTER
-  (lower `realised_fdr`) than size-based restriction, and the gap widens
-  with floor:
+  **H0:** restricting outlier calls to larger Stage-1 clusters improves
+  permutation calibration specifically *because* size signals real
+  biology (extended LD around a true adaptive locus), not just because
+  it shrinks the candidate list.
 
-  | floor | size-based (pooled) | random-matched (pooled) |
-  |---|---|---|
-  | 3  | 0.669 | 0.652 |
-  | 5  | 0.630 | 0.526 |
-  | 10 | 0.519 | 0.415 |
-  | 20 | 0.489 | 0.297 |
-  | 50 | 0.309 | 0.179 |
+  **Test** (`R/14_random_removal_control.R`): instead of restricting the
+  candidate pool to units with `n_markers >= floor`, draw `N_RANDOM=100`
+  random subsets of the exact SAME cardinality from the full pool,
+  ignoring size, and compute `realised_fdr` the same way (per-draw
+  `n_obs>0` conditioning -- re-verifying this mattered: the first version
+  computed it per-combo as `mean(n_obs_random)` then `max(.,1)`, which
+  silently reintroduces the identical `max(.,1)` artefact just fixed
+  above; checked directly, 88%/100% of combos had a mean random `n_obs`
+  below 1 at floor=20/50, which would have manufactured a spurious
+  "random looks better" result on its own -- caught before trusting it).
 
-  (`fig_random_removal_control.pdf`; per-cell panels show the same
-  direction in all 4, not just the pooled average.) **Size-based
-  restriction shows no advantage over randomly restricting to the same
-  number of clusters -- if anything it is consistently worse.** The
-  plateau reported just above is therefore NOT evidence that big clusters
-  are specifically more trustworthy; it is mostly (perhaps entirely) an
-  artefact of restricting the candidate pool at all, something ANY
-  same-sized restriction produces, size-based or not.
+  **Result: H0 REJECTED**, and completely -- run on the **full grid**
+  (all 7 cells x both tags, 10x10 rep x env each = 1400 combos,
+  `emmax_consensus`/`group` only). Identical at floor=2 everywhere, by
+  construction (floor=2 IS the full pool). Beyond that, random is equal
+  or BETTER than size-based restriction at every floor, in every cell,
+  in BOTH tags, gap widening with floor:
 
-  A plausible mechanism, found while building the single-combo pilot for
-  this check: the *surrogate* (pure-noise) significance rate per unit is
-  NOT flat across sizes -- it is measurably higher among large units than
-  a random-matched baseline (roughly 0.00014 at floor=2 rising to ~0.0012
-  at floor=20 for the size-restricted pool, vs. a flat ~0.00014 for
-  random). Large Stage-1 units are plausibly confounded with low-
-  recombination regions, which this project has already shown
-  independently have worse false-positive control (`fig_fp_neutral_chr`
-  in `bgs5`) -- big clusters may concentrate both true AND false signal,
-  not purify for true signal.
+  | floor | size (bgs) | random (bgs) | size (nobgs) | random (nobgs) |
+  |---|---|---|---|---|
+  | 3  | 0.669 | 0.637 | 0.699 | 0.692 |
+  | 5  | 0.651 | 0.499 | 0.618 | 0.538 |
+  | 10 | 0.525 | 0.372 | 0.562 | 0.409 |
+  | 20 | 0.470 | 0.269 | 0.511 | 0.346 |
+  | 50 | 0.344 | 0.197 | 0.656 | 0.396 |
 
-  This does **not** call `fig_fp_by_size` into question -- that is a
-  separate, ground-truth (known-QTN) TP/FP analysis, not a permutation-
-  null comparison, and is unaffected by anything here. What it DOES
-  retract is the earlier claim that the permutation-based size-floor
-  sweep independently corroborates `fig_fp_by_size` via "a truth-free
-  route" -- it doesn't; once properly controlled, it points the other way.
-  **Not yet run:** `nobgs`, the remaining 3 cells (`V0.5_c1.5`, `V1_c1`,
-  `V2_c1.5`), `mvn`/`spatial`, `emmax_simes` -- the 4-cell/bgs/consensus
-  result is consistent and the effect size is large, but treat it as
-  strong-not-final until/unless the remaining scope is checked.
+  (`fig_random_removal_control.pdf`.) **Size-based restriction shows no
+  advantage over randomly restricting to the same number of clusters --
+  if anything it is consistently worse.** The plateau reported just
+  above is therefore NOT evidence that big clusters are specifically
+  more trustworthy; it is mostly (perhaps entirely) an artefact of
+  restricting the candidate pool at all, something ANY same-sized
+  restriction produces, size-based or not.
+
+  **Reconciling with `fig_fp_by_size` (ground truth), and a correction to
+  the mechanism first proposed for this.** Checked directly rather than
+  assumed: `fig_fp_by_size` genuinely does show FP proportion falling
+  with cluster size here -- `bgs` 94.7% -> 80.0% (size-bin 2 -> 50+,
+  modest, noisy), `nobgs` 91.9% -> 55.3% (size-bin 2 -> 50+, much
+  stronger). So the ground-truth size-truth relationship is real, and
+  real*ly* stronger in `nobgs`.
+
+  The first mechanism proposed for the gap above (large units confounded
+  with low-recombination regions, which independently have worse
+  structure correction per `bgs5`'s `fig_fp_neutral_chr`) makes a
+  falsifiable prediction: if that's right, the null-vs-size gap should be
+  SMALLER in `nobgs`, where the true signal is much stronger relative to
+  any structure-driven noise. **It isn't -- the table above shows `bgs`
+  and `nobgs` behaving essentially identically.** That prediction failed,
+  so recombination/BGS-specific structure is not the primary driver.
+
+  A cleaner explanation is in the package's own documentation for
+  `ld_unit_matrix()`'s `consensus_dosage` representation (what
+  `emmax_consensus` tests): *"No size penalty -- a larger cluster is a
+  BETTER-ESTIMATED consensus, so size helps rather than hurts."* A bigger
+  unit's row-mean dosage is a single, lower-noise variable tested ONCE
+  per unit (not a multiple-comparisons effect across markers). Lower
+  noise means more statistical power, full stop -- power to detect a real
+  QTN association (why `fig_fp_by_size` improves with size) AND power to
+  detect any residual, imperfectly-corrected population structure that a
+  permuted-but-still-structured phenotype still carries (why the
+  permutation null's own hit rate rises with size). Both effects come
+  from the same noise reduction, independent of BGS or recombination
+  specifics -- which is exactly why `bgs` and `nobgs` look the same.
+
+  This does **not** call `fig_fp_by_size` itself into question -- it is
+  unaffected, a separate ground-truth analysis. What it retracts is the
+  claim that the permutation-based size-floor sweep independently
+  corroborates it via "a truth-free route": it doesn't. Size predicts
+  truth (only checkable with ground truth) but does not validate itself
+  against a permutation null, because the null gets the same power
+  boost. **Still not run:** `mvn`/`spatial` schemes, `emmax_simes` arm --
+  the `group`/`emmax_consensus` result is now complete (full grid) and
+  the effect is large and consistent, but the mechanism explanation above
+  (a property of `consensus_dosage` specifically) predicts `emmax_simes`
+  -- a different combining rule, genuinely multi-comparison across a
+  unit's markers -- could behave differently, and hasn't been checked.
 
   **The `nobgs`/`V1_c1` anomaly was NOT resolved -- it was CONFIRMED, and
   the earlier "resolved" claim was itself an artefact of the same
@@ -215,12 +240,16 @@ neutral-chromosome FP analysis, cluster bootstrap CI), plus two things
   once most combos stop producing genuine discoveries, which happens
   faster than it looks (36.5% -> 95.2% zero-discovery across floor=2-50
   here). This was the mistake corrected above.
-- `R/14_random_removal_control.R`'s matched-cardinality-random check
-  (see above) has only been run on `bgs`/4-of-7-cells/`emmax_consensus`.
-  Extending it to `nobgs`, the remaining 3 cells, `mvn`/`spatial`, and
-  `emmax_simes` would either confirm this is general or localise it --
-  worth doing before this result goes anywhere near the manuscript.
-  `results/random_removal_control_summary.rds` holds the pooled 4-cell
-  output; rerun `R/14_random_removal_control.R <tag> <cell>` per missing
-  combo and `rbindlist()` the new `out/14_random_removal_control/rrc_*.rds`
+- `R/14_random_removal_control.R`'s matched-cardinality-random check is
+  now complete for `group`/`emmax_consensus` (full 7-cell x 2-tag grid),
+  but still not run for `mvn`/`spatial` or `emmax_simes` --
+  `emmax_simes` is the more important of the two to check, since the
+  proposed mechanism (a `consensus_dosage`-specific noise/power effect)
+  predicts it could behave differently (Simes IS a genuine multiple-
+  comparisons combination across a unit's markers, unlike consensus's
+  single averaged variable). `results/random_removal_control_summary.rds`
+  holds the full pooled output; extend by rerunning
+  `R/14_random_removal_control.R <tag> <cell>` with the arm changed to
+  Simes (not currently a script argument -- would need a small edit) and
+  `rbindlist()`-ing the new `out/14_random_removal_control/rrc_*.rds`
   files in with it.
