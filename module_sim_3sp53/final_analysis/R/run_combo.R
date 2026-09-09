@@ -1,18 +1,22 @@
 ## final_analysis/R/run_combo.R
 ##
-## Chains parse -> Stage 1/GRM -> EMMAX -> truth-scoring for one
-## (tag, cell, rep, env) combination. Used by both the gate-3 14-
-## combination grid and (later) the full 1,400-combination driver.
+## Chains parse -> Stage 1/GRM -> EMMAX -> [LFMM] -> truth-scoring for one
+## (tag, cell, rep, env) combination. Used by the gate-3 14-combination
+## grid and the full 1,400-combination driver (both EMMAX-only, the
+## default) and by run_lfmm_grid.sh (with lfmm=TRUE, reusing the already-
+## built parse/Stage-1/EMMAX outputs from the primary grid -- LFMM is a
+## separate, later stage per instructions, not rerun with the primary arm).
 ##
-## Usage: Rscript R/run_combo.R <tag> <cell> <rep> <env>
-suppressMessages({library(data.table); library(LDscnR); library(SNPRelate)})
+## Usage: Rscript R/run_combo.R <tag> <cell> <rep> <env> [lfmm: 0|1]
+suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); library(LEA)})
 MOD <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
 source(file.path(MOD, "R", "01_parse_nemo.R"))
 source(file.path(MOD, "R", "02_build_ld_units.R"))
 source(file.path(MOD, "R", "03_emmax.R"))
+source(file.path(MOD, "R", "04_lfmm.R"))
 source(file.path(MOD, "R", "05_score_truth.R"))
 
-run_combo <- function(tag, cell, rep, env, force = FALSE) {
+run_combo <- function(tag, cell, rep, env, force = FALSE, lfmm = FALSE) {
   combo_id <- sprintf("%s_%s_rep%d_env%d", tag, cell, rep, env)
   say("\n########## %s ##########\n", combo_id)
 
@@ -26,12 +30,18 @@ run_combo <- function(tag, cell, rep, env, force = FALSE) {
 
   invisible(build_ld_units(tag, cell, rep, env, force = force))
   invisible(run_emmax(tag, cell, rep, env, force = force))
+  if (lfmm) invisible(run_lfmm(tag, cell, rep, env, force = force))
+  ## force=TRUE on the FIRST scoring pass after lfmm becomes available --
+  ## score_truth()'s own PARAMS (have_lfmm) already invalidates a stale
+  ## EMMAX-only receipt automatically, so force is only needed to rebuild
+  ## after a genuine upstream change, not to pick up new LFMM output.
   scores <- score_truth(tag, cell, rep, env, force = force)
   scores
 }
 
 if (sys.nframe() == 0L) {
   args <- commandArgs(trailingOnly = TRUE)
-  if (length(args) < 4) stop("Usage: Rscript R/run_combo.R <tag> <cell> <rep> <env>")
-  invisible(run_combo(args[1], args[2], as.integer(args[3]), as.integer(args[4])))
+  if (length(args) < 4) stop("Usage: Rscript R/run_combo.R <tag> <cell> <rep> <env> [lfmm: 0|1]")
+  do_lfmm <- length(args) >= 5 && args[5] %in% c("1", "TRUE", "true")
+  invisible(run_combo(args[1], args[2], as.integer(args[3]), as.integer(args[4]), lfmm = do_lfmm))
 }
