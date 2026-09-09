@@ -48,7 +48,8 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   INPUTS <- c(emmax_file, ld_units_file, if (have_lfmm) lfmm_file)
   PARAMS <- list(va_share_detectable = VA_SHARE_DETECTABLE, maf_keep = MAF_KEEP,
                  truth_rho_r2 = TRUTH_RHO_R2, truth_rho_d = TRUTH_RHO_D, truth_dmax_cap = TRUTH_DMAX_CAP,
-                 size_floor = SIZE_FLOOR, have_lfmm = have_lfmm)
+                 size_floor = SIZE_FLOOR, have_lfmm = have_lfmm,
+                 region_assembly = REGION_ASSEMBLY, region_scoring_version = 1L)
   if (!force && !stage_stale(STAGE, INPUTS, PARAMS, target = combo_id)) {
     return(readRDS(file.path(stage_dir(STAGE, combo_id), "truth_scores.rds")))
   }
@@ -157,10 +158,53 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
 
   score_list <- list(res_snp, res_snp_ns, res_sim, res_con)
 
-  ## lfmm_snp / lfmm_simes -- only when R/04_lfmm.R has been run for this
-  ## combo. NO lfmm_consensus (instructions: "no LFMM consensus-dosage
-  ## analysis") and no lfmm_snp_nonsingleton (not in the instructions'
-  ## LFMM scope, unlike emmax_snp_nonsingleton).
+  ## ---- Stage-2 assembled-region scoring (illustrative-turned-real, PK 2026-09-10) --
+  ## Hypothesis = one WHOLE Stage-2 region (member markers = every marker
+  ## physically inside [Chr,from,to]), not one Stage-1 unit. Fixes a real
+  ## artefact of unit-level scoring: Stage-2 can merge a truth-linked unit
+  ## with an adjacent non-linked one, so one reported region could show
+  ## mixed TP/FP at the unit level even though it is reported as ONE call.
+  ## $regions is recomputed here by re-feeding the ALREADY-SAVED p-values
+  ## (em$marker$p is pm_obs verbatim; em$emmax_consensus$p is pu_obs
+  ## verbatim for statistic="unit", where each unit IS one test, no
+  ## combination) back into ld_outlier_test() -- this re-runs ONLY Stage
+  ## 2's dynamic-cut/eMLG assembly, NOT the expensive EMMAX/LFMM
+  ## regression itself. Every region row is already a significant call by
+  ## construction (Stage 2 only assembles significant units), so ALL
+  ## region ids are "significant" hypotheses -- reuses the SAME generic
+  ## .score() scorer above with sig_ids = every region id.
+  .region_members <- function(regions) {
+    if (nrow(regions) == 0) return(list())
+    mm <- vector("list", nrow(regions))
+    for (i in seq_len(nrow(regions))) {
+      hit <- map$Chr == regions$Chr[i] & map$Pos >= regions$from[i] & map$Pos <= regions$to[i]
+      mm[[i]] <- map$marker[hit]
+    }
+    stats::setNames(mm, as.character(seq_len(nrow(regions))))
+  }
+  .region_test <- function(p_obs, statistic) {
+    ld_outlier_test(stage1, map, p_obs, statistic = statistic, size_floor = SIZE_FLOOR,
+                    alpha = ALPHA, assembly = "stage2_discovered", GTs = GTs,
+                    LD_decay = b$LD_decay, score_threshold = REGION_ASSEMBLY$score_threshold,
+                    distance_threshold = REGION_ASSEMBLY$distance_threshold)
+  }
+
+  sim_regions <- .region_test(em$marker$p, "simes")$regions
+  sim_region_members <- .region_members(sim_regions)
+  res_sim_region <- .score("emmax_simes_region", sim_region_members, names(sim_region_members),
+                           nrow(em$emmax_simes), NA_real_)
+
+  con_regions <- .region_test(em$emmax_consensus$p, "unit")$regions
+  con_region_members <- .region_members(con_regions)
+  res_con_region <- .score("emmax_consensus_region", con_region_members, names(con_region_members),
+                           nrow(em$emmax_consensus), NA_real_)
+
+  score_list <- c(score_list, list(res_sim_region, res_con_region))
+
+  ## lfmm_snp / lfmm_simes / lfmm_simes_region -- only when R/04_lfmm.R has
+  ## been run for this combo. NO lfmm_consensus (instructions: "no LFMM
+  ## consensus-dosage analysis") and no lfmm_snp_nonsingleton (not in the
+  ## instructions' LFMM scope, unlike emmax_snp_nonsingleton).
   if (have_lfmm) {
     lfmm_marker_members <- stats::setNames(as.list(lf$marker$marker), lf$marker$marker)
     res_lfmm_snp <- .score("lfmm_snp", lfmm_marker_members, lf$marker$marker[lf$marker$significant_snp],
@@ -169,7 +213,13 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
     sig_lfmm_sim <- as.character(lf$lfmm_simes$unit_id[lf$lfmm_simes$significant])
     bh_crit_lfmm_sim <- { qv <- lf$lfmm_simes$p[lf$lfmm_simes$significant]; if (length(qv)) max(qv) else NA_real_ }
     res_lfmm_sim <- .score("lfmm_simes", lfmm_sim_members, sig_lfmm_sim, nrow(lf$lfmm_simes), bh_crit_lfmm_sim)
-    score_list <- c(score_list, list(res_lfmm_snp, res_lfmm_sim))
+
+    lfmm_sim_regions <- .region_test(lf$marker$p, "simes")$regions
+    lfmm_sim_region_members <- .region_members(lfmm_sim_regions)
+    res_lfmm_sim_region <- .score("lfmm_simes_region", lfmm_sim_region_members, names(lfmm_sim_region_members),
+                                  nrow(lf$lfmm_simes), NA_real_)
+
+    score_list <- c(score_list, list(res_lfmm_snp, res_lfmm_sim, res_lfmm_sim_region))
   }
 
   scores <- rbindlist(score_list)
