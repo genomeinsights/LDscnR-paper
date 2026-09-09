@@ -7,7 +7,8 @@ particular `R/14_random_removal_control.R` there currently has an uncommitted
 change that must not be overwritten, moved, restored, or reformatted).
 
 ## Status: Phase 1 complete; Phase 2 partial (primary EMMAX arm only);
-## Phase 3 gates 1-3 pass
+## Phase 3 gates 1-4 ALL PASS -- the full 1,400-combination primary
+## EMMAX grid is complete.
 
 Implemented so far:
 
@@ -99,12 +100,49 @@ Implemented so far:
      a genuinely columnless empty table, not just an empty-but-correctly-
      shaped one -- `qtn_lut[r2 > ...]` then errors instead of matching
      zero rows. Guarded in `05_score_truth.R`.
+- `run_full_grid.sh` -- Phase 3 gate 4 (PASS): the full manifest, 7 cells x
+  2 tags x 10 reps x 10 envs = 1,400 combinations, through the complete
+  primary-EMMAX pipeline. Missing raw inputs are treated as failures, not
+  silent skips (checked explicitly before each combo runs). Launched as a
+  monitored background job (2026-09-09 19:07-~19:50, concurrency 7) --
+  **1,400/1,400 combinations complete, 0 failures** (14 already done from
+  gate 3, 1,386 newly run). Independently cross-checked against the actual
+  per-combo output files (not just the manifest's own shell-exit status):
+  `qc/full_grid_validation_report.tsv` confirms all 1,400 have a valid
+  `truth_scores.rds` with all 4 methods and all expected fields present.
+  `qc/validate_full_grid.R` is the check script.
+  `qc/full_grid_manifest.tsv` is a tracked copy of the run manifest
+  (`out_final_v1/full_grid_manifest.tsv` itself is gitignored, per
+  `out_final_v1/`'s regenerable-output convention) -- satisfies the
+  instructions' "Final outputs" item 11 (`results/run_manifest.tsv`) for
+  now; will move under `results/` once that directory exists.
 
-Not implemented: Phase 3 gate 4 (full 1,400-grid),
-LFMM itself (deliberately deferred, split from the primary EMMAX arm so
-that can finish and be audited independently), Stage 2 / reported-region
-output, pooling across combinations, the cluster-bootstrap uncertainty
-machinery, or any final table/figure.
+  **First pooled look** (raw hypothesis-level pooled counts across the
+  whole grid, `qc/full_grid_pooled_summary_preview.tsv` -- NOT yet the
+  real primary result: no cluster-bootstrap uncertainty, no map/burn-in
+  pairing, this is a sanity check, not a reportable number):
+
+  | method | n_significant | TP | FP | pooled precision |
+  |---|---|---|---|---|
+  | `emmax_snp` | 36,027 | 6,274 | 29,753 | 0.174 |
+  | `emmax_snp_nonsingleton` | 35,007 | 6,190 | 28,817 | 0.177 |
+  | `emmax_simes` | 5,016 | 974 | 4,042 | 0.194 |
+  | `emmax_consensus` | 4,483 | 961 | 3,522 | 0.214 |
+
+  Precision rises monotonically size-conscious-method -> Stage-1 Simes ->
+  Stage-1 consensus, exactly the qualitative pattern the reanalysis's
+  central question asks about (does phenotype-blind Stage-1 LD complexity
+  reduction improve precision relative to unrestricted marker-wise
+  testing) -- encouraging, but this raw pooled-count preview is not the
+  primary result: it doesn't yet use the map-cluster bootstrap the
+  instructions require for uncertainty, and recall isn't shown here since
+  it needs unique-QTN deduplication across the whole grid, not a per-
+  combo sum.
+
+Not implemented: LFMM itself (deliberately deferred, split from the
+primary EMMAX arm so that can finish and be audited independently),
+Stage 2 / reported-region output, proper pooling with the map-cluster
+bootstrap, or any final table/figure.
 
 `LFMM_K=5`'s justification stop point IS resolved (2026-09-09, PK): the 80
 sampled populations fall into 5 discrete spatial groups (4 grid corners +
