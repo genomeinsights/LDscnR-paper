@@ -41,6 +41,13 @@ source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analy
 METHODS <- c("emmax_snp", "emmax_snp_nonsingleton", "emmax_simes", "emmax_consensus")
 REFERENCE_METHOD <- "emmax_snp"   ## "its unrestricted marker-wise engine" -- the contrast baseline
 
+## LFMM is "retain only as a portability analysis" (instructions) -- a SEPARATE
+## arm with its own within-engine baseline (lfmm_simes vs lfmm_snp), not mixed
+## into the primary EMMAX methods/contrasts above. Does the same phenotype-
+## blind Stage-1 restriction still help when the association engine changes?
+LFMM_METHODS <- c("lfmm_snp", "lfmm_simes")
+LFMM_REFERENCE_METHOD <- "lfmm_snp"
+
 ## ---- 1. load every combo's truth scores into one table -----------------------
 load_all_scores <- function() {
   rows <- list()
@@ -84,14 +91,14 @@ rep_level_stats <- function(dt) {
 ## matrix multiplication to each method's 10-vector of rep-level sums.
 ## Returns a list: point (data.table) and boot (long data.table, one row
 ## per method x replicate, for percentile CIs and paired contrasts).
-map_cluster_bootstrap_stratum <- function(rep_dt, B, seed) {
+map_cluster_bootstrap_stratum <- function(rep_dt, B, seed, methods = METHODS) {
   set.seed(seed)
   n_rep <- length(REPS_ALL)
   draws <- matrix(sample.int(n_rep, size = n_rep * B, replace = TRUE), nrow = n_rep, ncol = B)
   mult <- apply(draws, 2, tabulate, nbins = n_rep)   ## n_rep x B
 
   boot_rows <- list()
-  for (m in METHODS) {
+  for (m in methods) {
     rm <- rep_dt[method == m][order(rep)]
     stopifnot("rep_level_stats must have exactly REPS_ALL rows per method" = nrow(rm) == n_rep && identical(rm$rep, REPS_ALL))
     TP_b <- as.numeric(crossprod(mult, rm$TP))
@@ -141,17 +148,12 @@ crossed_bootstrap_stratum <- function(combo_dt, B, seed) {
   rbindlist(boot_rows)
 }
 
-## ---- driver --------------------------------------------------------------------
-summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
-  say("[1] loading all 1400 combos' truth scores\n")
-  dt <- load_all_scores()
-  say("    %d rows (%d combos x %d methods)\n", nrow(dt), nrow(dt) / length(METHODS), length(METHODS))
-
-  say("\n[2] point estimates (pooled counts, one row per cell x tag x method)\n")
-  point <- pooled_point(dt)
-  print(point[, .(tag, cell, method, n_tested, n_significant, TP, FP, precision, recall, coverage)])
-
-  say("\n[3] primary map-cluster bootstrap (B=%d per stratum)\n", B)
+## ---- 3b. one arm's map-cluster bootstrap + paired contrasts, all strata -------
+## Factored out of the driver so the primary EMMAX arm and the separate LFMM
+## portability arm run through identical bootstrap/contrast logic, each with
+## its own methods/reference_method (and its own bootstrap seed stream --
+## seed_offset keeps the two arms' resampling independent).
+bootstrap_arm <- function(dt, point, methods, reference_method, B, seed_offset = 0) {
   rep_dt <- rep_level_stats(dt)
   strata <- unique(dt[, .(tag, cell)])
   perf_rows <- list(); contrast_rows <- list()
@@ -159,9 +161,9 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
     tg <- strata$tag[i]; cl <- strata$cell[i]
     say("    %s/%s\n", tg, cl)
     rd <- rep_dt[tag == tg & cell == cl]
-    boot <- map_cluster_bootstrap_stratum(rd, B, seed = SEEDS[["bootstrap"]] + i)
+    boot <- map_cluster_bootstrap_stratum(rd, B, seed = SEEDS[["bootstrap"]] + seed_offset + i, methods = methods)
     pt <- point[tag == tg & cell == cl]
-    for (m in METHODS) {
+    for (m in methods) {
       bm <- boot[method == m]
       pr <- pt[method == m]
       perf_rows[[length(perf_rows) + 1]] <- data.table(
@@ -172,21 +174,46 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
         recall = pr$recall, recall_ci_lo = ci(bm$recall)[1], recall_ci_hi = ci(bm$recall)[2])
     }
     ## paired contrasts vs the reference method, from the SAME bootstrap replicates
-    ref <- boot[method == REFERENCE_METHOD][order(b)]
-    for (m in setdiff(METHODS, REFERENCE_METHOD)) {
+    ref <- boot[method == reference_method][order(b)]
+    for (m in setdiff(methods, reference_method)) {
       bm <- boot[method == m][order(b)]
       d_prec <- bm$precision - ref$precision
       d_rec <- bm$recall - ref$recall
       pt_m <- point[tag == tg & cell == cl & method == m]
-      pt_r <- point[tag == tg & cell == cl & method == REFERENCE_METHOD]
+      pt_r <- point[tag == tg & cell == cl & method == reference_method]
       contrast_rows[[length(contrast_rows) + 1]] <- data.table(
-        tag = tg, cell = cl, method = m, reference_method = REFERENCE_METHOD,
+        tag = tg, cell = cl, method = m, reference_method = reference_method,
         diff_precision = pt_m$precision - pt_r$precision, diff_precision_ci_lo = ci(d_prec)[1], diff_precision_ci_hi = ci(d_prec)[2],
         diff_recall = pt_m$recall - pt_r$recall, diff_recall_ci_lo = ci(d_rec)[1], diff_recall_ci_hi = ci(d_rec)[2])
     }
   }
-  performance <- rbindlist(perf_rows)
-  contrasts <- rbindlist(contrast_rows)
+  list(performance = rbindlist(perf_rows), contrasts = rbindlist(contrast_rows))
+}
+
+## ---- driver --------------------------------------------------------------------
+summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
+  say("[1] loading all 1400 combos' truth scores\n")
+  dt <- load_all_scores()
+  have_lfmm <- all(LFMM_METHODS %in% dt$method)
+  say("    %d rows (%d combos x %d EMMAX methods%s)\n", nrow(dt), nrow(dt) / (length(METHODS) + have_lfmm * length(LFMM_METHODS)),
+      length(METHODS), if (have_lfmm) sprintf(" + %d LFMM methods", length(LFMM_METHODS)) else "")
+
+  say("\n[2] point estimates (pooled counts, one row per cell x tag x method)\n")
+  point <- pooled_point(dt)
+  print(point[, .(tag, cell, method, n_tested, n_significant, TP, FP, precision, recall, coverage)])
+
+  say("\n[3] primary map-cluster bootstrap (B=%d per stratum)\n", B)
+  arm <- bootstrap_arm(dt, point, METHODS, REFERENCE_METHOD, B)
+  performance <- arm$performance
+  contrasts <- arm$contrasts
+
+  performance_lfmm <- NULL; contrasts_lfmm <- NULL
+  if (have_lfmm) {
+    say("\n[3b] LFMM portability arm: map-cluster bootstrap (B=%d per stratum)\n", B)
+    arm_lfmm <- bootstrap_arm(dt, point, LFMM_METHODS, LFMM_REFERENCE_METHOD, B, seed_offset = 5000)
+    performance_lfmm <- arm_lfmm$performance
+    contrasts_lfmm <- arm_lfmm$contrasts
+  }
 
   sensitivity <- NULL
   if (do_crossed_sensitivity) {
@@ -219,7 +246,9 @@ summarise_grid <- function(B = N_BOOTSTRAP, do_crossed_sensitivity = TRUE) {
     print(sensitivity)
   }
 
-  list(point = point, performance = performance, contrasts = contrasts, sensitivity = sensitivity, raw = dt)
+  list(point = point, performance = performance, contrasts = contrasts,
+       performance_lfmm = performance_lfmm, contrasts_lfmm = contrasts_lfmm,
+       sensitivity = sensitivity, raw = dt)
 }
 
 if (sys.nframe() == 0L) {
@@ -228,6 +257,12 @@ if (sys.nframe() == 0L) {
   fwrite(res$performance, "results/simulation_performance.tsv", sep = "\t")
   fwrite(res$contrasts, "results/simulation_method_contrasts.tsv", sep = "\t")
   if (!is.null(res$sensitivity)) fwrite(res$sensitivity, "results/simulation_bootstrap_sensitivity.tsv", sep = "\t")
+  written <- "results/simulation_performance.tsv, results/simulation_method_contrasts.tsv, results/simulation_bootstrap_sensitivity.tsv"
+  if (!is.null(res$performance_lfmm)) {
+    fwrite(res$performance_lfmm, "results/simulation_performance_lfmm.tsv", sep = "\t")
+    fwrite(res$contrasts_lfmm, "results/simulation_lfmm_portability_contrast.tsv", sep = "\t")
+    written <- paste0(written, ", results/simulation_performance_lfmm.tsv, results/simulation_lfmm_portability_contrast.tsv")
+  }
   saveRDS(res, "results/simulation_summary_full.rds")
-  say("\nwrote results/simulation_performance.tsv, results/simulation_method_contrasts.tsv, results/simulation_bootstrap_sensitivity.tsv\n")
+  say("\nwrote %s\n", written)
 }
