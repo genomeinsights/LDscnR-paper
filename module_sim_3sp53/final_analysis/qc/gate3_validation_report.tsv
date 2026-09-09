@@ -1,0 +1,15 @@
+tag	cell	file_exists	methods_ok	fields_ok	n_sig_total
+nobgs	V0.5_c1	TRUE	TRUE	TRUE	0
+nobgs	V0.5_c1.5	TRUE	TRUE	TRUE	0
+nobgs	V0.5_c2	TRUE	TRUE	TRUE	0
+nobgs	V1_c1	TRUE	TRUE	TRUE	122
+nobgs	V1_c1.5	TRUE	TRUE	TRUE	3
+nobgs	V2_c1	TRUE	TRUE	TRUE	0
+nobgs	V2_c1.5	TRUE	TRUE	TRUE	0
+bgs	V0.5_c1	TRUE	TRUE	TRUE	44
+bgs	V0.5_c1.5	TRUE	TRUE	TRUE	0
+bgs	V0.5_c2	TRUE	TRUE	TRUE	266
+bgs	V1_c1	TRUE	TRUE	TRUE	5
+bgs	V1_c1.5	TRUE	TRUE	TRUE	4
+bgs	V2_c1	TRUE	TRUE	TRUE	0
+bgs	V2_c1.5	TRUE	TRUE	TRUE	9

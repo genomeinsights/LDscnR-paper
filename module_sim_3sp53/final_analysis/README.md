@@ -7,7 +7,7 @@ particular `R/14_random_removal_control.R` there currently has an uncommitted
 change that must not be overwritten, moved, restored, or reformatted).
 
 ## Status: Phase 1 complete; Phase 2 partial (primary EMMAX arm only);
-## Phase 3 gates 1-2 pass
+## Phase 3 gates 1-3 pass
 
 Implemented so far:
 
@@ -74,8 +74,33 @@ Implemented so far:
   both parses (max abs diff 3.15e-02) -- not just markers near a QTN,
   since EMMAX's kinship correction is a global adjustment. Log:
   `qc/offset_propagation_check.txt`.
+- `R/run_combo.R` -- chains parse -> Stage 1/GRM -> EMMAX -> truth-scoring
+  for one combination; found and fixed a real bug immediately on first use
+  (see below).
+- `run_gate3_grid.sh` -- Phase 3 gate 3 (PASS): all 7 cells x both tags,
+  rep=1/env=1 (14 combinations). 14/14 complete, all 4 methods present, all
+  expected summary fields present. Report: `qc/gate3_validation_report.tsv`.
+  Two real bugs found and fixed running this at 14-combo scale for the
+  first time (neither visible at gate 2's single-combination scale):
+  1. **STAGE-clobbering.** `02_build_ld_units.R`/`03_emmax.R`/`05_score_
+     truth.R` each set a top-level `STAGE <- "..."` used inside their own
+     functions as a free variable resolved at CALL time. Invisible when
+     each script runs in its own fresh session (Phase 1/gate 2), but
+     `run_combo.R` sources all four into ONE process -- by the time any
+     function is actually called, every script's STAGE assignment has
+     already run, leaving the LAST-sourced value for all of them. Found
+     immediately: `build_ld_units()` wrote its output under
+     `05_score_truth/`'s directory instead of its own. Fixed by making
+     STAGE a local binding inside each function.
+  2. **Zero-QTN runs.** A raw run can save literally zero QTN loci at all
+     (each run saves only a small, variable subset of the reference map's
+     101 QTN -- see `qc/offset_propagation_check.R`'s header). When that
+     happens, `qtn_ld_table()` has nothing to compute against and returns
+     a genuinely columnless empty table, not just an empty-but-correctly-
+     shaped one -- `qtn_lut[r2 > ...]` then errors instead of matching
+     zero rows. Guarded in `05_score_truth.R`.
 
-Not implemented: Phase 3 gates 3-4 (14-combination grid; full 1,400-grid),
+Not implemented: Phase 3 gate 4 (full 1,400-grid),
 LFMM itself (deliberately deferred, split from the primary EMMAX arm so
 that can finish and be audited independently), Stage 2 / reported-region
 output, pooling across combinations, the cluster-bootstrap uncertainty
