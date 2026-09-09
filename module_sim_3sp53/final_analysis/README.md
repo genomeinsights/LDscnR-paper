@@ -139,10 +139,62 @@ Implemented so far:
   it needs unique-QTN deduplication across the whole grid, not a per-
   combo sum.
 
+- `R/06_summarise.R` -- the real pooled result (supersedes the raw preview
+  above). Point estimates are ratios of pooled counts, never means of
+  per-combo precision/recall (`precision = sum(TP)/(sum(TP)+sum(FP))`,
+  `recall = sum(n_recovered)/sum(n_detectable_qtn)`, "unique QTN" scoped
+  WITHIN each combo -- QTN identity isn't comparable across reps, each is
+  an independent simulated genome with its own reference map). Does NOT
+  use `R/05_pool.R`'s across-environment SE -- the ten environmental
+  continuations for a map share its burn-in, not ten independent
+  replicates (see `R/14_random_removal_control.R`'s own confirmation of
+  this against the `.ini` files). Primary CI: cluster-bootstrap the ten
+  map/burn-in IDs (B=2000), retaining all ten paired environmental
+  continuations per resampled map, all 4 methods paired within each
+  replicate so contrasts vs `emmax_snp` are genuine paired comparisons.
+  Sensitivity: a crossed two-way bootstrap (reps and envs resampled
+  INDEPENDENTLY, Cartesian product), run at the grand-pooled level, per
+  instructions' "if time permits" framing for this specific check. Both
+  bootstraps are vectorised as matrix algebra over pre-aggregated sums
+  (never re-subsetting 1,400 rows per replicate) -- full run (56 strata x
+  2000 replicates x 4 methods, plus the crossed sensitivity) takes well
+  under a second.
+
+  **Grand-pooled result** (all cells/tags together, `results/simulation_
+  bootstrap_sensitivity.tsv`): the primary (map-cluster) CIs for
+  `emmax_snp` (precision 0.174, CI [0.156, 0.194]) and `emmax_consensus`
+  (0.214, CI [0.204, 0.225]) do NOT overlap -- a real, defensible
+  precision improvement from phenotype-blind Stage-1 clustering at the
+  grand-pooled level. The crossed sensitivity bootstrap widens every CI
+  substantially (`emmax_consensus`: [0.177, 0.281]) without reversing the
+  ordering -- conclusions are not an artefact of conditioning on the ten
+  observed environmental surfaces, though the crossed CIs do overlap more,
+  as expected once the environmental axis is also treated as sampled.
+  Recall shows the expected trade-off in the other direction (`emmax_snp`
+  0.216 > `emmax_consensus` 0.176).
+
+  **Per-cell result is genuinely heterogeneous** (`results/simulation_
+  method_contrasts.tsv`, 56 rows) -- NOT a uniform "Stage-1 always helps."
+  Some cells show a large, CI-excludes-zero precision GAIN for
+  `emmax_consensus` over `emmax_snp` (`nobgs/V0.5_c1`: +0.226, CI [0.143,
+  0.309]; `nobgs/V1_c1`: +0.185 [0.102, 0.240]); others show a genuine,
+  CI-excludes-zero LOSS (`nobgs/V1_c1.5`: -0.076 [-0.138, -0.024];
+  `nobgs/V2_c1.5`: -0.107 [-0.193, -0.038]); several show no detectable
+  difference. Kept as-is, not smoothed into the grand-pooled number --
+  per instructions, "if some regimes fail, that is part of the method's
+  operating range and belongs in the result."
+
+  `results/simulation_performance.tsv` (56 rows, one per cell x tag x
+  method): the primary output table -- pooled TP/FP/FN, precision/recall
+  with CIs, coverage, test counts. `results/simulation_summary_full.rds`
+  caches the full pooled/point/contrast/sensitivity objects plus the raw
+  5,600-row (1,400 combos x 4 methods) per-combo table, for rescoring
+  without rereading 1,400 individual files.
+
 Not implemented: LFMM itself (deliberately deferred, split from the
 primary EMMAX arm so that can finish and be audited independently),
-Stage 2 / reported-region output, proper pooling with the map-cluster
-bootstrap, or any final table/figure.
+Stage 2 / reported-region output, the truth-threshold sensitivity grid,
+or any final table/figure/manuscript macro.
 
 `LFMM_K=5`'s justification stop point IS resolved (2026-09-09, PK): the 80
 sampled populations fall into 5 discrete spatial groups (4 grid corners +
