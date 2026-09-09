@@ -1,0 +1,46 @@
+check	status	detail	run
+raw inputs exist	PASS	geno_dir=/Volumes/Large_storage/prod_out/adapt_nobgs_chr1_V0.5_c2_env1/GENO recmap=/Users/petrikemppainen/LDscnR-NEMO/params_3spC_53cM/rds/rec_map1.rds env=/Users/petrikemppainen/LDscnR-NEMO/params_3spC_53cM/env_1.txt	A
+exactly one .map and one snp_geno file	PASS	1 map file(s), 1 geno file(s)	A
+raw sample count is 320 before subsampling	PASS	got 320	A
+each genotype column has exactly one NEMO map record	PASS	119289 genotype columns, 119289 map records, 0 duplicate marker names	A
+type-specific idx is an integer in [1, n_loci_of_type]	PASS	offset=0	A
+every used NEMO map record has exactly one reference-map match within its type	PASS	119289 of 119289 nemo records matched, 0 duplicate refmap assignments	A
+reference map: 100 Chr1 QTN + 1 Chr2 QTN (quant.101 is the single Chr2 QTN)	PASS	Chr1=100, Chr2=1	A
+every QTN locus present in this run lands on refmap0's chromosome for that index	PASS	7 QTN checked (idx 13-101), includes idx 101 (the Chr2 QTN): TRUE	A
+joined genotype columns and map rows remain in identical order	PASS	""	A
+Chr/Pos/type/allelic_values come from the matched reference row	PASS	""	A
+genotype values are valid diploid dosages	PASS	range [0, 2]	A
+sample metadata remain aligned (nrow(GTs) == nrow(sample_info))	PASS	""	A
+environmental surface size matches the grid	PASS	2304 values vs 48x48 grid	A
+every individual's env value matches its sampled population	PASS	""	A
+subsampled individual count is 160	PASS	got 160 (raw 320, step 2)	A
+raw inputs exist	PASS	geno_dir=/Volumes/Large_storage/prod_out/adapt_bgs_chr1_V0.5_c2_env1/GENO recmap=/Users/petrikemppainen/LDscnR-NEMO/params_3spC_53cM/rds/rec_map1.rds env=/Users/petrikemppainen/LDscnR-NEMO/params_3spC_53cM/env_1.txt	B
+exactly one .map and one snp_geno file	PASS	1 map file(s), 1 geno file(s)	B
+raw sample count is 320 before subsampling	PASS	got 320	B
+each genotype column has exactly one NEMO map record	PASS	104068 genotype columns, 104068 map records, 0 duplicate marker names	B
+type-specific idx is an integer in [1, n_loci_of_type]	PASS	offset=0	B
+every used NEMO map record has exactly one reference-map match within its type	PASS	104068 of 104068 nemo records matched, 0 duplicate refmap assignments	B
+reference map: 100 Chr1 QTN + 1 Chr2 QTN (quant.101 is the single Chr2 QTN)	PASS	Chr1=100, Chr2=1	B
+every QTN locus present in this run lands on refmap0's chromosome for that index	PASS	6 QTN checked (idx 46-100), includes idx 101 (the Chr2 QTN): FALSE	B
+joined genotype columns and map rows remain in identical order	PASS	""	B
+Chr/Pos/type/allelic_values come from the matched reference row	PASS	""	B
+genotype values are valid diploid dosages	PASS	range [0, 2]	B
+sample metadata remain aligned (nrow(GTs) == nrow(sample_info))	PASS	""	B
+environmental surface size matches the grid	PASS	2304 values vs 48x48 grid	B
+every individual's env value matches its sampled population	PASS	""	B
+subsampled individual count is 160	PASS	got 160 (raw 320, step 2)	B
+raw inputs exist	PASS	geno_dir=/Volumes/Large_storage/prod_out/adapt_bgs_chr2_V1_c1_env1/GENO recmap=/Users/petrikemppainen/LDscnR-NEMO/params_3spC_53cM/rds/rec_map2.rds env=/Users/petrikemppainen/LDscnR-NEMO/params_3spC_53cM/env_1.txt	C
+exactly one .map and one snp_geno file	PASS	1 map file(s), 1 geno file(s)	C
+raw sample count is 320 before subsampling	PASS	got 320	C
+each genotype column has exactly one NEMO map record	PASS	118846 genotype columns, 118846 map records, 0 duplicate marker names	C
+type-specific idx is an integer in [1, n_loci_of_type]	PASS	offset=0	C
+every used NEMO map record has exactly one reference-map match within its type	PASS	118846 of 118846 nemo records matched, 0 duplicate refmap assignments	C
+reference map: 100 Chr1 QTN + 1 Chr2 QTN (quant.101 is the single Chr2 QTN)	PASS	Chr1=100, Chr2=1	C
+every QTN locus present in this run lands on refmap0's chromosome for that index	PASS	2 QTN checked (idx 5-19), includes idx 101 (the Chr2 QTN): FALSE	C
+joined genotype columns and map rows remain in identical order	PASS	""	C
+Chr/Pos/type/allelic_values come from the matched reference row	PASS	""	C
+genotype values are valid diploid dosages	PASS	range [0, 2]	C
+sample metadata remain aligned (nrow(GTs) == nrow(sample_info))	PASS	""	C
+environmental surface size matches the grid	PASS	2304 values vs 48x48 grid	C
+every individual's env value matches its sampled population	PASS	""	C
+subsampled individual count is 160	PASS	got 160 (raw 320, step 2)	C

@@ -1,0 +1,4 @@
+run	tag	cell	rep	env	n_qtn_in_run	n_out_of_range_old	n_qtn_corrected	n_bv_rows_corrected	local_adapt_r2_corrected	n_qtn_old	n_bv_rows_old	local_adapt_r2_old
+A	nobgs	V0.5_c2	1	1	7	1	7	6	0.638389437276665	6	5	0.212991458985001
+B	bgs	V0.5_c2	1	1	6	0	6	6	0.373530437406142	6	5	0.250651068805331
+C	bgs	V1_c1	2	1	2	0	2	2	0.439201361576672	2	2	0.00956424514401223
