@@ -84,12 +84,25 @@ GRM_METHOD <- "GCTA"
 ## ---- 3c. ASSOCIATION TESTING ---------------------------------------------------
 ALPHA <- 0.05
 UNIT_REPR <- "consensus_dosage"   ## emmax_consensus's per-unit variable
-LFMM_K <- 5L    ## legacy fixed choice -- NOT yet re-justified by a structure
-                ## diagnostic independent of association truth (instructions:
-                ## "verify K=5... do not choose K by maximizing QTN recovery.
-                ## If K=5 remains a legacy fixed choice... label it as such").
-                ## LFMM is out of scope for this checkpoint (Phase 1 + primary
-                ## EMMAX gate only).
+## LFMM_K justified 2026-09-09 (PK): "The individuals sampled from the 48x48
+## grid are clustered in the corners and one population in the middle,
+## that's where K=5 comes from. This was deliberate to avoid the discussion
+## of what K to use if the samples were... randomly sampled across the
+## landscape." I.e. K=5 is a property of the SAMPLING DESIGN (5 discrete
+## spatial groups the 80 populations fall into, by construction), verifiable
+## from population (x,y) coordinates ALONE -- independent of genotypes or
+## phenotype, exactly the "structure diagnostic independent of association
+## truth" the instructions ask for, not a value chosen by maximising QTN
+## recovery. Already confirmed independently during this project's
+## structured-null work (kmeans(k=5) on population coordinates recovers the
+## same 4-corners-plus-centre grouping -- see module_sim_3sp53/R/12_
+## structured_null.R's own "5 spatial population groups" section). Not
+## re-verified again here with fresh code since it would be the identical
+## check on the identical (fixed, design-level) input.
+LFMM_K <- 5L
+## LFMM itself remains out of scope for this checkpoint (Phase 1 + primary
+## EMMAX gate only) -- this resolves the K justification, not the decision
+## to build/run the LFMM stage.
 
 ## ---- 3d. REGION ASSEMBLY (post hoc; cannot affect a p-value or BH decision) ---
 ## Same fixed package behaviour as module_sim_3sp53/R/00_config.R documents:

@@ -61,12 +61,22 @@ Implemented so far:
   scores: `qc/gate2_truth_scores_bgs_V0.5_c2_rep1_env1.tsv`.
 
 Not implemented: Phase 3 gates 3-4 (14-combination grid; full 1,400-grid),
-LFMM (deliberately deferred -- instructions: verify K=5 with a structure
-diagnostic before running it, split from the primary EMMAX arm so that can
-finish and be audited independently), Stage 2 / reported-region output,
-pooling across combinations, the cluster-bootstrap uncertainty machinery, or
-any final table/figure. `LFMM_K <- 5L` in `00_config.R` is flagged there as
-the still-unjustified legacy value the instructions ask to label as such.
+LFMM itself (deliberately deferred, split from the primary EMMAX arm so
+that can finish and be audited independently), Stage 2 / reported-region
+output, pooling across combinations, the cluster-bootstrap uncertainty
+machinery, or any final table/figure.
+
+`LFMM_K=5`'s justification stop point IS resolved (2026-09-09, PK): the 80
+sampled populations fall into 5 discrete spatial groups (4 grid corners +
+1 centre) BY DESIGN -- "deliberate to avoid the discussion of what K to use
+if the samples were... randomly sampled across the landscape." This is
+verifiable from population (x,y) coordinates alone, independent of
+genotypes or phenotype (exactly the instructions' "structure diagnostic
+independent of association truth"), and was already confirmed
+independently during this project's structured-null work (`kmeans(k=5)`
+on coordinates recovers the identical grouping). See `00_config.R`'s
+`LFMM_K` comment. This unblocks LFMM's own stop point but does not by
+itself put LFMM in scope -- that's still a separate build/run decision.
 
 ## Output roots (new, none overlapping old `module_sim_3sp53` paths)
 
