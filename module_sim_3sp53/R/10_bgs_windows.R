@@ -39,32 +39,33 @@ TARGET_ENV  <- as.integer(Sys.getenv("SIM_ENV",  ENVS[1]))
 TARGET_REP  <- as.integer(Sys.getenv("SIM_REP",  REPS[1]))
 combo_id <- sprintf("%s_%s_rep%d_env%d", TARGET_TAG, TARGET_CELL, TARGET_REP, TARGET_ENV)
 
+## [!] 2026-09-08, module_sim_3sp53: same fix as R_parsing/01_parse_nemo.R --
+## prod_out is already unpacked into one directory per (tag,chr,cell,env),
+## GENO/<run>_1000_1.{map,snp_geno} -- no untar, no scratch dir, no
+## env-bundling guard needed (structurally impossible with one dir per run).
 raw_dir <- if (TARGET_TAG == "nobgs") PATHS$raw_nemo_nobgs else PATHS$raw_nemo_bgs5
-archive <- file.path(raw_dir, sprintf("adapt_%s_chr%d_%s_env%d.tgz",
+run_dir <- file.path(raw_dir, sprintf("adapt_%s_chr%d_%s_env%d",
                                       TARGET_TAG, TARGET_REP, TARGET_CELL, TARGET_ENV))
+geno_dir <- file.path(run_dir, "GENO")
 recmap_rds <- file.path(PATHS$raw_recmap_dir, sprintf("rec_map%d.rds", TARGET_REP))
 
-INPUTS <- c(archive = archive, recmap = recmap_rds)
+## Resolved before INPUTS/stage_stale, same reason as 01_parse_nemo.R:
+## write_receipt()/stage_stale() hash each INPUTS entry as a file.
+if (!dir.exists(geno_dir)) stop("missing input: geno_dir does not exist: ", geno_dir)
+files <- list.files(geno_dir, full.names = TRUE)
+map_file  <- files[grepl("\\.map$", files)]
+geno_file <- files[grepl("snp_geno", files, fixed = TRUE)]
+stopifnot("expected exactly one .map file" = length(map_file) == 1L,
+          "expected exactly one snp_geno file" = length(geno_file) == 1L)
+
+INPUTS <- c(map_file = map_file, geno_file = geno_file, recmap = recmap_rds)
 PARAMS <- list(tag = TARGET_TAG, cell = TARGET_CELL, env = TARGET_ENV, rep = TARGET_REP,
                subsample_step = SUBSAMPLE_STEP, maf_filter = "none", win_bp = 5e5)
 if (!stage_stale(STAGE, unname(INPUTS), PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
 if (any(!file.exists(INPUTS))) stop("missing input(s): ", paste(names(INPUTS)[!file.exists(INPUTS)], collapse = ", "))
-
-## ---- 1. unpack (same per-combination scratch dir / env-bundling fix as 01_parse_nemo.R) --
-untar_dir <- file.path(PATHS$untar, paste0("bgswin_", combo_id))
-unlink(untar_dir, recursive = TRUE)
-dir.create(untar_dir, recursive = TRUE, showWarnings = FALSE)
-say("[1] unpack -> %s\n", untar_dir)
-untar(archive, exdir = untar_dir)
-files <- list.files(untar_dir, recursive = TRUE, full.names = TRUE)
-env_pat <- sprintf("env%d(?!\\d)", TARGET_ENV)
-files <- files[grepl(env_pat, basename(files), perl = TRUE)]
-map_file  <- files[grepl("\\.map$", files)]
-geno_file <- files[grepl("snp_geno", files, fixed = TRUE)]
-stopifnot("expected exactly one .map file" = length(map_file) == 1L,
-          "expected exactly one snp_geno file" = length(geno_file) == 1L)
+say("[1] %s\n    %s\n", basename(map_file), basename(geno_file))
 
 ## ---- 2. read + join against the reference map (same logic as 01_parse_nemo.R) --
 map_nemo <- fread(map_file)
@@ -74,7 +75,7 @@ nemo_map <- data.table(marker = map_nemo$trait.locus,
 setnames(nemo_map, c("V1", "V2"), c("type", "idx"))
 nemo_map[, idx := as.numeric(idx) + 1]
 GTs_raw <- as.matrix(GTs_raw[, 6:ncol(GTs_raw), with = FALSE])
-unlink(untar_dir, recursive = TRUE)
+## [!] no unlink here -- geno_dir is the permanent raw data, never a copy.
 
 refmap <- readRDS(recmap_rds)
 refmap[, indx := .I]

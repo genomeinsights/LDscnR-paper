@@ -20,10 +20,13 @@ mkdir -p out/logs
 ## comment: 3 of the 7 target cells still being simulated, PK 2026-09-05).
 ## Checked against the archive directly, so dropping the real archives into
 ## bgs5/ later needs no edit here.
-NEMO_ROOT_CHECK="${SIM_NEMO_ROOT:-/Volumes/Nemo/Nemo_sim}"
+## [!] FIXED 2026-09-08 (module_sim_3sp53): same fix as run_grid.sh -- the
+## inherited .tgz check always failed against prod_out's already-unpacked
+## per-run directories.
+PROD_ROOT_CHECK="${SIM_NEMO_ROOT:-/Volumes/Large_storage/prod_out}"
 archive_exists() {
   local tag="$1" cell="$2" rep="$3" env="$4"
-  [ -f "${NEMO_ROOT_CHECK}/bgs5/adapt_${tag}_chr${rep}_${cell}_env${env}.tgz" ]
+  [ -d "${PROD_ROOT_CHECK}/adapt_${tag}_chr${rep}_${cell}_env${env}/GENO" ]
 }
 
 run_combo() {

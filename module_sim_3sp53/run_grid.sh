@@ -60,15 +60,20 @@ NEW_LOG=$([ -f "$LOG" ] && echo 0 || echo 1)
 TMPDIR_TIMING="$(mktemp -d out/.grid_timing_XXXXXX)"
 trap 'rm -rf "$TMPDIR_TIMING"' EXIT
 
-## SKIP, not FAIL, a cell bgs5 does not have yet -- 00_config.R's raw_nemo_*
-## comment: 3 of the 7 target cells (V0.5_c1.5, V1_c1, V2_c1.5) are still
-## being simulated (PK, 2026-09-05). Checking the archive directly rather
-## than a hardcoded "known missing" list, so dropping the real archives into
-## bgs5/ later makes this script pick them up with no edit here.
-NEMO_ROOT_CHECK="${SIM_NEMO_ROOT:-/Volumes/Nemo/Nemo_sim}"
+## SKIP, not FAIL, a combo whose raw run is not present. [!] FIXED
+## 2026-09-08 (module_sim_3sp53): the prod_out data is already unpacked
+## into one directory per (tag,chr,cell,env) -- <run>/GENO/*.map -- not a
+## .tgz archive, so the module_sim-derived .tgz existence check inherited
+## here always returned false, silently SKIPping the ENTIRE grid on first
+## launch (caught immediately: the whole 1400-combo run "completed" in 5s).
+## Checks for the run's GENO/ dir directly rather than a hardcoded
+## "known missing" list -- harmless now that all 7 cells are present
+## (NEMO session verified 1400/1400), kept for parity with module_sim/'s
+## driver and so a future partial rerun still behaves correctly.
+PROD_ROOT_CHECK="${SIM_NEMO_ROOT:-/Volumes/Large_storage/prod_out}"
 archive_exists() {
   local tag="$1" cell="$2" rep="$3" env="$4"
-  [ -f "${NEMO_ROOT_CHECK}/bgs5/adapt_${tag}_chr${rep}_${cell}_env${env}.tgz" ]
+  [ -d "${PROD_ROOT_CHECK}/adapt_${tag}_chr${rep}_${cell}_env${env}/GENO" ]
 }
 
 run_combo() {

@@ -75,7 +75,11 @@ PARAMS <- list(size_floor = SIZE_FLOOR, dmax_cap = DMAX_CAP, rho_r2 = RHO_R2, rh
                ## [!] bumped again 2026-09-06: cluster_detail now carries a Chr
                ## column (PK: "analyse the neutral chromosomes separately, only
                ## FPs of course") -- forces a rerun to populate it.
-               cluster_detail_chr = TRUE)
+               cluster_detail_chr = TRUE,
+               ## [!] bumped again 2026-09-08: single-SNP arms' n_loci now
+               ## records the true underlying Stage-1 cluster size, not the
+               ## trivial region length -- forces a rerun.
+               single_snp_true_cluster_size = TRUE)
 if (!stage_stale(STAGE, INPUTS, PARAMS, target = combo_id) && !nzchar(Sys.getenv("FORCE"))) {
   say("\nNothing to do. Set FORCE=1 to rerun anyway.\n"); quit(save = "no")
 }
@@ -149,14 +153,30 @@ N_TRUE <- sum(map$true_pos_QTN, na.rm = TRUE)
 ## therefore an assumption-free FP, independent of the r2min/dmax matching
 ## thresholds entirely -- a real negative control already built into the
 ## simulation, not a permutation.
-.score_arm <- function(sig_regions, nm, chr) {
+## [!] ADDED 2026-09-08 (PK: "in fig_fp_neutral_chr (bottom panel) we should
+## also include 'singleton clusters'... how much reduction in FPs do we
+## gain simply by removing unclustered loci"). `n_loci_override`, one value
+## per element of `sig_regions`: when supplied, replaces the trivially-1
+## region-length n_loci that a single-marker region always produces with
+## the TRUE size of the Stage-1 LD cluster that marker belongs to (from the
+## bundle's stage1$map_snp$n_loci -- computed for EVERY marker by
+## ld_complexity_reduction(), not floor-filtered the way `units` is, so a
+## genuine singleton -- no LD neighbour at all -- reads n_loci==1 there and
+## a marker sitting in a real cluster reads its cluster's true size, even
+## though clustering played no role in calling or reporting the region
+## itself). Supplied only for the unrestricted single-SNP arms below;
+## cluster-based arms leave this NULL (their n_loci already IS the tested
+## region's real size). Purely a labelling/binning change -- does not touch
+## which markers are TP/FP.
+.score_arm <- function(sig_regions, nm, chr, n_loci_override = NULL) {
   if (NO_QTN_POSSIBLE) {
     n_sig <- length(sig_regions)
     ev <- list(TP = 0L, FP = n_sig, FN = N_TRUE,
                Precision = if (n_sig > 0) 0 else NA_real_,
                Recall = if (N_TRUE > 0) 0 else NA_real_, PR = NA_real_)
     detail <- data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
-                         Chr = chr, n_loci = vapply(sig_regions, length, integer(1)),
+                         Chr = chr,
+                         n_loci = if (is.null(n_loci_override)) vapply(sig_regions, length, integer(1)) else n_loci_override,
                          is_TP = rep(FALSE, n_sig), is_FP = rep(TRUE, n_sig))
   } else {
     ev <- evaluate_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
@@ -164,7 +184,8 @@ N_TRUE <- sum(map$true_pos_QTN, na.rm = TRUE)
       dg <- .diagnose_ors(sig_regions, map, qtab, r2_match = th$r2min, d_match = th$dmax)
       extra <- dg$dropped_by_dedup == TRUE & dg$candidate_qtn_is_true_positive %in% TRUE
       data.table(tag = TARGET_TAG, cell = TARGET_CELL, rep = TARGET_REP, env = TARGET_ENV, arm = nm,
-                 Chr = chr, n_loci = dg$n_loci, is_TP = dg$is_TP, is_FP = !dg$is_TP & !extra)
+                 Chr = chr, n_loci = if (is.null(n_loci_override)) dg$n_loci else n_loci_override,
+                 is_TP = dg$is_TP, is_FP = !dg$is_TP & !extra)
     } else {
       data.table(tag = character(), cell = character(), rep = integer(), env = integer(), arm = character(),
                  Chr = character(), n_loci = integer(), is_TP = logical(), is_FP = logical())
@@ -192,15 +213,24 @@ res_cluster <- lapply(names(ARMS), function(nm) {
   .score_arm(units$members[t$units$significant], nm, chr = units$Chr[t$units$significant])
 })
 
-## ---- 4b. single-SNP arms: each significant marker is its OWN size-1 region ----
+## ---- 4b. single-SNP arms: each significant marker is its OWN discovered region --
 ## PK: compare against single-SNP analyses using the same machinery. BH-correct
 ## the single-marker p-values genome-wide (not per-unit -- there is no unit
 ## combination here, that is the whole point of "single-SNP"), then EACH
-## significant marker is its own discovered region of size 1 -- NOT the whole
-## enclosing Stage-1 unit it happens to sit inside. .score_arm() -> evaluate_ors()/
-## .diagnose_ors() are agnostic to region size (n_loci = length(region) falls
-## out naturally as 1), so this needs no package change, only feeding a
+## significant marker is its own discovered region -- NOT the whole enclosing
+## Stage-1 unit it happens to sit inside; TP/FP scoring is on that one-marker
+## region regardless. .score_arm() -> evaluate_ors()/.diagnose_ors() are
+## agnostic to region size, so this needs no package change, only feeding a
 ## different `regions` list in.
+##
+## [!] n_loci RECORDED IS NOT THE REGION SIZE HERE (2026-09-08, PK: "how much
+## reduction in FPs do we gain simply by removing unclustered loci"): passed
+## via n_loci_override as the marker's TRUE underlying Stage-1 LD cluster
+## size (stage1$map_snp$n_loci, unfiltered by SIZE_FLOOR) instead of the
+## trivial region-length-1 every single-marker region would otherwise
+## record. Lets the FP-by-size breakdown split this arm's calls by whether
+## the marker had ANY LD support at all (a genuine Stage-1 singleton,
+## n_loci==1) or sits in a real cluster it just wasn't tested as part of.
 ##
 ## [!] FIXED 2026-09-06 (external audit item 1 + PK direct correction, "Single
 ## SNPs go all the way to 1 not 2. Unless that one is a QTN it is an FP."):
@@ -221,11 +251,18 @@ res_cluster <- lapply(names(ARMS), function(nm) {
 ## different scoring rules.
 say("\n[4b] single-SNP arms (BH genome-wide, each significant marker its own size-1 region)\n")
 marker_chr <- stats::setNames(as.character(map$Chr), map$marker)
+## stage1$map_snp$n_loci: the TRUE Stage-1 LD cluster size for every marker
+## (not floor-filtered, unlike `units` -- see .score_arm()'s n_loci_override
+## comment above). A marker missing from map_snp (shouldn't happen -- it
+## covers every MAF-surviving marker -- guarded anyway) falls back to 1.
+marker_cluster_size <- stats::setNames(stage1$map_snp$n_loci, stage1$map_snp$marker)
 res_snp <- Map(function(p_vec, nm) {
   q <- stats::p.adjust(p_vec, method = "BH")
   sig_markers <- names(q)[!is.na(q) & q <= ALPHA]
   sig_regions <- as.list(sig_markers)
-  .score_arm(sig_regions, nm, chr = unname(marker_chr[sig_markers]))
+  true_size <- unname(marker_cluster_size[sig_markers])
+  true_size[is.na(true_size)] <- 1L
+  .score_arm(sig_regions, nm, chr = unname(marker_chr[sig_markers]), n_loci_override = true_size)
 }, list(sc$results$single_snp$emmax_p, sc$results$single_snp$lfmm_p), list("emmax_snp", "lfmm_snp"))
 
 ## ---- 4c. single-SNP arms, CLUSTERED-ONLY variant (singletons excluded) --------
