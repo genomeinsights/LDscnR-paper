@@ -7,11 +7,10 @@ particular `R/14_random_removal_control.R` there currently has an uncommitted
 change that must not be overwritten, moved, restored, or reformatted).
 
 ## Status: Phase 1 complete; Phase 2 primary EMMAX arm + LFMM portability
-## arm both complete; Phase 3 gates 1-4 ALL PASS -- the full 1,400-
-## combination primary EMMAX grid and the full 1,400-combination LFMM
-## grid are both complete, `results/` has pooled precision/recall with
-## bootstrap CIs for both arms, and 4 figures are built (2 named in the
-## instructions, 2 illustrative supplementary Manhattan figures).
+## arm + Stage-2 region-level scoring arm all complete; Phase 3 gates 1-4
+## ALL PASS -- the full 1,400-combination grid has pooled precision/recall
+## with bootstrap CIs for all three arms, and 6 figures are built (2 named
+## in the instructions, 4 illustrative supplementary Manhattan figures).
 
 Implemented so far:
 
@@ -216,27 +215,51 @@ Implemented so far:
   absolute precision/recall, all 4 EMMAX methods).
 
 - `R_figures/manhattan_example_data.R` (shared helper, not a standalone
-  figure) + `R_figures/figureS_simulation_manhattan_example.R` /
-  `figureS_simulation_manhattan_tpfp.R` -- two illustrative supplementary
-  Manhattan figures, NOT named in the instructions' output list, built on
-  request. Both concatenate all 10 reps of ONE representative combo
-  (`nobgs/V0.5_c1`/env=3 -- the only one of the 10 environments where
-  every rep has >=1 significant EMMAX marker, found by a one-time scan)
-  into a 20-"chromosome" illustrative genome (rep r's Chr1/Chr2 become
-  chromosome 2r-1/2r, odd=real/even=near-neutral), EMMAX top / LFMM
-  bottom row. `..._example.R` colours every marker by which Stage-2
-  assembled outlier region it physically falls in (illustrative only --
-  Stage 2 is not what precision/recall are scored from); `..._tpfp.R`
-  instead colours by TP/FP status of the significant Stage-1
-  emmax_simes/lfmm_simes unit a marker belongs to, reproducing
-  `05_score_truth.R`'s hypothesis-level truth-linkage logic exactly (same
-  primitives/PARAMS) -- i.e. precisely what IS counted towards the pooled
-  precision/recall above, visualised directly.
+  figure) + four illustrative supplementary Manhattan figures, NOT named
+  in the instructions' output list, built on request. All four concatenate
+  all 10 reps of ONE representative combo (`nobgs/V0.5_c1`/env=3 -- the
+  only one of the 10 environments where every rep has >=1 significant
+  EMMAX marker, found by a one-time scan) into a 20-"chromosome"
+  illustrative genome (rep r's Chr1/Chr2 become chromosome 2r-1/2r,
+  odd=real/even=near-neutral), EMMAX top / LFMM bottom row:
+  - `figureS_simulation_manhattan_example.R` -- every marker coloured by
+    which Stage-2 assembled outlier region it physically falls in.
+  - `figureS_simulation_manhattan_tpfp.R` -- coloured by TP/FP of the
+    significant Stage-1 emmax_simes/lfmm_simes UNIT a marker belongs to.
+  - `figureS_simulation_manhattan_tpfp_unrestricted.R` -- same TP/FP
+    colouring for the UNRESTRICTED marker-wise engines (emmax_snp/
+    lfmm_snp) instead -- shows the FP freckling Stage-1 restriction
+    removes (this combo: TP 1331/FP 394 restricted vs TP 667/FP 1052
+    unrestricted).
+  - `figureS_simulation_manhattan_tpfp_stage2.R` -- coloured by TP/FP of
+    the whole STAGE-2 REGION a marker falls in (one region = one
+    hypothesis). Built because the unit-level figure can show mixed
+    TP/FP inside a single visual peak when Stage 2 merges a truth-linked
+    unit with an adjacent non-linked one (PK) -- this fixes that.
+  `manhattan_example_data.R`'s `.truth_linkage_for_rep()` reproduces
+  `05_score_truth.R`'s truth definition exactly (same primitives/PARAMS)
+  throughout.
 
-Not implemented: Stage 2 / reported-region output as a scored quantity
-(Stage 2 remains illustrative-only, per instructions), the truth-threshold
-sensitivity grid, the BGS validation figure/table, or any final
-table/manuscript macro.
+- Stage-2 assembled-region scoring is now ALSO a real, pooled result, not
+  only illustrative (`05_score_truth.R`/`06_summarise.R`, 2026-09-10, on
+  request after the figures above made the unit-level artefact visible):
+  `emmax_simes_region`/`emmax_consensus_region`/`lfmm_simes_region` score
+  one WHOLE Stage-2 region as one hypothesis (member markers = everything
+  physically inside its span), recomputed per combo by re-feeding the
+  already-saved p-values back through `ld_outlier_test()` (only Stage 2's
+  assembly reruns, not the EMMAX/LFMM regression). `06_summarise.R`'s new
+  `granularity_arm()` reports each region method's own pooled CI AND a
+  PAIRED region-vs-unit contrast for the SAME method (same bootstrap
+  draw) -- `results/simulation_performance_region.tsv` /
+  `results/simulation_region_granularity_contrast.tsv`. Grand-pooled:
+  region-level scoring raises BOTH precision AND recall for all three
+  methods (e.g. `emmax_simes` 0.194->0.209 precision, 0.190->0.250
+  recall) -- a genuine definitional widening (a region's members are a
+  strict superset of its constituent units' members), not just a
+  cosmetic fix; per-cell effect is heterogeneous like everywhere else.
+
+Not implemented: the truth-threshold sensitivity grid, the BGS validation
+figure/table, or any final table/manuscript macro.
 
 `LFMM_K=5`'s justification stop point IS resolved (2026-09-09, PK): the 80
 sampled populations fall into 5 discrete spatial groups (4 grid corners +
