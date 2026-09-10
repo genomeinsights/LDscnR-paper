@@ -3,3 +3,9 @@
 ## equivalents are). Will grow to ~1400x this size at the full grid.
 out_final_v1/
 gds_tmp/
+
+## figures/ is regenerable from results/ (small, tracked TSVs/rds) + the
+## R_figures/*.R scripts -- PK, 2026-09-10: stop committing it, the manhattan
+## PDFs alone are ~7 MB each and every regeneration added a new full copy to
+## history. Already-committed figures are left in place, not purged/rewritten.
+figures/
