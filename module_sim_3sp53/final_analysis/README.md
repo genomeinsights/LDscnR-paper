@@ -14,8 +14,12 @@ change that must not be overwritten, moved, restored, or reformatted).
 ## phenotype-blind cluster). Marker-/Stage-1-unit-level scores are
 ## retained as diagnostics only. Phase 3 gates 1-4 ALL PASS -- the full
 ## 1,400-combination grid has pooled region precision/recall with
-## bootstrap CIs, and 7 figures are built (2 named in the instructions, 5
-## illustrative/supplementary).
+## bootstrap CIs, and 9 figures are built (2 named in the instructions, 7
+## illustrative/supplementary). The BGS validation, truth-threshold
+## sensitivity grid, and both remaining "Final outputs" tables
+## (simulation_qc.tsv, simulation_truth_sensitivity.tsv) are also done
+## (2026-09-10, per ~/gitlab/LDscnR_manuscript/AUDIT.md's outstanding-
+## items list). Remaining: any final table/manuscript macro.
 
 Implemented so far:
 
@@ -302,8 +306,44 @@ Implemented so far:
   `05_score_truth.R`'s truth definition exactly (same primitives/PARAMS)
   throughout.
 
-Not implemented: the truth-threshold sensitivity grid, the BGS validation
-figure/table, or any final table/manuscript macro.
+- `R/08_bgs_validation.R` (2026-09-10, per `~/gitlab/LDscnR_manuscript/
+  AUDIT.md`'s outstanding-items list) -- the one compact BGS validation.
+  Computed BOTH pre- and post-MAF-filter (new `parse_nemo_run(...,
+  keep_prefilter=TRUE)` option, purely additive to that function's return
+  shape). CONFIRMED, not just disclosed: post-filter He alone is
+  BACKWARDS (bgs looks more diverse, +0.020 overall, CI excludes 0). The
+  pre-filter marker-RETENTION ratio is the real, validated signature --
+  bgs keeps ~17% fewer segregating markers overall, steepest at low
+  recombination (ratio 0.738 vs 0.931 at high), the classic BGS
+  signature -- reproducing a MAF-trim measurement trap this project had
+  already flagged elsewhere.`figureS_simulation_bgs_qc.R` is the compact
+  figure (retention ratio | post-filter He, side by side, so the trap is
+  shown, not hidden).
+- `R/09_truth_sensitivity.R` -- rescores truth (never association
+  statistics) across the prespecified Va-share threshold grid
+  (0.01-0.20). Cheap by construction: Stage-2 region assembly doesn't
+  depend on the truth threshold, so it is computed once per combo and
+  reused across all 5 thresholds. The primary 5% row reproduces the
+  grand-pooled numbers exactly; method ranking has zero crossovers across
+  the whole grid -- the primary threshold choice is not doing special
+  work. `figureS_simulation_truth_sensitivity.R` is the supplementary
+  figure.
+- `R/10_export_qc.R` -- assembles `results/simulation_qc.tsv` (parser
+  checks, input counts, compact BGS validation headline numbers) entirely
+  from already-committed small artifacts, no new computation.
+- Minor fix (AUDIT.md's code-audit note): `01_parse_nemo.R`'s `counts` QA
+  table had `n_monomorphic` mislabeled under its `n_QTN` column;
+  `n_monomorphic` is now its own column. `counts` turns out to be fully
+  dead code (computed, never returned or printed) -- left as-is per the
+  instructions' "correct the label," not asked to remove it.
+- `R/00_config.R` gained host-aware path resolution (`.first_existing()`)
+  for `raw_nemo`/`raw_recmap_dir`/`raw_env_dir`: the same raw NEMO output,
+  recmaps and env files also live on Petri's laptop (verified byte-
+  identical to the mini's copy) at different mount points -- picks
+  whichever exists on the current host. Most of this pipeline now runs on
+  either machine; `out_final_v1`/parsed bundles remain mini-only for now.
+
+Not implemented: any final table/manuscript macro.
 
 `LFMM_K=5`'s justification stop point IS resolved (2026-09-09, PK): the 80
 sampled populations fall into 5 discrete spatial groups (4 grid corners +
