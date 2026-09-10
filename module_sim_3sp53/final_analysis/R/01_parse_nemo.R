@@ -77,7 +77,7 @@ source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analy
   list(refmap = refmap, nemo_map = nemo_map)
 }
 
-parse_nemo_run <- function(tag, cell, rep, env, offset = 0L) {
+parse_nemo_run <- function(tag, cell, rep, env, offset = 0L, keep_prefilter = FALSE) {
   qa <- list()
   stopifnot("offset must be 0 (corrected) or 1 (old, QA-only)" = offset %in% c(0L, 1L))
 
@@ -228,9 +228,18 @@ parse_nemo_run <- function(tag, cell, rep, env, offset = 0L) {
   map_out <- map_post[, .(Chr, Pos, marker, type, allelic_values, MAF)]
   map_out[, true_QTN := type == "QTN"]
 
-  list(GTs = GTs_post, map = map_out, env = env_sub,
-       qa = rbindlist(qa),
-       counts_by_chr_type = list(prefilter = n_by_chr_type_prefilter, postfilter = n_by_chr_type_postfilter),
-       n_qtn_lost_to_maf = n_qtn_lost_to_maf,
-       source = list(geno_dir = geno_dir, recmap = recmap_rds, env_file = env_txt, offset_used = offset))
+  out <- list(GTs = GTs_post, map = map_out, env = env_sub,
+             qa = rbindlist(qa),
+             counts_by_chr_type = list(prefilter = n_by_chr_type_prefilter, postfilter = n_by_chr_type_postfilter),
+             n_qtn_lost_to_maf = n_qtn_lost_to_maf,
+             source = list(geno_dir = geno_dir, recmap = recmap_rds, env_file = env_txt, offset_used = offset))
+  ## ADDITIVE only -- existing callers (run_combo.R, always keep_prefilter=FALSE)
+  ## get an IDENTICAL return shape, so this never invalidates the parse
+  ## stage's cached bundle/receipt. For callers that need the pre-MAF-filter
+  ## genotypes/map (e.g. R/08_bgs_validation.R checking whether MAF>0.10
+  ## filtering itself is masking BGS's effect on rare-variant diversity):
+  ## GTs_sub/map here are post-subsample (160 ind), post-dup-removal, WITH
+  ## the MAF column already attached, but before the MAF>0.10 cut.
+  if (keep_prefilter) { out$GTs_prefilter <- GTs_sub; out$map_prefilter <- map }
+  out
 }

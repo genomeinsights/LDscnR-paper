@@ -15,6 +15,18 @@ suppressMessages({library(data.table); library(digest)})
 
 MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
 
+## Host-aware path resolution (2026-09-10): the SAME raw NEMO output/recmaps/
+## env files now also live on Petri's laptop, at different mount points than
+## the mini -- pick whichever candidate actually exists on THIS host, in
+## order, so the pipeline runs unmodified on either machine. Falls back to
+## the first (mini's) candidate when none exist, so .check_paths() below
+## still fails loudly with a clear, named path rather than silently
+## resolving to something wrong.
+.first_existing <- function(candidates) {
+  found <- candidates[dir.exists(path.expand(candidates))]
+  path.expand(if (length(found)) found[1] else candidates[1])
+}
+
 ## ---- 1. WHERE THINGS ARE (raw = read-only; everything else = NEW roots, ----
 ## none overlapping module_sim_3sp53's own out/ or parsed/ so no old output
 ## can ever satisfy a receipt or get silently reused) --------------------------
@@ -22,13 +34,18 @@ PATHS <- list(
   ## raw NEMO output -- READ-ONLY. Same source module_sim_3sp53 uses (both
   ## tags live in the one directory); see ../CLAUDE_REANALYSIS_INSTRUCTIONS.md
   ## and ~/gitlab/LDscnR-NEMO/make_prod.sh for provenance (1400 adapt runs +
-  ## 140 shared burn-ins, verified complete, 0 failures).
-  raw_nemo       = "/Volumes/Large_storage/prod_out",
-  raw_recmap_dir = path.expand("~/LDscnR-NEMO/params_3spC_53cM/rds"),
-  raw_env_dir    = path.expand("~/LDscnR-NEMO/params_3spC_53cM"),
+  ## 140 shared burn-ins, verified complete, 0 failures). Verified byte-
+  ## identical directory listing (1540 run dirs, 125 GB) between the mini's
+  ## copy and the laptop's local external-drive copy before adding the
+  ## second candidate here.
+  raw_nemo       = .first_existing(c("/Volumes/Large_storage/prod_out", "/Volumes/Nemo/Nemo_sim/prod_out_3sp53")),
+  raw_recmap_dir = .first_existing(c("~/LDscnR-NEMO/params_3spC_53cM/rds", "~/gitlab/LDscnR-NEMO/params_3spC_53cM/rds")),
+  raw_env_dir    = .first_existing(c("~/LDscnR-NEMO/params_3spC_53cM", "~/gitlab/LDscnR-NEMO/params_3spC_53cM")),
 
   ## Parsed bundles -- NEW root, "_final_v1" suffix, same volume as the old
-  ## (large) root but never the same directory.
+  ## (large) root but never the same directory. Mini-only for now (not yet
+  ## copied to the laptop); stages needing this on the laptop fail loudly
+  ## via .check_paths() below, same as any other missing host path.
   parsed = "/Volumes/Large_storage/module_sim_3sp53_parsed_final_v1",
 
   ## Everything else this subtree produces (QA reports now; stage outputs,
@@ -149,8 +166,10 @@ r_version <- function() paste(R.version$major, R.version$minor, sep = ".")
   if (length(missing)) {
     stop("final_analysis/R/00_config.R: required path(s) not found on this host:\n  ",
          paste(missing, collapse = "\n  "),
-         "\nThis pipeline expects to run on the machine holding the raw NEMO output ",
-         "(currently: Petri's mini). Check PATHS in 00_config.R if that has changed.",
+         "\nThis pipeline expects to run on a machine holding the raw NEMO output ",
+         "(currently: Petri's mini, or Petri's laptop via /Volumes/Nemo). Add this ",
+         "host's path to the relevant .first_existing() candidate list in 00_config.R ",
+         "if that has changed.",
          call. = FALSE)
   }
   for (p in c(PATHS$parsed, PATHS$qc, PATHS$out)) dir.create(p, recursive = TRUE, showWarnings = FALSE)
