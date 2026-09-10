@@ -1,0 +1,14 @@
+category	item	value	detail
+parser	qa_gate1_assertions_passed	45/45	Phase 1 gate: 3 deliberately chosen native runs, both BGS treatments, >=2 map IDs
+parser	offset_correction	0 (was +1)	Nemo locus identifiers are one-based; the inherited unconditional +1 offset was removed and verified via 3-run old-vs-corrected comparison
+parser	gate4_full_grid_combos_verified	1400/1400	file_exists=TRUE, methods_ok=TRUE, fields_ok=TRUE (independent post-hoc validation, not just shell exit status)
+input_counts	markers_per_combo_prefilter_nobgs	131695	mean across 700 (cell,rep,env) triples, before MAF>0.10
+input_counts	markers_per_combo_prefilter_bgs	109672	mean across 700 (cell,rep,env) triples, before MAF>0.10
+input_counts	markers_per_combo_postfilter_nobgs	15071	mean across 700 triples, MAF>0.10
+input_counts	markers_per_combo_postfilter_bgs	15940	mean across 700 triples, MAF>0.10
+input_counts	detectable_qtn_total_grid	3096	summed over 14 (tag,cell) strata, primary Va-share=0.05 threshold (MAF>0.10 AND >=5% chromosome QTN Va)
+input_counts	individuals_analysed_per_combo	160	subsampled from 320 raw, step=2
+bgs_validation	retention_ratio_overall	0.833	pre-filter segregating-marker retention, bgs/nobgs (point estimate; paired-difference 95% bootstrap CI [-24584, -19883] markers excludes 0) -- see results/simulation_bgs_validation.tsv, figureS_simulation_bgs_qc.pdf for the full table/CIs
+bgs_validation	retention_ratio_low_recomb	0.738	classic BGS signature: steepest reduction at low recombination
+bgs_validation	retention_ratio_high_recomb	0.931	weakest reduction at high recombination, as expected
+bgs_validation	post_filter_he_trap_confirmed	TRUE	post-MAF-filter heterozygosity among survivors is HIGHER under bgs (backwards) -- confirms a known MAF-trim measurement trap; pre-filter retention ratio above is the validated metric, not post-filter He

@@ -220,10 +220,20 @@ parse_nemo_run <- function(tag, cell, rep, env, offset = 0L, keep_prefilter = FA
   n_by_chr_type_postfilter <- map_post[, .N, by = .(Chr, type)][order(Chr, type)]
   n_qtn_lost_to_maf <- sum(map$type == "QTN") - sum(map_post$type == "QTN")
 
+  ## [!] FIXED 2026-09-10 (AUDIT.md, "Minor code audit note"): n_QTN's
+  ## middle row used to store n_monomorphic (a display-only mislabel --
+  ## map_out/GTs_post/n_qtn_lost_to_maf above were never affected, all
+  ## computed straight from map/map_post's actual type column). n_QTN now
+  ## reports the real QTN count at every stage (subsampling individuals
+  ## doesn't change which loci exist, so it's identical to the post-join
+  ## row until the MAF filter runs); n_monomorphic is its own column, NA
+  ## where not applicable (monomorphic status isn't defined pre-subsample,
+  ## and MAF filtering already removes monomorphic sites by construction).
   counts <- data.table(
-    stage = c("post-join (pre-dup-removal already applied above)", "post-subsample (n_monomorphic among these)", sprintf("post-MAF>%.2f", MAF_KEEP)),
+    stage = c("post-join (pre-dup-removal already applied above)", "post-subsample", sprintf("post-MAF>%.2f", MAF_KEEP)),
     n_markers = c(nrow(map), nrow(map), nrow(map_post)),
-    n_QTN = c(sum(map$type == "QTN"), n_monomorphic, sum(map_post$type == "QTN")))
+    n_QTN = c(sum(map$type == "QTN"), sum(map$type == "QTN"), sum(map_post$type == "QTN")),
+    n_monomorphic = c(NA_integer_, n_monomorphic, NA_integer_))
 
   map_out <- map_post[, .(Chr, Pos, marker, type, allelic_values, MAF)]
   map_out[, true_QTN := type == "QTN"]
