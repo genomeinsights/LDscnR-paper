@@ -47,6 +47,7 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 
 score_truth <- function(tag, cell, rep, env, force = FALSE) {
   STAGE <- "05_score_truth"   ## LOCAL -- see 02_build_ld_units.R's comment on this exact bug
@@ -67,7 +68,17 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   PARAMS <- list(va_share_detectable = VA_SHARE_DETECTABLE, maf_keep = MAF_KEEP,
                  truth_rho_r2 = TRUTH_RHO_R2, truth_rho_d = TRUTH_RHO_D, truth_dmax_cap = TRUTH_DMAX_CAP,
                  size_floor = SIZE_FLOOR, have_lfmm = have_lfmm,
-                 region_assembly = REGION_ASSEMBLY, region_scoring_version = 2L)
+                 region_assembly = REGION_ASSEMBLY, region_scoring_version = 3L)
+  ## region_scoring_version bumped 2 -> 3: Stage-2 assembly now goes through
+  ## R/helpers_stage2_truth.R's assemble_stage2()/stage2_seed_from_*()
+  ## instead of this file's own .run_stage2() (removed) -- same
+  ## ld_prune_and_eMLG() call, same seeding logic, provably so because R/11-13
+  ## now call the identical shared functions. Bumping this forces every
+  ## combo's cached truth_scores.rds to be regenerated once, so the
+  ## refactor's validation gate (must reproduce the pre-refactor
+  ## results/simulation_performance*.tsv exactly) actually re-derives results
+  ## from the new code path rather than reading a stale cache with identical
+  ## PARAMS/inputs that stage_stale() would otherwise consider up to date.
   if (!force && !stage_stale(STAGE, INPUTS, PARAMS, target = combo_id)) {
     return(readRDS(file.path(stage_dir(STAGE, combo_id), "truth_scores.rds")))
   }
@@ -183,11 +194,13 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   ## [Chr,from,to] bounds. The bounds-sweep version used until now was a
   ## real bug: "an intervening, untested marker could otherwise lend truth
   ## credit to the region" (CLAUDE_REANALYSIS_INSTRUCTIONS.md, "Update
-  ## after inspection of the Stage-2 Manhattan figures"). .run_stage2()
-  ## below is ld_outlier_test()'s own "stage2_discovered" branch, called
-  ## directly (same cl_sig/mk_sig/ms_sig/sub construction, same
-  ## ld_prune_and_eMLG() call) so we get $groups$members verbatim instead
-  ## of reconstructing membership by physical-position approximation.
+  ## after inspection of the Stage-2 Manhattan figures"). assemble_stage2()
+  ## (R/helpers_stage2_truth.R) is ld_outlier_test()'s own
+  ## "stage2_discovered" branch, called directly (same cl_sub/ld_prune_and_
+  ## eMLG() construction) so we get $groups$members verbatim instead of
+  ## reconstructing membership by physical-position approximation. Shared
+  ## (not reimplemented here) so R/11-13's floor sweep, null calibration and
+  ## region-detail extraction cannot silently diverge from this scoring.
   ##
   ## Two seeding routes, per the instructions' "Testing unit versus
   ## reported-call unit" section:
@@ -205,34 +218,31 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   ## Every region is already a significant call by construction, so ALL
   ## region ids are "significant" hypotheses for the generic .score()
   ## scorer above.
-  .run_stage2 <- function(cl_sub) {
-    if (!nrow(cl_sub)) return(list())
-    mk_sub <- unlist(cl_sub$members, use.names = FALSE)
-    ms_sub <- as.data.table(stage1$map_snp)[marker %chin% mk_sub]
-    sub <- structure(list(map_snp = ms_sub, clusters = cl_sub, pruned = cl_sub$core_snp),
-                     class = "ld_complexity_reduction")
-    pr <- ld_prune_and_eMLG(GTs = GTs[, mk_sub, drop = FALSE], stage1 = sub,
-                            ld_w_col = "ld_w_095", ld_w_threshold = 0,
-                            LD_decay = b$LD_decay, min_r2_rho = stage1$params$rho,
-                            score_threshold = REGION_ASSEMBLY$score_threshold,
-                            distance_threshold = REGION_ASSEMBLY$distance_threshold,
-                            compute_unflagged_eMLG = FALSE, min_n_loci_eMLG = 1,
-                            min_n_loci_flag = 1, cores = 1)
-    g <- as.data.table(pr$groups)
-    stats::setNames(g$members, as.character(seq_len(nrow(g))))
-  }
+  ## Both thin wrappers over the shared helper (R/helpers_stage2_truth.R),
+  ## kept under their original names so nothing downstream in this file
+  ## needs to change. unit_id is floor-relative (see that file's header
+  ## comment) -- units_base was built at this SAME SIZE_FLOOR just above, so
+  ## unit_id -> core_snp via units_base is a valid join here (a single fixed
+  ## floor, not a sweep); stage2_seed_from_units() itself only ever accepts
+  ## the stable core_snp key, never unit_id, so a floor-sweep caller (R/12)
+  ## cannot make this mistake even by copying this pattern verbatim.
   .assemble_regions_from_units <- function(sig_units_tbl) {
     sig_units <- sig_units_tbl[sig_units_tbl$significant == TRUE]
     if (!nrow(sig_units)) return(list())
-    cl <- as.data.table(stage1$clusters)
-    nl <- if ("n_loci" %in% names(cl)) cl$n_loci else cl$n_snps
-    .run_stage2(cl[nl >= SIZE_FLOOR][sig_units$unit_id])
+    sig_core_snps <- units_base$core_snp[match(as.character(sig_units$unit_id), as.character(units_base$unit_id))]
+    cl_sub <- stage2_seed_from_units(stage1, map, sig_core_snps)
+    detail <- assemble_stage2(stage1, map, GTs, b$LD_decay, cl_sub,
+                              REGION_ASSEMBLY$score_threshold, REGION_ASSEMBLY$distance_threshold)
+    if (!nrow(detail)) return(list())
+    stats::setNames(detail$member_markers, as.character(detail$region_id))
   }
   .assemble_regions_from_markers <- function(sig_markers) {
     if (!length(sig_markers)) return(list())
-    cl <- as.data.table(stage1$clusters)
-    disc <- vapply(cl$members, function(mm) any(mm %chin% sig_markers), logical(1))
-    .run_stage2(cl[disc])
+    cl_sub <- stage2_seed_from_markers(stage1, map, sig_markers)
+    detail <- assemble_stage2(stage1, map, GTs, b$LD_decay, cl_sub,
+                              REGION_ASSEMBLY$score_threshold, REGION_ASSEMBLY$distance_threshold)
+    if (!nrow(detail)) return(list())
+    stats::setNames(detail$member_markers, as.character(detail$region_id))
   }
 
   snp_region_members <- .assemble_regions_from_markers(em$marker$marker[em$marker$significant_snp])
