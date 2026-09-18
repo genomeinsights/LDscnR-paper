@@ -244,21 +244,56 @@ PK's hypothesis: false positives should become common when environmental variati
 
 **Design:** per `(tag, cell, rep, env)` -- individual env continuations, not pooled across the 10 per map/burn-in (pooling would average away the variation of interest). Primary measure: population-level R² of env ~ top 5 eigenvectors of the population-level (block-mean) relationship matrix. Sensitivity measure: a Mantel-style correlation between the flattened relationship matrix and a Gaussian-kernel env-similarity matrix. Verified against synthetic aligned/unaligned data before running on the real grid (aligned case: R²=0.999, Mantel r=0.998; unaligned: R²=0.30, Mantel r=-0.03). All 700/700 combos succeeded (hard `{ok,data,error}`-gated, same convention as R/11/R/12/R/13).
 
-**Result: alignment does not add resolution beyond cell identity -- confirms PK's own predicted outcome.**
+**Result, revised after PK's second review of this figure/analysis: more nuanced than "alignment adds nothing beyond cell identity."** That was the first draft's headline; it is only correct for the two *discovery-conditional* outcomes below, and does not hold once the analysis is corrected to include zero-discovery combos.
 
-| model | outcome | slope (log-odds / log2) | 95% cluster-bootstrap CI |
+**A. Discovery-conditional outcomes (FP proportion and null/obs ratio among reported regions) -- adjusted effect vanishes, matching the original headline:**
+
+| model | outcome | r2_axes slope (log-odds / log2) | 95% cluster-bootstrap CI |
 |---|---|---:|---:|
 | unconditional | FP proportion | **+12.92** | [8.33, 16.33] -- excludes zero |
 | adjusted for cell+tag+method | FP proportion | -1.37 | [-5.52, 1.88] -- includes zero |
-| unconditional | null/obs ratio (log2) | **+19.76** | [13.38, 25.08] -- excludes zero |
-| adjusted for cell+tag+method | null/obs ratio (log2) | -2.84 | [-6.78, 1.29] -- includes zero |
-| within-cell (7 cells, both outcomes) | both | mostly near zero, sign-inconsistent | all 14 CIs include zero |
+| unconditional | null/obs ratio (log2) | **+19.76** | [14.45, 24.04] -- excludes zero |
+| adjusted for cell+tag+method | null/obs ratio (log2) | -2.84 | [-6.26, 1.05] -- includes zero |
 
-The strongly positive unconditional slopes collapse to include zero once `cell` (which jointly encodes `V` and `c`) is adjusted for, and no cell shows a consistent within-cell relationship. Visually (`figureS_simulation_env_structure_alignment.pdf`): within any one panel (fixed cell) the fitted trend is flat; the panels differ sharply in *level*, not slope. **Alignment is essentially collinear with demographic regime (cell) itself in this simulation design, not an independent finer-grained predictor within a regime** -- this is a genuine, informative negative result for the between-cell vs. within-cell distinction Analysis 1 already raised, not a null result from underpowering (bootstrap CIs are reasonably tight; `n` per within-cell fit is 86-174).
+**B. Complementary full-grid outcomes (PK's point 3, added on second review) -- adjusted effect does NOT vanish:** `gp` above is conditioned on >=1 reported region existing (884/1,400 (combo,method) pairs; the other 516 had zero reported regions and are silently excluded, since FP proportion is undefined there). `results/simulation_env_structure_alignment_full_grid.tsv` keeps all 1,400 pairs (zero-filled, a real zero not a missing value) and models whether a false positive occurs at all, how many occur, and the expected spatial-null burden -- without conditioning on a discovery having happened:
 
-See `results/simulation_env_structure_alignment.tsv` (per-combo alignment measures joined to observed FP and spatial-null ratio), `results/simulation_env_structure_alignment_models.tsv` (all slope models), `results/simulation_null_truth_calibration_by_env.tsv` (the new per-env, unpooled export from R/13 this analysis depends on), `figureS_simulation_env_structure_alignment.pdf`.
+| model | outcome | r2_axes slope | 95% cluster-bootstrap CI |
+|---|---|---:|---:|
+| unconditional | any FP occurred (logit) | +14.86 | [11.66, 18.38] -- excludes zero |
+| **adjusted** for cell+tag+method | any FP occurred (logit) | **+9.35** | **[5.75, 13.45] -- excludes zero** |
+| unconditional | # FP regions (log, Poisson) | +15.93 | [12.34, 19.46] -- excludes zero |
+| **adjusted** for cell+tag+method | # FP regions (log, Poisson) | **+9.38** | **[7.13, 11.60] -- excludes zero** |
+| unconditional | expected null region count (log2) | +17.52 | [14.28, 20.25] -- excludes zero |
+| **adjusted** for cell+tag+method | expected null region count (log2) | **+0.99** | **[0.30, 1.75] -- excludes zero** |
 
-**Caveat found during implementation (self-caught, not PK):** the first draft of the cluster-bootstrap helper used `intersect(as.character(draw), names(cl_rows))` to build each replicate's row index, which silently *deduplicates* a cluster drawn more than once in the same resample -- breaking resampling-with-replacement into something closer to resampling-without-replacement at the cluster level. Fixed to direct list-indexing (`cl_rows[as.character(draw)]`, matching R/14's own established `.fit_size_model()` pattern exactly), verified with a small synthetic index test before rerunning.
+**Once zero-discovery combos are correctly retained, alignment DOES predict both whether a false positive occurs and how many occur, net of demographic cell.** This contradicts the "collinear with cell, no independent effect" reading of A alone.
+
+**C. Sensitivity check (PK's point 4): the Mantel-style measure, run through the identical models, does not agree with r2_axes in the adjusted models -- several flip sign:**
+
+| outcome | adjusted r2_axes slope | adjusted mantel_r slope |
+|---|---:|---:|
+| FP proportion | -1.37 [-5.52, 1.88] (incl. zero) | **-2.89 [-4.85, -1.28]** (excl. zero, negative) |
+| any FP occurred | **+9.35 [5.75, 13.45]** (excl. zero, positive) | **-2.26 [-4.08, -0.41]** (excl. zero, **negative**) |
+| # FP regions | **+9.38 [7.13, 11.60]** (excl. zero, positive) | **-1.35 [-2.63, -0.33]** (excl. zero, **negative**) |
+| expected null count | **+0.99 [0.30, 1.75]** (excl. zero, positive) | **-0.68 [-1.03, -0.29]** (excl. zero, **negative**) |
+
+The two alignment measures **disagree on direction** for 3 of 4 adjusted comparisons where both are significant. This means "does alignment predict FP risk beyond cell" does not have one clean answer -- it depends on which of the two measures is used, and R² on 5 arbitrarily-chosen axes vs. a full-matrix Mantel correlation are not simply two views of the same thing; they can rank the same combos differently. **This divergence, not either measure's result taken alone, is the honest summary of the sensitivity check** -- reported per PK's request, not silently resolved in favour of one measure.
+
+**D. Within-cell (r2_axes only, FP proportion and null-ratio only, per the original spec's scope): 12 of 14 CIs include zero, but two do not, both in the negative direction (opposite the hypothesis) -- corrected from the first draft, which wrongly stated all 14 include zero:**
+- Spatial-null ratio, `V0.5_c2`: **-11.70 [-16.99, -7.38]**.
+- FP proportion, `V2_c1.5`: **-15.00 [-51.76, -4.32]**.
+
+No cell shows a positive within-cell relationship; the correct summary is "no consistent *positive* within-cell relationship," not "all intervals include zero." Both exceptions are single-cell, wide-CI, and in the direction that argues against the hypothesis, not for it -- not treated as a second finding requiring its own explanation, but not hidden either.
+
+**Overall:** the between-cell separation (Analysis 1's spatial-null regime-level result) remains the dominant, most robust pattern. Alignment adds real, adjusted-significant information about false-positive *occurrence and count* beyond cell identity (panel B), but not about false-positive *proportion among discoveries* or the *null/obs ratio* (panel A) -- and even where it is significant, the two ways of measuring alignment disagree on direction (panel C). This is a genuinely mixed result, not a clean confirmation or refutation of PK's hypothesis, and should be reported as such.
+
+See `results/simulation_env_structure_alignment.tsv` (discovery-conditional, 884 rows), `results/simulation_env_structure_alignment_full_grid.tsv` (all 1,400 combo-method pairs, zero-filled), `results/simulation_env_structure_alignment_models.tsv` (all 34 slope models: 2 alignment measures x 5 outcomes x 2 variants, plus 14 within-cell), `results/simulation_null_truth_calibration_by_env.tsv` (the per-env, unpooled export from R/13 this analysis depends on), `figureS_simulation_env_structure_alignment.pdf` / `_labelled.pdf`.
+
+**Bugs found and fixed during this analysis (both self-caught during PK's second review of it, confirmed against my own code, not assumed from PK's report alone):**
+1. **Cluster-bootstrap index mismatch.** `cl_rows`/`n_cl` were built once from the full `gp` table and reused for the ratio model, which is fit on `ratio_d` (`gp` filtered to `ratio_null_obs>0`, a smaller table with its own 1..nrow(ratio_d) row numbering). A bootstrap index built from `gp`'s numbering routinely exceeded `ratio_d`'s row count; `data.table` silently returns an all-`NA` row for an out-of-range index rather than erroring, corrupting that replicate instead of failing loudly. Confirmed with a small reproduction (a 9-row/7-row table pair) before fixing. Fixed by making `.boot_slope()` always build its own cluster info fresh from whatever `data` it is actually given -- eliminates this whole class of mismatch and replaces the previous separate, duplicated `.boot_slope_c()` with one helper used everywhere. Corrected numbers above match PK's own independent rerun exactly (19.76 [14.45,24.04] and -2.84 [-6.26,1.05]).
+2. **`intersect()` in an earlier draft of the same helper** silently deduplicated a cluster drawn more than once in the same bootstrap resample, breaking resampling-with-replacement. Fixed to direct list-indexing (`cl_rows[as.character(draw)]`), verified with a small synthetic index test.
+
+**Figure fixes (PK's third review of the figure specifically):** confidence ribbons removed from both panels (they used ordinary model/OLS standard errors, which treat every environmental-continuation/BGS-pair row as independent -- directly contradicting the figure's own "only 5 independent histories per cell" caption; a correctly map-cluster-bootstrapped ribbon was judged not worth the added complexity for a supplementary figure, so the fitted line is now shown without one, per PK's own suggested resolution). Both panels' fitted lines now come from one model per cell with a shared alignment slope across methods (`r2_axes + method_label`), matching the saved within-cell models exactly -- the first draft fit fully independent slopes per method in panel A and left panel B unfixed even after panel A was corrected (caught and fixed together, not incrementally). "not simulated" labels added to the two (V,c) combinations this design excludes (`V1_c2`, `V2_c2`). Selection levels spelled out in full. The x-axis superscript (`R²`) rendered as "R…" in the PNG device on the mini; replaced with a plain-ASCII two-line label. The manuscript version (`figureS_simulation_env_structure_alignment.pdf`, no title) now also has no in-plot caption -- that text belongs in the manuscript's own LaTeX `\caption{}` and is written out verbatim to `figures/figureS_simulation_env_structure_alignment_caption.txt` by the same script; the `_labelled` version keeps title+caption for internal review. Caption also now states that 3 observations with `ratio_null_obs == 0` cannot appear on panel B's log axis and are omitted there only (not from panel A or the models).
 
 ## Still outstanding
 

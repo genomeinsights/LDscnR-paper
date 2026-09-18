@@ -125,28 +125,69 @@ if (sys.nframe() == 0L) {
   print(gp[, .(n = .N, median_r2 = median(r2_axes), median_mantel = median(mantel_r)), by = cell])
 
   ## =============================================================================
-  ## [4] Slope models: does known FP proportion / the spatial-null-to-observed
-  ## ratio increase with environment-structure alignment (r2_axes)? Three
-  ## variants each, per PK's spec: unconditional, adjusted for (cell, tag,
-  ## method) -- cell alone encodes both V and c jointly, so this is
-  ## "adjusted for c, V, BGS, method" without a collinear separate V/c term
-  ## -- and within-cell (one fit per cell). Map-cluster bootstrap (refit per
-  ## replicate), clustered by (cell, rep) -- the same convention as R/14's
-  ## .fit_size_model(), for the same reason: the 10 env continuations of a
-  ## (cell, rep) share a map/burn-in history and must be resampled together,
-  ## paired across tag.
+  ## [3b] Complementary full-grid table (PK, 2026-09-18 second review, point
+  ## 3): `gp` above is conditioned on >=1 reported region existing for that
+  ## (combo, method) -- fp_prop is undefined otherwise, so that conditioning
+  ## is correct for fp_prop itself, but it means `gp` silently drops the
+  ## 516/1,400 (combo,method) pairs with ZERO reported regions, and cannot
+  ## answer "does alignment make a false positive more likely to occur AT
+  ## ALL." `full_grid` below keeps every (combo, method) pair (700 combos x
+  ## 2 methods = 1,400 rows), zero-filling n_regions/n_FP where R/11 has no
+  ## row for that method (a REAL zero, not a missing value -- same
+  ## discipline as elsewhere in this pipeline, never max(x,1)).
   ## =============================================================================
-  say("\n[4] slope models: FP proportion and null-ratio vs. environment-structure alignment\n")
-  gp[, cell_f := factor(cell, levels = CELLS_ALL)]
-  gp[, tag_f := factor(tag, levels = TAGS_ALL)]
-  gp[, method_f := factor(method, levels = c("emmax_consensus", "emmax_simes"))]
+  REGION_METHODS_SHORT <- c("emmax_consensus", "emmax_simes")
+  full_grid <- align[, .(tag, cell, rep, env, r2_axes, mantel_r, n_pop)][rep(seq_len(.N), each = length(REGION_METHODS_SHORT))]
+  full_grid[, method := rep(REGION_METHODS_SHORT, times = nrow(align))]
+  full_grid <- merge(full_grid, obs, by = c("tag", "cell", "rep", "env", "method"), all.x = TRUE)
+  full_grid[is.na(n_regions), `:=`(n_regions = 0L, n_FP = 0L, fp_prop = NA_real_)]
+  full_grid[, any_fp := as.integer(n_FP > 0)]
+  ## mean_null (expected spatial-null region count) is defined regardless of
+  ## whether any region was actually observed -- the null draws ran either
+  ## way -- so this merge should never introduce NAs; asserted, not assumed.
+  null_mean <- by_env[scheme == "spatial", .(tag, cell, rep, env, method, mean_null)]
+  full_grid <- merge(full_grid, null_mean, by = c("tag", "cell", "rep", "env", "method"), all.x = TRUE)
+  if (anyNA(full_grid$mean_null)) stop("full_grid: mean_null missing for some (combo,method) -- R/13's by-env export should cover every one")
+  fwrite(full_grid, "results/simulation_env_structure_alignment_full_grid.tsv", sep = "\t")
+  say("[3b] wrote results/simulation_env_structure_alignment_full_grid.tsv (%d rows, all combos incl. zero-region ones)\n", nrow(full_grid))
 
-  clusters <- unique(gp[, .(cell, rep)])
-  n_cl <- nrow(clusters)
-  gp[, cl_id := .GRP, by = .(cell, rep)]
-  cl_rows <- split(seq_len(nrow(gp)), gp$cl_id)
+  ## =============================================================================
+  ## [4] Slope models. Map-cluster bootstrap (refit per replicate), clustered
+  ## by (cell, rep) -- 10 env continuations of a (cell,rep) share a map/
+  ## burn-in history and must be resampled together, paired across tag (same
+  ## convention as R/14's .fit_size_model()).
+  ##
+  ## [!] BUG FIXED (PK, 2026-09-18 third review): the previous version built
+  ## `cl_rows`/`n_cl` ONCE from the full `gp` table and reused them for the
+  ## ratio model too, which is fit on `ratio_d` (`gp` filtered to
+  ## ratio_null_obs>0, a SMALLER table with its OWN 1..nrow(ratio_d) row
+  ## numbering). A bootstrap index built from gp's numbering routinely
+  ## exceeded ratio_d's row count; data.table silently returns an all-NA row
+  ## for an out-of-range index rather than erroring, corrupting that
+  ## replicate's resample instead of failing loudly. `.boot_slope()` below
+  ## now ALWAYS builds its own cluster info fresh from whatever `data` it is
+  ## actually given, so this class of mismatch cannot recur regardless of
+  ## which subset is passed in (unconditional/adjusted/within-cell/
+  ## full-grid all reuse the identical helper now, replacing the previous
+  ## separate, duplicated .boot_slope_c()).
+  ## =============================================================================
+  say("\n[4] slope models: alignment vs. FP occurrence/burden and null calibration\n")
+  .prep <- function(d) {
+    d <- copy(d)
+    d[, cell_f := factor(cell, levels = CELLS_ALL)]
+    d[, tag_f := factor(tag, levels = TAGS_ALL)]
+    d[, method_f := factor(method, levels = c("emmax_consensus", "emmax_simes"))]
+    d
+  }
+  gp <- .prep(gp)
+  full_grid <- .prep(full_grid)
 
   .boot_slope <- function(fit_fn, extract_fn, data) {
+    data <- copy(data)
+    clusters <- unique(data[, .(cell, rep)])
+    n_cl <- nrow(clusters)
+    data[, cl_id := .GRP, by = .(cell, rep)]
+    cl_rows <- split(seq_len(nrow(data)), data$cl_id)
     fit0 <- tryCatch(fit_fn(data), error = function(e) NULL)
     if (is.null(fit0)) return(data.table(estimate = NA_real_, ci_lo = NA_real_, ci_hi = NA_real_, n = nrow(data), n_boot_converged = 0L))
     point <- extract_fn(fit0)
@@ -154,9 +195,9 @@ if (sys.nframe() == 0L) {
     boot <- rep(NA_real_, N_BOOTSTRAP)
     for (bb in seq_len(N_BOOTSTRAP)) {
       draw <- sample.int(n_cl, n_cl, replace = TRUE)
-      ## list-index by the draw vector directly (NOT intersect(), which would
-      ## deduplicate repeated draws and silently break resampling-with-
-      ## replacement) -- indexing a list by a character vector naturally
+      ## list-index by the draw vector directly (NOT intersect(), which
+      ## would deduplicate repeated draws and break resampling-with-
+      ## replacement) -- indexing a list by a vector of names naturally
       ## repeats an element as many times as its name appears in the index.
       idx <- unlist(cl_rows[as.character(draw)], use.names = FALSE)
       fit_b <- tryCatch(fit_fn(data[idx]), error = function(e) NULL, warning = function(w) NULL)
@@ -168,54 +209,72 @@ if (sys.nframe() == 0L) {
               n = nrow(data), n_boot_converged = length(boot))
   }
 
-  fp_fit_fn <- function(d) stats::glm(cbind(n_FP, n_regions - n_FP) ~ r2_axes + method_f, data = d, family = stats::binomial())
-  fp_fit_adj_fn <- function(d) stats::glm(cbind(n_FP, n_regions - n_FP) ~ r2_axes + method_f + cell_f + tag_f, data = d, family = stats::binomial())
-  fp_extract <- function(fit) unname(coef(fit)["r2_axes"])
-
   ratio_d <- gp[ratio_null_obs > 0]
   ratio_d[, log2_ratio := log2(ratio_null_obs)]
-  ratio_fit_fn <- function(d) stats::lm(log2_ratio ~ r2_axes + method_f, data = d)
-  ratio_fit_adj_fn <- function(d) stats::lm(log2_ratio ~ r2_axes + method_f + cell_f + tag_f, data = d)
-  ratio_extract <- function(fit) unname(coef(fit)["r2_axes"])
+  full_grid[, log2_null := log2(mean_null + 1)]   ## log1p-style transform -- mean_null can be exactly 0 (a real, common outcome, not an error)
+
+  ## outcome -> (fit formula template, family/method, data, extractor), one
+  ## row per (outcome x alignment measure) so the same machinery covers both
+  ## the primary axis-based measure and the Mantel-style sensitivity check
+  ## (point 4 of the review: previously computed but never modelled).
+  make_specs <- function(align_var) {
+    list(
+      fp_prop = list(outcome = "fp_prop",
+                     fit = function(d) stats::glm(stats::as.formula(sprintf("cbind(n_FP, n_regions - n_FP) ~ %s + method_f", align_var)), data = d, family = stats::binomial()),
+                     fit_adj = function(d) stats::glm(stats::as.formula(sprintf("cbind(n_FP, n_regions - n_FP) ~ %s + method_f + cell_f + tag_f", align_var)), data = d, family = stats::binomial()),
+                     data = gp),
+      null_ratio_log2 = list(outcome = "null_ratio_log2",
+                             fit = function(d) stats::lm(stats::as.formula(sprintf("log2_ratio ~ %s + method_f", align_var)), data = d),
+                             fit_adj = function(d) stats::lm(stats::as.formula(sprintf("log2_ratio ~ %s + method_f + cell_f + tag_f", align_var)), data = d),
+                             data = ratio_d),
+      ## complementary, full-grid outcomes (point 3): does alignment predict
+      ## whether a false positive occurs at all, how many occur, and the
+      ## expected null burden -- all WITHOUT conditioning on >=1 discovery.
+      any_fp = list(outcome = "any_fp",
+                   fit = function(d) stats::glm(stats::as.formula(sprintf("any_fp ~ %s + method_f", align_var)), data = d, family = stats::binomial()),
+                   fit_adj = function(d) stats::glm(stats::as.formula(sprintf("any_fp ~ %s + method_f + cell_f + tag_f", align_var)), data = d, family = stats::binomial()),
+                   data = full_grid),
+      n_fp_count = list(outcome = "n_fp_count",
+                       fit = function(d) stats::glm(stats::as.formula(sprintf("n_FP ~ %s + method_f", align_var)), data = d, family = stats::poisson()),
+                       fit_adj = function(d) stats::glm(stats::as.formula(sprintf("n_FP ~ %s + method_f + cell_f + tag_f", align_var)), data = d, family = stats::poisson()),
+                       data = full_grid),
+      null_mean_log2 = list(outcome = "null_mean_log2",
+                            fit = function(d) stats::lm(stats::as.formula(sprintf("log2_null ~ %s + method_f", align_var)), data = d),
+                            fit_adj = function(d) stats::lm(stats::as.formula(sprintf("log2_null ~ %s + method_f + cell_f + tag_f", align_var)), data = d),
+                            data = full_grid)
+    )
+  }
+  extract_for <- function(align_var) function(fit) unname(coef(fit)[align_var])
 
   model_rows <- list()
-  model_rows[["fp_unconditional"]] <- cbind(outcome = "fp_prop", variant = "unconditional", cell = NA_character_, .boot_slope(fp_fit_fn, fp_extract, gp))
-  model_rows[["fp_adjusted"]] <- cbind(outcome = "fp_prop", variant = "adjusted_cell_tag_method", cell = NA_character_, .boot_slope(fp_fit_adj_fn, fp_extract, gp))
-  model_rows[["ratio_unconditional"]] <- cbind(outcome = "null_ratio_log2", variant = "unconditional", cell = NA_character_, .boot_slope(ratio_fit_fn, ratio_extract, ratio_d))
-  model_rows[["ratio_adjusted"]] <- cbind(outcome = "null_ratio_log2", variant = "adjusted_cell_tag_method", cell = NA_character_, .boot_slope(ratio_fit_adj_fn, ratio_extract, ratio_d))
+  for (align_var in c("r2_axes", "mantel_r")) {
+    specs <- make_specs(align_var)
+    ext <- extract_for(align_var)
+    for (spec in specs) {
+      model_rows[[length(model_rows) + 1]] <- cbind(outcome = spec$outcome, align_measure = align_var, variant = "unconditional", cell = NA_character_,
+                                                     .boot_slope(spec$fit, ext, spec$data))
+      model_rows[[length(model_rows) + 1]] <- cbind(outcome = spec$outcome, align_measure = align_var, variant = "adjusted_cell_tag_method", cell = NA_character_,
+                                                     .boot_slope(spec$fit_adj, ext, spec$data))
+    }
+  }
 
-  ## within-cell: same (cell,rep) cluster-bootstrap machinery, restricted to
-  ## one cell's rows at a time (n_cl there is that cell's own cluster count).
+  ## within-cell: r2_axes only, fp_prop and null_ratio only (the two
+  ## outcomes PK's original spec asked to break out by cell; the
+  ## complementary full-grid outcomes and the Mantel measure are reported
+  ## unconditional/adjusted only, to keep this already-large model table
+  ## bounded -- noted explicitly in the audit, not silently scoped down).
+  ext_r2 <- extract_for("r2_axes")
   for (cc in CELLS_ALL) {
     d_fp <- gp[cell == cc]
     if (nrow(d_fp) >= 10) {
-      clusters_c <- unique(d_fp[, .(cell, rep)]); n_cl_c <- nrow(clusters_c)
-      d_fp[, cl_id := .GRP, by = rep]
-      cl_rows_c <- split(seq_len(nrow(d_fp)), d_fp$cl_id)
-      .boot_slope_c <- function(fit_fn, extract_fn, data, n_cl_l, cl_rows_l) {
-        fit0 <- tryCatch(fit_fn(data), error = function(e) NULL)
-        if (is.null(fit0)) return(data.table(estimate = NA_real_, ci_lo = NA_real_, ci_hi = NA_real_, n = nrow(data), n_boot_converged = 0L))
-        point <- extract_fn(fit0)
-        set.seed(SEEDS[["bootstrap"]])
-        boot <- rep(NA_real_, N_BOOTSTRAP)
-        for (bb in seq_len(N_BOOTSTRAP)) {
-          draw <- sample.int(n_cl_l, n_cl_l, replace = TRUE)
-          idx <- unlist(cl_rows_l[as.character(draw)], use.names = FALSE)   ## see .boot_slope()'s comment -- never intersect()
-          fit_b <- tryCatch(fit_fn(data[idx]), error = function(e) NULL, warning = function(w) NULL)
-          if (!is.null(fit_b)) boot[bb] <- tryCatch(extract_fn(fit_b), error = function(e) NA_real_)
-        }
-        boot <- boot[is.finite(boot)]
-        data.table(estimate = point, ci_lo = if (length(boot)) ci_quantile(boot)[1] else NA_real_,
-                  ci_hi = if (length(boot)) ci_quantile(boot)[2] else NA_real_, n = nrow(data), n_boot_converged = length(boot))
-      }
-      model_rows[[paste0("fp_", cc)]] <- cbind(outcome = "fp_prop", variant = "within_cell", cell = cc,
-                                               .boot_slope_c(fp_fit_fn, fp_extract, d_fp, n_cl_c, cl_rows_c))
+      fp_fit_fn <- function(d) stats::glm(cbind(n_FP, n_regions - n_FP) ~ r2_axes + method_f, data = d, family = stats::binomial())
+      model_rows[[length(model_rows) + 1]] <- cbind(outcome = "fp_prop", align_measure = "r2_axes", variant = "within_cell", cell = cc,
+                                                     .boot_slope(fp_fit_fn, ext_r2, d_fp))
       d_ratio <- ratio_d[cell == cc]
       if (nrow(d_ratio) >= 10) {
-        d_ratio[, cl_id := .GRP, by = rep]
-        cl_rows_r <- split(seq_len(nrow(d_ratio)), d_ratio$cl_id)
-        model_rows[[paste0("ratio_", cc)]] <- cbind(outcome = "null_ratio_log2", variant = "within_cell", cell = cc,
-                                                    .boot_slope_c(ratio_fit_fn, ratio_extract, d_ratio, n_cl_c, cl_rows_r))
+        ratio_fit_fn <- function(d) stats::lm(log2_ratio ~ r2_axes + method_f, data = d)
+        model_rows[[length(model_rows) + 1]] <- cbind(outcome = "null_ratio_log2", align_measure = "r2_axes", variant = "within_cell", cell = cc,
+                                                       .boot_slope(ratio_fit_fn, ext_r2, d_ratio))
       }
     }
   }
@@ -223,9 +282,13 @@ if (sys.nframe() == 0L) {
   fwrite(model_dt, "results/simulation_env_structure_alignment_models.tsv", sep = "\t")
   say("[5] wrote results/simulation_env_structure_alignment_models.tsv\n")
   print(model_dt)
+  say("\n[6] within-cell CIs excluding zero (flagging, not hiding, any that do):\n")
+  excl <- model_dt[variant == "within_cell" & !is.na(ci_lo) & !is.na(ci_hi) & (ci_lo > 0 | ci_hi < 0)]
+  if (nrow(excl)) print(excl[, .(outcome, cell, estimate, ci_lo, ci_hi)]) else say("    none\n")
 
   write_receipt("15_env_structure_alignment", inputs = c("results/simulation_null_truth_calibration_by_env.tsv", region_detail_file),
                 params = list(n_axes = N_AXES, n_bootstrap = N_BOOTSTRAP, seed_bootstrap = SEEDS[["bootstrap"]]),
-                outputs = c("results/simulation_env_structure_alignment.tsv", "results/simulation_env_structure_alignment_models.tsv"))
+                outputs = c("results/simulation_env_structure_alignment.tsv", "results/simulation_env_structure_alignment_full_grid.tsv",
+                           "results/simulation_env_structure_alignment_models.tsv"))
   cat("ENV_ALIGNMENT_DONE\n")
 }
