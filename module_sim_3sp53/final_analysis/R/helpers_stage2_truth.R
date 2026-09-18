@@ -37,33 +37,33 @@ suppressMessages({library(data.table)})
 ## regardless of floor) and return a `cl_sub` data.table (subset of
 ## stage1$clusters) ready for assemble_stage2().
 
-## [!] ORDER MATTERS, found validating this refactor against the pre-refactor
-## grid. ld_prune_and_eMLG()'s distance-restricted dynamic cut merges
-## ADJACENT input clusters, so its output partition depends on the ORDER
-## clusters are handed to it, not just the SET -- and the two pre-refactor
-## seeding paths relied on two DIFFERENT incidental orderings, discovered by
-## two successive full-grid mismatches while building this file (TP/recall
-## were untouched both times; only FP/region counts moved, in a handful of
-## strata each time):
-##  - unit-seeded (round 1 mismatch): the pre-refactor code indexed
-##    stage1$clusters through unit_id, itself assigned over a table sorted
-##    by each UNIT's genomic SPAN (min member position, i.e. `from` -- not
-##    the same as core_snp's own position, since a cluster's representative
-##    marker need not be its leftmost member). core_snp-based selection does
-##    not reproduce that order on its own -- fixed by sorting explicitly.
-##  - marker-seeded (round 2 mismatch): the pre-refactor code was `cl[disc]`
-##    -- stage1$clusters' own NATIVE row order, filtered, no resort. Adding
-##    the SAME (Chr, from) sort here (an over-generalisation from the first
-##    fix) changed its order relative to the original and reintroduced a
-##    mismatch in emmax_snp_region/lfmm_snp_region specifically. Reverted:
-##    this path stays native-order, unsorted, matching what the canonical
-##    pipeline has always actually done.
-## Neither ordering is claimed to be the "right" one in any principled
-## sense -- ld_prune_and_eMLG()'s order-sensitivity is a pre-existing
-## property of the package function, not introduced or fixed here. The only
-## requirement satisfied below is reproducing each path's own historical
-## behaviour exactly, verified against the full 1,400-combo grid (see
-## ADDITIONAL_ANALYSES_AUDIT.md).
+## [!] ORDER MATTERS AND IS NOW UNIFIED (PK, 2026-09-18 review). ld_prune_
+## and_eMLG()'s distance-restricted dynamic cut merges ADJACENT input
+## clusters, so its output partition depends on the ORDER clusters are
+## handed to it, not just the SET. An earlier version of this file gave the
+## two seeding routes two DIFFERENT orderings specifically to reproduce two
+## different pre-refactor historical behaviours bit-for-bit (unit-seeded:
+## genomic-span sorted; marker-seeded: stage1$clusters' own native,
+## essentially arbitrary discovery-order row order, confirmed empirically to
+## differ from genomic order at 30-99% of cluster positions across a sample
+## of combos -- i.e. not "already genomic in practice"). PK's review pointed
+## out that "reproducing historical output" is the wrong target once the
+## SAME reporting rule is claimed to apply to every method: if arms are fed
+## to Stage 2 in different orders, some of their FP/region-count
+## differences are an artefact of that inconsistency, not of the methods
+## themselves. Both routes are now genomic-span sorted. This DOES change the
+## canonical marker-wise numbers slightly (quantified on the full 1,400-
+## combo grid before making this change: emmax_snp_region 6,658->6,623
+## regions, precision 0.1236->0.1228; lfmm_snp_region 11,569->11,581,
+## precision 0.1104->0.1086 -- small in aggregate, though 8.5%/16.3% of
+## individual EMMAX/LFMM combos get a different region count under the two
+## orderings). 05_score_truth.R was regenerated for the full grid after this
+## change (see ADDITIONAL_ANALYSES_AUDIT.md), and values_simulation.tex's
+## affected macros were updated to match. Neither ordering is "more
+## correct" in any principled sense -- ld_prune_and_eMLG()'s order-
+## sensitivity is a pre-existing property of the package function, not
+## introduced or fixed here -- but a single, consistent choice is required
+## for "the same Stage-2 rule" to mean what it says.
 ## [!] ONE match() call total, not one per cluster (PK, flagged 2026-09-17):
 ## the original `vapply(cl_sub$members, function(mm) ...match(mm, mp$marker))`
 ## called match() once per cluster in cl_sub, each call re-hashing the FULL
@@ -100,14 +100,13 @@ stage2_seed_from_units <- function(stage1, map, sig_core_snps) {
 
 ## Marker-seeded (unrestricted comparator): every phenotype-blind Stage-1
 ## cluster -- INCLUDING SINGLETONS, unfiltered by any floor -- containing
-## >=1 significant marker is "discovered". Native stage1$clusters row order,
-## NOT resorted -- see header comment above (this is the one seeding route
-## that was already correct before any fix was applied here).
+## >=1 significant marker is "discovered". Genomic-span sorted, same as the
+## unit-seeded route -- see header comment above.
 stage2_seed_from_markers <- function(stage1, map, sig_markers) {
   cl <- data.table::as.data.table(stage1$clusters)
   if (!length(sig_markers)) return(cl[0L])
   disc <- vapply(cl$members, function(mm) any(mm %chin% sig_markers), logical(1))
-  cl[disc]
+  .genomic_sort_clusters(cl[disc], map)
 }
 
 ## ---- Stage-2 assembly: cl_sub -> detailed reported-region table -------------

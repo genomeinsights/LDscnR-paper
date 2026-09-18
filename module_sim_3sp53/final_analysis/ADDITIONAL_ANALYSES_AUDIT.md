@@ -1,6 +1,6 @@
 # Additional simulation analyses: audit report
 
-Audit date: 2026-09-17
+Audit date: 2026-09-17. Revised 2026-09-18 after PK's first-pass review ("Second pass" section). **Revised again 2026-09-18 (later the same day)** after PK's second review, which found two silent-failure bugs in the second-pass code itself ("Third pass" section) -- **all numbers in the "Analysis 1" and "Analysis 2" RESULT sections below are from the fully corrected, complete final rerun and supersede every earlier number in this document**, including the "Second pass" section's own point-2 and point-3 tables (kept below for the historical record of what changed and why, but explicitly marked superseded where relevant).
 
 ## What was implemented
 
@@ -10,113 +10,259 @@ Three connected analyses, all scored at the **Stage-2 reported-region** scale (n
 2. **Stage-2 region size vs. truth** (`R/11_stage2_region_details.R` + `R/14_summarise_additional_analyses.R`) -- are smaller reported regions more likely false positives, and does that survive an opportunity-effect (genomic-coverage) control?
 3. **Floor decomposition** (`R/12_floor_decomposition.R`) -- how much of the precision/recall change comes from filtering small Stage-1 units versus from LD-aggregation itself?
 
-New files: `R/helpers_stage2_truth.R`, `R/11_stage2_region_details.R`, `R/12_floor_decomposition.R`, `R/13_region_null_calibration.R`, `R/14_summarise_additional_analyses.R`, `R_figures/figure_simulation_null_truth_calibration.R`, `R_figures/figure_simulation_floor_decomposition.R`, `R_figures/figureS_simulation_stage2_size_truth.R`. `05_score_truth.R` was modified only to call the new shared helper instead of its own private copy of the same logic (`region_scoring_version` bumped 2->3 to force cache invalidation).
+New files: `R/helpers_stage2_truth.R`, `R/11_stage2_region_details.R`, `R/12_floor_decomposition.R`, `R/13_region_null_calibration.R`, `R/14_summarise_additional_analyses.R`, `R_figures/figure_simulation_null_truth_calibration.R`, `R_figures/figure_simulation_floor_decomposition.R`, `R_figures/figure_simulation_floor_decomposition_by_cell.R`, `R_figures/figureS_simulation_stage2_size_truth.R`, plus the one-off full-grid rerun driver `R/rerun_score_truth_grid.R` and orchestration script `run_rerun_sequence.sh`. `05_score_truth.R` was modified only to call the new shared helper instead of its own private copy of the same logic (`region_scoring_version` bumped 2->3 on first pass, then 3->4 on the second pass).
 
 ## Which old exploratory results were NOT reused, and why
 
-`module_sim_3sp53/R/12_structured_null.R` and `R/14_random_removal_control.R` (plus their pooled `results/*.rds`) were **not** used as a numeric source for Analysis 1 or 3. Per `module_sim_3sp53/CLAUDE_REANALYSIS_INSTRUCTIONS.md`, those scripts read bundles built by the pre-correction parser (a one-based-locus-index bug fixed only in `final_analysis/`'s own parser), so their counts are not comparable to anything in `final_analysis/`. What *was* reused, as design/method choices rather than numbers:
+`module_sim_3sp53/R/12_structured_null.R` and `R/14_random_removal_control.R` (plus their pooled `results/*.rds`) were **not** used as a numeric source for Analysis 1 or 3. Per `module_sim_3sp53/CLAUDE_REANALYSIS_INSTRUCTIONS.md`, those scripts read bundles built by the pre-correction parser, so their counts are not comparable to anything in `final_analysis/`. What *was* reused, as design/method choices rather than numbers:
 
 - The three null-construction recipes (`group`/`mvn`/`spatial`) -- ported verbatim from `R/12_structured_null.R`'s validated draw code, applied to `final_analysis/`'s own corrected-parser inputs.
 - The `n_obs > 0`-conditioning discipline for `realised_fdr`/`R_null/obs` -- that module's own hard-won 2026-09-09 correction, carried forward here as a hard requirement (never `max(n_observed, 1)`).
-- `R/14_random_removal_control.R`'s matched-cardinality-random-subset design (size-based filtering vs. random filtering of the same size) was **read but not rerun**. Its own finding on the old, unit-scale data -- that size-based floor restriction showed no advantage over random restriction -- is exactly the kind of confound the new Analysis 2 opportunity-effect check tests properly, at the Stage-2-region scale, on corrected data (and, as it turns out, finds a related but more nuanced result -- see below). `R/14_random_removal_control.R` itself, including its uncommitted local WIP extending it to the `mvn`/`spatial` schemes, was **not modified** (explicit standing instruction).
-- `results/simulation_stage2_region_details.rds`/`.tsv` (R/11) and everything downstream deliberately does **not** reuse the earlier `module_sim_3sp53` "cluster size vs FP" figures (`fig_fp_by_size.R` etc.) -- those scored Stage-1 units; this scores Stage-2 reported regions, a different estimand.
+- `R/14_random_removal_control.R`'s matched-cardinality-random-subset design was **read but not rerun**, and the file itself, including its uncommitted local WIP, was **not modified** at any point (explicit standing instruction).
+- `results/simulation_stage2_region_details.rds`/`.tsv` (R/11) and everything downstream deliberately does **not** reuse the earlier `module_sim_3sp53` "cluster size vs FP" figures -- those scored Stage-1 units; this scores Stage-2 reported regions, a different estimand.
 
-## Shared Stage-2 helper: bugs found and fixed while building and validating it
+## Shared Stage-2 helper: bugs found and fixed while building and validating it (first pass)
 
-`R/helpers_stage2_truth.R` refactors the previously-duplicated Stage-2 assembly/scoring logic (`.run_stage2()` etc. in `05_score_truth.R`) into `assemble_stage2()` / `score_stage2_regions()` / `stage2_seed_from_units()` / `stage2_seed_from_markers()` / `bootstrap_rep_matrix()`. `05_score_truth.R` now calls these instead of its own private copies. Building and validating this against the existing full 1,400-combo grid, and then the floor sweep and null calibration built on top of it, surfaced four genuine, previously-latent bugs -- three found independently while validating, one flagged directly by PK from inspecting the figure and the code:
+`R/helpers_stage2_truth.R` refactors the previously-duplicated Stage-2 assembly/scoring logic into `assemble_stage2()` / `score_stage2_regions()` / `stage2_seed_from_units()` / `stage2_seed_from_markers()` / `bootstrap_rep_matrix()`. Building and validating this, and the floor sweep and null calibration built on top of it, surfaced four genuine, previously-latent bugs:
 
-1. **Order-sensitivity of `ld_prune_and_eMLG()`'s input.** Its distance-restricted dynamic cut merges *adjacent* input clusters, so its output partition depends on the order clusters are handed to it, not just the set. The unit-seeded path (Simes/consensus) needs its input sorted by each unit's genomic span (`from`, i.e. its minimum member position); the marker-seeded path (the unrestricted comparator) needs `stage1$clusters`' own native row order, unsorted. Found via a full-grid diff against the pre-refactor `results/simulation_performance*.tsv` (byte-identical after the fix, across all 8 result files and all 70 tag x cell x method strata).
-2. **`unit_id` is not a stable identifier across `size_floor` values.** `LDscnR:::.ld_outlier_units()` assigns `unit_id = seq_len(nrow(cl))` *before* its own internal `setorder(Chr, from)`, so `unit_id` is a permutation of `1:N`, reassigned from scratch at every call over whichever cluster subset clears that call's own `size_floor`. Code that computes a per-unit statistic once (e.g. floor=1 Stage-1 Simes/consensus p-values, meant to be reused across the whole floor sweep) and then indexes it by `unit_id` *value* at a different floor silently reads the wrong unit's value. Fixed by keying every per-unit vector in `R/12_floor_decomposition.R` on `core_snp` (each cluster's representative marker -- unique per cluster, never reassigned independently of its own row) instead of `unit_id`. Found via a targeted single-combo diagnostic (`bgs/V1_c1/rep2/env3`) after the pooled floor=2 Simes/consensus numbers failed to reproduce canonical results; confirmed fixed by a second full 1,400-combo rerun (floor=2 EMMAX/LFMM precision now matches canonical exactly: `emmax_snp_region` 0.1236107, `emmax_simes_region` 0.1626016, `emmax_consensus_region` 0.1750725, `lfmm_simes_region` 0.1294494 -- all exact).
-3. **`floor == floor` self-comparison in the grand-pooled contrast loop.** PK caught this directly from the contrast table repeating identical rows at every floor: inside `grand_rep[... & floor == floor]`, the bare loop variable `floor` collided with `grand_rep`'s own `floor` *column* -- data.table's non-standard evaluation resolves a bare name to the column first, so the filter compared the column to itself and matched every row regardless of the loop's current floor, silently pooling all six floors together for every contrast row. Fixed by renaming the loop variable to `this_floor`. A repository-wide check afterwards (`perl` regex for `\b(word)\s*==\s*\1\b` across all five new files) found no other instance of this exact pattern.
-4. **`..env` (data.table's "look this up as a variable, not a column" prefix) silently failed to resolve**, specifically for the name `env`, inside `R/14`'s opportunity-effect combo loop (`..tag`/`..cell`/`..rep` all resolved correctly; only `..env` threw "object '..env' not found", on every single one of 1,223 combos, which the code's own `tryCatch` swallowed into per-combo warnings and a silent fallback to the "no usable draws" branch -- the run completed without visibly failing, and the opportunity-null section was simply empty until this was noticed and fixed). Root cause not fully chased down (a name collision between the argument `env` and something internal to data.table's `..`-lookup is suspected), but sidestepped entirely by copying the four loop arguments to distinctly-prefixed local variables (`q_tag`/`q_cell`/`q_rep`/`q_env`) before the filter, the same class of fix as bug 3. Also fixed in the same file: the summary message reporting whether the observed size-truth slope exceeds the opportunity-null slope was a **hardcoded string** that always claimed "observed > opportunity-null" regardless of the actual comparison; it now branches on the real values (see Analysis 2 below -- the true answer for this run is "does not exceed").
+1. **Order-sensitivity of `ld_prune_and_eMLG()`'s input.** Its distance-restricted dynamic cut merges *adjacent* input clusters, so its output partition depends on input order, not just the set. First-pass fix kept the marker-seeded and unit-seeded routes on different orderings to match historical output. **Superseded by the second-pass fix below.**
+2. **`unit_id` is not a stable identifier across `size_floor` values.** `LDscnR:::.ld_outlier_units()` assigns `unit_id` before its own internal `setorder(Chr, from)`, so it is a permutation of `1:N`, reassigned from scratch at every call. Fixed by keying on `core_snp` instead of `unit_id` in `R/12_floor_decomposition.R`.
+3. **`floor == floor` self-comparison in the grand-pooled contrast loop.** The bare loop variable `floor` collided with the `floor` *column*, silently pooling all floors together. Fixed by renaming to `this_floor`.
+4. **`..env` silently failed to resolve** inside `R/14`'s opportunity-effect combo loop, sidestepped by copying loop arguments to distinctly-prefixed locals (`q_tag`/`q_cell`/`q_rep`/`q_env`).
 
-Also fixed, a genuine performance bug flagged directly by PK ("check that you are not using slow unvectorised match() operations"): `.genomic_sort_clusters()` (the fix for bug 1) originally called `match()` once *per cluster* inside a `vapply`, each call re-hashing the full ~15,000-marker universe from scratch -- exactly the anti-pattern `LDscnR:::.marker_positions()`'s own header comment warns against, and likely the dominant cost behind Analysis 1's null-calibration run taking far longer (212 minutes) than its smoke-test extrapolation suggested (~52 minutes), since it is called on every Stage-2 assembly, including every one of the run's null replicates. Fixed to hash the marker universe once (via `LDscnR:::.marker_positions()`) and aggregate per-cluster minima with one grouped data.table operation, mirroring `.ld_outlier_units()`'s own span-construction idiom. A related, smaller instance in `R/13`'s `group`-scheme null generator (`gen_group()` re-matching the same, unchanging population-to-row index on every one of its `B` calls) was fixed the same way, precomputing the index once outside the replicate loop.
+Also fixed: `.genomic_sort_clusters()` originally called `match()` once *per cluster*, re-hashing the full marker universe every time -- fixed to hash once via `LDscnR:::.marker_positions()`.
 
-None of these bugs affected any existing, already-published result -- all were introduced by, and caught while building and validating, this new work, before any of its output was used for anything. R/12 and R/14 were each rerun in full after their respective fixes; R/11's output (built before any of these bugs existed, since region assembly there uses only bug 1's fix, already validated) was not affected by bugs 2-4 and was not rerun.
+None of these first-pass bugs affected any existing, already-published result.
+
+## Second pass (2026-09-18): response to PK's first review
+
+PK's first review raised four issues. All four were addressed. **Points 2 and 3's numeric results below turned out to still be wrong** -- silently affected by two further bugs PK caught in the *second* review (see "Third pass"); the numbers here are kept only as a record of what the redesign changed structurally.
+
+### 1. Stage-2 assembly ordering, unified
+
+**Issue:** the first-pass fix kept the marker-seeded and unit-seeded assembly routes on different orderings. PK: reproducing historical output is not sufficient reason for two logically-equivalent paths to behave inconsistently.
+
+**Decision, with PK's explicit sign-off:** a full 1,400-combo side-by-side comparison (native vs. genomic order) was run before committing: aggregate change small (3rd decimal of precision) but non-trivial per-combo (8.5%/16.3% of individual EMMAX/LFMM combos get a different region count). PK confirmed: **apply everywhere, update manuscript macros.**
+
+**Implementation:** `stage2_seed_from_markers()` now calls `.genomic_sort_clusters()`, matching `stage2_seed_from_units()`. `region_scoring_version` bumped 3->4, full 1,400-combo rescore (1.1 min), `06_summarise.R` regenerated canonical results. **This numeric result is unaffected by the Third-pass bugs (which are confined to R/13 and R/14) and stands as final.**
+
+**Measured impact (matches the pre-decision prediction almost exactly, and is the current, final canonical result):**
+
+| method | regions (before) | regions (after) | FP (after) | precision (before) | precision (after) |
+|---|---:|---:|---:|---:|---:|
+| `emmax_snp_region` | 6,658 | **6,623** | 5,810 | 0.1236 | **0.1228** |
+| `lfmm_snp_region` | 11,569 | **11,581** | 10,323 | 0.1104 | **0.1086** |
+| `emmax_simes_region` | 3,936 | 3,936 (unchanged) | 3,296 | 0.1626 | 0.1626 |
+| `emmax_consensus_region` | 3,450 | 3,450 (unchanged) | 2,846 | 0.1751 | 0.1751 |
+| `lfmm_simes_region` | 7,810 | 7,810 (unchanged) | 6,799 | 0.1294 | 0.1294 |
+
+Only the two marker-seeded methods are affected. Relative to the marker-wise baseline, LD-aggregation reduces false-positive *regions* by **43.3%** (Simes: 5,810 -> 3,296) and **51.0%** (consensus: 5,810 -> 2,846). **`values_simulation.tex`'s affected macros have NOT yet been updated** -- no manuscript file has been touched; this table is the input for that.
+
+### 2. Opportunity-effect control replaced with exact per-region relocation -- [superseded, see Third pass]
+
+**Issue:** the first-pass opportunity control drew K=30 generic contiguous windows per (combo, chromosome, size-bin) at the bin's median size, and compared exactly two point-estimate slopes with no uncertainty on their difference.
+
+**Redesign (`R/14_summarise_additional_analyses.R`):** every observed Stage-2 region is relocated by an exact circular shift of its own constituent-marker index-spacing pattern to a uniformly random start point on the same chromosome, R=200 independent replicates, giving a full null distribution of the opportunity-only TP-rate-vs-size slope.
+
+**[!] The numbers first reported here (obs_slope 0.253 vs. null_slope 0.528 [0.4655,0.5960]) were computed on a silently incomplete null -- see "Third pass" point 2 below for the bug and the corrected result (0.253 vs. 0.512 [0.470, 0.556], essentially the same conclusion but now on the complete grid).** The qualitative finding -- that the observed slope is significantly *shallower* than the opportunity-null slope, not steeper -- is unchanged and, if anything, more firmly established on the complete data. See Analysis 2's RESULT section below for the final, authoritative numbers.
+
+### 3. Null-calibration redesigned with paired map identifiers and cell/tag-adjusted correlation -- [superseded, see Third pass]
+
+**Issue:** the first-pass "balanced" design sampled reps independently per tag, so BGS/no-BGS treatments rarely shared a map. PK also asked for the association to be checked after adjusting for demographic cell.
+
+**Redesign:** `R/13`'s balanced-mode combo selection now samples reps **once per cell**, shared across both `tag` values, `N_REPS_PER_CELL <- 5L` -- 7 cells x 5 reps x 2 tags x 10 envs = 700 combos. A cell(+tag)-adjusted Spearman correlation is now reported alongside the raw one.
+
+**[!] The design and code changes described above are correct and final.** But the FIRST run under this redesign only realised 52 of the intended 70 map/burn-in groups, and the audit at the time wrongly attributed this to "gaps in the raw simulation grid." **That diagnosis was wrong** -- PK's second review found a cache-read bug (see "Third pass" point 1) that silently dropped 1,134/4,200 jobs, and confirmed by direct check that the raw grid has no such gaps. The corrected rerun realises all 70/70 groups. See Analysis 1's RESULT section below for the final, authoritative numbers -- the table originally printed here is superseded in full, not just refined.
+
+### 4. Bootstrap pairing corrected in both R/13 and R/14
+
+**Issue:** two bootstraps resampled `(tag, cell, rep)` as the clustering unit, resampling BGS and no-BGS rows independently despite them being a paired map/burn-in draw.
+
+**Fixed** in `R/14`'s `.fit_size_model()` and `R/13`'s own summary bootstrap, both now clustering by `(cell, rep)` only. This fix is correct and unaffected by the Third-pass bugs.
+
+## Third pass (2026-09-18, later the same day): two silent-failure bugs in the second-pass code
+
+PK's second review found the second-pass fixes were logically correct but two **silent-failure bugs elsewhere in the same scripts** had corrupted their outputs -- both confirmed with direct log evidence before fixing, not taken on faith:
+
+### 1. R/13's cache-read returned the wrong object shape
+
+`run_one()`'s cache-hit branch (`stage_stale()` == FALSE) returned the *entire saved list* (`tag`, `cell`, ..., `counts`), while the fresh-compute branch returned `counts` directly. The caller's `mean(counts)` on a list just warns and returns `NA`; `max(counts)` on a list throws `"invalid 'type' (list) of argument"`, caught by the job's own `tryCatch` and silently dropped. **Confirmed in the overnight log: exactly 1,134/4,200 jobs failed this way**, explaining the "52/70 groups" the previous audit wrongly attributed to missing raw data (confirmed by direct check: raw `ld_units.rds` exists for every rep of every affected cell/tag).
+
+**Fix:** cache-hit branch now returns `readRDS(...)$counts`; `NULL_CALIB_VERSION <- 2L` added to `PARAMS` to force every job to recompute cleanly (the on-disk values themselves were never corrupted -- only the reader was -- but a clean version bump removes any doubt); a hard `stop()` if `nrow(dt) != nrow(jobs)`; an explicit design-completeness assertion on the balanced-mode combo table (exactly `N_REPS_PER_CELL` reps/cell, both tags, all 10 envs); and a payload-shape validation (`is.numeric`, `length(counts)==B`, all finite non-negative integers) so a malformed cache entry can't silently produce one bad row that still passes the row-count check.
+
+### 2. R/14's per-combo seed silently dropped ~half the opportunity-relocation grid
+
+`strtoi()` on a full 8-hex-digit CRC32 hash overflows R's signed 32-bit integer for any hash >= `0x80000000` (roughly half of all values) and returns `NA`. `NA` propagated to `set.seed(NA)`, which throws `"supplied seed is not a valid integer,"` caught by the combo's `tryCatch` and silently dropped. **Confirmed: 619/1,223 combos (50.6%) failed this way**, while `observed_by_bin` (used for `obs_slope`) was still built from the *full* grid -- comparing a full-grid observed slope against a roughly-half-grid null slope.
+
+A second, independent issue in the same function: combos with no detectable QTN, or no marker passing the LD/distance criteria, `return(NULL)` -- removing their observed regions (necessarily all false positives) from the null denominator entirely, rather than correctly contributing zero-hit relocation draws.
+
+**Fix:** the CRC32 hash is now split into two 4-hex-digit halves (each safely `< 2^16`) and combined with double-precision arithmetic before ever coercing to a 32-bit integer for `set.seed()` (verified: 0 collisions across 1,223 real combo IDs). `is_qtn_linked` now starts empty and only gets populated when QTNs/linked markers exist, so every relocation draw for a QTN-less combo correctly scores as a miss rather than the combo being dropped. A hard `stop()` was added if the number of combos represented in the pooled relocation table doesn't exactly match `nrow(combos_present)`.
+
+**A related, cosmetic bug** was also found (by self-review, not by PK) while inspecting the validation run: the printed interpretation text only branched on "slope-difference CI entirely positive" vs. an else covering both "includes zero" and "entirely negative" -- so the CI-entirely-negative case (exactly this analysis's actual result) printed the wrong narrative ("does NOT exclude zero"). Only the console/log text was affected, never the numeric TSV outputs. Fixed to a proper three-way branch.
+
+### 3. Additional safeguards PK requested before the corrected rerun
+
+- **R/11**: worker results now wrapped as `{ok, data, error}` so a genuine worker failure (crash, OOM, corrupted read) is distinguishable from `region_details_one_combo()`'s own legitimate `NULL` (a combo with zero reported regions across every method) -- the plain `tryCatch(..., error=function(e) NULL)` pattern made these indistinguishable and a real failure would have silently produced apparently-complete output. Hard `stop()` if any `ok == FALSE`.
+- **R/12**: `errs` was already counted and printed but never gated on. Added `if (errs > 0) stop(...)` before `saveRDS()` (`floor_decomposition_one_combo()` has no legitimate `NULL`-return case, so any `NULL` here really is a worker error).
+- **`run_rerun_sequence.sh`**: added the by-cell floor figure as its own stage (previously regenerated manually, not part of the automated sequence).
+- `null_calib_version` added to R/13's final summary receipt; R/14's slope-difference bounds are now explicitly documented (in code comments and printed text) as a **95% relocation interval**, not a general confidence interval -- they describe variation among relocations of the fixed, observed region set, not sampling uncertainty across simulated maps.
+- `mc.cores` raised from 7 to 12 across R/11-R/14 (the mini has 14 physical cores; 2 left for the system, per PK).
+
+**Corrected rerun, launched only after all of the above were independently verified** (unit tests of the seed function, the payload-shape predicate, and the `{ok,data,error}` logic; a real end-to-end run of the fixed R/14 on the complete grid, confirming 1,223/1,223 combos and the same qualitative result as before the fix) and after PK's own independent code check found no remaining logic error. Full sequence (06->11->12->13->14->figures) completed cleanly overnight: **R/13: 4,200/4,200 jobs (design check: 7 cells x 5 reps/cell x 2 tags x 10 envs = 700 combos, all realised), R/14: 1,223/1,223 combos, no failures anywhere.** Total R/13 wall time 594.9 min (~9.9h) at `mc.cores=12` -- slower in wall-clock terms than the (invalid, partial) first attempt because every one of the 4,200 jobs now genuinely computes B=200 null draws from scratch, versus a mix of real computation and near-instant silent failures before.
 
 ## Analysis 3: floor decomposition -- RESULT
 
-Full 1,400-combo grid, floor grid `{1, 2, 3, 5, 10, 20}`, rerun three times over the course of fixing bugs 1-3 above. **Validation check "floor=1 arm B == arm A" passed for all 1,400 combos** (bit-identical TP/FP/n_significant) in every rerun. Floor=2 arm A/C/D exactly reproduce the canonical `results/simulation_performance*.tsv` numbers (see bug 2 above).
+Full 1,400-combo grid, floor grid `{1, 2, 3, 5, 10, 20}`, on the final ordering-unified pipeline (unaffected by the Third-pass bugs, which are confined to R/13/R/14). **Validation check "floor=1 arm B == arm A" passed for all 1,400 combos.**
 
-**Finding:** filtering out small Stage-1 units (arm B, floor-filtered marker -- still one marker, one hypothesis) produces almost no precision gain over the unrestricted marker-wise baseline at any floor from 1 to ~10; the two curves sit on top of each other in `figure_simulation_floor_decomposition.pdf`. The real precision gain comes from LD-aggregation itself: Stage-1 Simes and consensus (arms C/D) show substantially higher precision than both marker-wise arms already at floor=1-2, where floor-filtering has done essentially nothing (floor=1 is a no-op by construction; floor=2 excludes only singleton units). **This directly answers the analysis question: the precision/recall trade-off this manuscript reports is attributable to combining correlated markers into fewer, better-powered tests (LD-aggregation), not to discarding small Stage-1 units as a filtering step.**
+**Finding (grand-pooled across all 1,400 combos).** At floor=2, filtering out small Stage-1 units (arm B, floor-filtered marker) changes precision by only **+0.0015** relative to the unrestricted marker-wise baseline (95% CI [-0.0023, 0.0054], spans zero) -- essentially no effect. LD-aggregation (Simes/consensus, arms C/D) relative to floor-filtered marker at floor=2 gives **+0.0384** (Simes) and **+0.0508** (consensus) precision, at a recall cost of **-0.0475** and **-0.0607** respectively (all CIs exclude zero). **This directly answers the analysis question: the precision/recall trade-off this manuscript reports is attributable to combining correlated markers into fewer, better-powered tests (LD-aggregation), not to discarding small Stage-1 units as a filtering step.**
 
-Precision for the aggregation arms is U-shaped across the floor grid (dips from floor=1 to floor=3-5, recovers by floor=20), while recall declines monotonically throughout. This connects directly to Analysis 2's own size-truth finding: at low-to-moderate floors, the units being excluded come from a size range where Analysis 2's own FP-rate-by-size curve is still high (>=80% FP for 2-10-marker regions), so filtering there loses some true positives without meaningfully cutting false positives, and precision dips; at high floors, the surviving units are drawn from the size range where FP rate genuinely falls, so precision recovers -- at the cost of testing a much smaller, more selective set (mean 27 eligible units per combo at floor=20, vs. ~8,213 at floor=1; see `results/simulation_floor_choice_blind.tsv`).
+**Correction: filtering-alone is not negligible at every floor.** At floor=10, filtering alone (B vs. A) increases EMMAX precision by **+0.0223** (95% CI [0.0114, 0.0344], excludes zero) -- real but modest, and it comes with a substantial recall cost (-0.0656, CI [-0.0830, -0.0473]) and, per the phenotype-blind floor-choice table, a severe genomic-coverage cost. An earlier draft of this section described "almost no precision gain through floor 10" -- that overstated the null result at floor=2 into a claim about the whole floor range; corrected here.
 
-See `results/simulation_floor_sweep.tsv` (per tag x cell x method x arm x floor, with map-cluster bootstrap CIs), `results/simulation_floor_contrasts.tsv` (grand-pooled paired contrasts B-A / C-B / C-A / D-B / D-A for precision, recall, realised FDP, tests, regions -- now correctly floor-dependent after bug-3's fix), `results/simulation_floor_choice_blind.tsv` (phenotype-blind floor-choice table), and `figure_simulation_floor_decomposition.pdf` (4 panels: tests as % of the unrestricted baseline, markers retained, precision, recall -- a "realised FDP" panel was dropped because with pooled-count ratios FDP = 1 - precision exactly, so it would only mirror the precision panel; the `realised_fdp` column remains in the TSVs for reference).
+**By-cell result (`figure_simulation_floor_decomposition_by_cell.pdf`) -- corrected.** An earlier draft of this section claimed the LD-aggregation advantage was "largest in the low-gene-flow/c2 cells." **That was wrong, checked directly against the by-cell data and reversed.** At floor=2, EMMAX Precision x Recall in the `V0.5, c=2` cell (low gene flow) is **0.00322 for floor-filtered marker, 0.00174 for Simes, 0.00073 for consensus** -- aggregation is *worse* than floor-filtering alone in this cell, not better. The consistent aggregation advantage (Simes and consensus both clearly exceeding floor-filtered marker) occurs **primarily in the `c=1` (high-gene-flow) cells** -- all three (`V0.5_c1`, `V1_c1`, `V2_c1`) show Simes/consensus precision x recall clearly above floor-filtered marker; the `c=1.5`/`c=2` cells show weak, inconsistent, or reversed performance.
+
+**Manuscript-hierarchy recommendation (new, per PK):** given this cell-dependent pattern, the manuscript should **not** present a single pooled 1,400-run mean as though it describes one operating regime. Recommended: use the **600 high-gene-flow (`c=1`) simulations** (3 cells x 2 tags x 10 reps x 10 envs) as the primary method-performance summary, and retain the remaining **800 simulations (`c=1.5`/`c=2`)** as structured stress tests demonstrating behaviour under stronger genetic structure -- not pooled into the primary estimate.
+
+Precision for the aggregation arms is U-shaped across the floor grid; recall declines monotonically; Precision x Recall (its own panel, replacing "markers retained," per PK's request) also dips through the middle of the grid, i.e. neither floor extreme is jointly optimal.
+
+See `results/simulation_floor_sweep.tsv`, `results/simulation_floor_contrasts.tsv`, `results/simulation_floor_choice_blind.tsv`, `results/figure_simulation_floor_decomposition_by_cell_data.tsv`, `figure_simulation_floor_decomposition.pdf` (4 panels: tests %, precision, recall, precision x recall), and `figure_simulation_floor_decomposition_by_cell.pdf` (Precision x Recall only, `scales="free_y"`, faceted by cell, labelled by selection intensity/gene flow, ordered gene-flow-high-to-low then selection-strong-to-weak).
 
 ## Analysis 1: null-region calibration -- RESULT
 
-**Design.** The full 1,400-combo x 2-method x 3-scheme grid at B=1,000 was estimated, from real per-replicate timing, at ~21.6 hours even at 7-way parallelism -- not practical within this session. Ran instead on a documented balanced design: 2 randomly selected map/burn-in reps per (tag, cell) stratum (seed = `SEEDS[["bootstrap"]]`), all 10 environmental continuations for each selected rep (required for the map-level pooling the spec asks for), both BGS treatments, all 7 cells = **280 combos x 2 methods x 3 schemes = 1,680 jobs, B=200** each. Completed in 212 minutes with **0 job failures**; 0 zero-observed-region map/burn-in groups across all 28 groups x 2 methods x 3 schemes.
+**Design (final, corrected).** 7 cells x 5 reps/cell x both tags x 10 envs x 2 methods x 3 schemes, B=200. **All 70/70 nominal map/burn-in groups realised** (the earlier "52/70" was the R/13 cache-read bug, not a data gap -- see "Third pass"). 4,200/4,200 jobs succeeded.
 
-**Finding.** None of the three null constructions is a well-calibrated predictor of the known false-discovery proportion at the map/burn-in level (n=28 map-level points per method x scheme):
+**Two different questions, deliberately kept separate (per PK's explicit framing -- this replaces the first-pass audit's treatment of the between-cell pattern as a "confound" to explain away):**
 
-| scheme | mean null regions/combo | Spearman rho (null ratio vs. known FDP) | pooled null/obs ratio | pooled known FDP |
-|---|---:|---:|---:|---:|
-| group | 1.7-2.0 | **-0.54 / -0.37** | 0.62 / 0.69 | 0.83 / 0.82 |
-| mvn (kinship-matched) | 0.05 | **-0.63 / -0.50** | 0.02 / 0.02 | 0.83 / 0.82 |
-| spatial | 7.6-8.3 | **+0.67 / +0.62** | 3.07 / 2.61 | 0.83 / 0.82 |
+1. *Within-cell, map-level*: does the null-to-observed ratio predict the exact FDP among maps sharing the same demographic regime? **Answer: no, or only weakly.**
+2. *Between-cell*: does the null warn that an entire demographic regime is untrustworthy? **This is not a nuisance confound -- it is a central, and apparently real, finding.**
 
-(first value = EMMAX consensus, second = EMMAX Simes)
+**Question 1 (within-cell): raw vs. cell+tag-adjusted Spearman rho (first value = EMMAX consensus, second = EMMAX Simes):**
 
-- `mvn` and `group` both show a **negative** correlation between their null-predicted ratio and the true FDP -- the wrong sign for a useful diagnostic -- and both severely under-predict the true burden (ratio 0.02-0.69 against a true FDP of ~0.82-0.83).
-- `spatial` is the only scheme with the theoretically expected **positive** correlation, but it substantially *over*-predicts (ratio 2.6-3.1, i.e. the null alone would already exceed the observed region count 2.6-3x, before comparing to truth at all).
-- **No scheme is recommended as a usable FDP proxy as implemented.** `spatial`, despite its miscalibrated scale, is the only one worth further investigation (e.g. rescaling/recalibrating its threshold) if this diagnostic is wanted in the manuscript; `group` and `mvn` actively point the wrong direction and should not be described as informative here.
+| scheme | role | raw rho | cell+tag-adjusted rho |
+|---|---|---:|---:|
+| group | candidate null | -0.409 / -0.351 | -0.053 / -0.190 |
+| mvn (kinship-matched) | **negative control** | -0.625 / -0.599 | +0.058 / -0.170 |
+| spatial | candidate null | **+0.680 / +0.639** | **-0.058 / -0.108** |
 
-See `results/simulation_null_truth_calibration.tsv` (168 map/burn-in-level rows: `sum_E_null`, `sum_n_obs`, `sum_TP`, `sum_FP`, `R_null_obs`, `FDP_truth`, `NA` where `sum_n_obs == 0`, none occurred), `results/simulation_null_truth_summary.tsv` (per method x scheme: Spearman rho, slope/intercept, mean signed diff, median abs diff, pooled counts and ratios with map-cluster bootstrap CIs, `frac_zero_obs_regions`), `figure_simulation_null_truth_calibration.pdf` / `_labelled.pdf` (manuscript and exploratory versions; raw plotted points, including any excluded zero-observed rows, in `results/figure_simulation_null_truth_calibration_data.tsv`).
+`spatial`'s raw positive correlation -- the only scheme with the theoretically expected sign -- is **fully explained by demographic cell**: the cell+tag-adjusted correlation is slightly *negative* for both methods, not merely reduced. `group` and `mvn` show weak, inconsistent, sign-flipping adjusted correlations. **None of the three schemes' null-to-observed ratio is a usable within-cell FDP estimator.**
+
+**Question 2 (between-cell): `spatial`-null ratio and known FDP, pooled by cell (this is the finding that matters):**
+
+| gene flow | cells | spatial null/obs ratio | known FDP |
+|---|---|---:|---:|
+| high (`c=1`) | `V0.5_c1`, `V1_c1`, `V2_c1` | **0.25 - 0.38** | 0.37 - 0.45 |
+| medium/low (`c=1.5`, `c=2`) | `V0.5_c1.5`, `V1_c1.5`, `V2_c1.5`, `V0.5_c2` | **2.77 - 5.29** | 0.80 - 0.98 |
+
+In the `c=1` cells, the spatial null under-predicts the observed region count (ratio < 1) and the true FDP is moderate. In the `c=1.5`/`c=2` cells, the spatial null predicts **2.8x to 5.3x more regions than were even observed** -- structure alone could reproduce or exceed the actual discovery burden -- and the true FDP is very high (80-98%). This is exactly the separation PK's own review predicted as the most likely outcome, and it survives on the complete, bug-corrected data.
+
+**Conclusion for the manuscript, stated the way PK asked it to be stated:**
+- The null-to-observed ratio is **not** an FDP estimator.
+- Within-cell, map-level calibration is weak.
+- The spatial null **may nevertheless identify demographic regimes in which structure alone can reproduce or exceed the observed discovery burden** -- a qualitative trust diagnostic at the regime level, distinct from (and not reducible to) a quantitative within-regime FDP estimate. Do not describe the between-cell separation as a confound that the cell-adjustment "removes" -- removing it answers question 1, not question 2, and question 2 is the more directly useful result for flagging untrustworthy regimes.
+
+`mvn` is labelled `null_role = "negative_control"` (no spatial/environmental signal by construction; its role is to confirm the pipeline doesn't manufacture spurious calibration from kinship structure alone, not to be judged as an FDP proxy). `group`/`spatial` are labelled `"candidate_null"`.
+
+See `results/simulation_null_truth_calibration.tsv` (per-map/burn-in-level rows, 70 unique `(tag,cell,rep)` groups), `results/simulation_null_truth_summary.tsv` (raw and cell+tag-adjusted rho, `null_role`, pooled ratios with `(cell,rep)`-clustered bootstrap CIs), `figure_simulation_null_truth_calibration.pdf` / `_labelled.pdf`.
 
 ## Analysis 2: Stage-2 region size and false-positive status -- RESULT
 
-**Descriptive.** FP proportion declines monotonically with both size measures, consistently across all 5 region methods and both BGS treatments (`results/simulation_stage2_size_truth.tsv`, `figureS_simulation_stage2_size_truth.pdf`): from ~86-96% FP for 1-2-marker regions down to ~22-77% FP for 51+-marker regions, and a parallel pattern by constituent-unit count (down to 0% FP at 10+ units, though that bin has very few regions -- `n_units == 1` alone already accounts for 82-83% of all reported regions).
+**Descriptive.** FP proportion declines monotonically with both size measures, consistently across all 5 region methods and both BGS treatments: e.g. for `emmax_consensus_region`, 2-marker regions are 90.1% FP (bgs) / 86.5% FP (nobgs), falling to 64.8% FP (bgs) / 22.4% FP (nobgs) for 51+-marker regions -- the decline is real in both treatments, but BGS retains a substantially higher FP rate at large sizes than no-BGS.
 
-**Model.** `FP ~ log2(size) + method + cell + tag`, fit separately for marker-count and unit-count, map/burn-in-cluster bootstrap (refit-in-replicate, B=2,000, no new dependency): `log2(n_markers)` coefficient **-0.627** (95% CI -0.702 to -0.562), `log2(n_units)` coefficient **-1.077** (95% CI -1.199 to -0.962) -- both far from zero, both stable after controlling for method, cell and BGS treatment (cell coefficients vary substantially, e.g. `V0.5_c2` +4.3 vs. the reference cell, confirming strong cell-level baseline differences exist, yet the size effect survives controlling for them). Collinearity check (manual VIF, since `car` is not a project dependency): `log2(n_markers)` VIF=48, `log2(span)` VIF=560, `log2(density)` VIF=371 -- span and density are severely collinear with marker count and each other (as expected: span and density are close to deterministic functions of marker count and physical position here) and are correctly **not** included in the primary model, exactly as the code was designed to handle if flagged.
+**Model.** `FP ~ log2(size) + method + cell + tag`, map/burn-in-cluster bootstrap (B=2,000, clustered by `(cell,rep)`): `log2(n_markers)` coefficient **-0.628** (95% CI -0.706 to -0.566), `log2(n_units)` coefficient **-1.090** (95% CI -1.230 to -0.967) -- both stable after controlling for method, cell and BGS treatment. Manual VIF confirms span/density are severely collinear with marker count and correctly excluded from the primary model.
 
-**Opportunity-effect sensitivity.** A chromosome-preserving random-window null (K=30 draws per combo x chromosome x size-bin stratum, same detectable-QTN LD/distance criteria as real regions, never crossing chromosomes) shows observed TP rate is **8-18x higher than pure genomic-coverage opportunity at every size bin** -- real signal, not an artefact of coverage alone, clearly drives Stage-2 regions overall. However, the **size-dependent gradient itself does not exceed what opportunity alone predicts**: the observed TP-rate log-odds slope (0.253) is not larger than the opportunity-null hit-rate slope (0.317), and the excess ratio (observed/opportunity) does not increase monotonically with size -- it is highest at the smallest bins (13-18x at 1-2 markers), dips through the middle (7-12x at 3-20 markers), and only partially recovers at the largest bin (10x at 51+). **This is the finding that governs the interpretation below.**
+**Opportunity-effect sensitivity (final, corrected numbers -- see "Third pass" point 2 for the bug that affected the first version of this result).** Every observed region relocated by an exact circular shift of its own marker-spacing pattern on its own chromosome, R=200 replicates, **all 1,223/1,223 combos with >=1 detectable QTN represented** (the previous run silently dropped 619 of them):
 
-**Interpretation-rule check** (per the task's own four conditions):
-1. Direction consistent across methods -- **yes**, all 5 methods, both BGS treatments.
-2. Bootstrap interval excludes/strongly disfavours no association -- **yes**, by a wide margin, for both size measures.
-3. Not driven solely by one demographic cell -- **supported indirectly**: the model coefficient is estimated *net of* a `cell` covariate that itself varies hugely (implying cells do differ in baseline FP rate), and the size effect remains large and significant after that adjustment; no separate per-cell-stratified re-check was run, so this is inference from the model's own design, not an independently verified stratification -- noted as a residual limitation.
-4. Opportunity-effect sensitivity does not invalidate the interpretation -- **partially**: it does not invalidate the plain descriptive fact (regions differ in FP rate by size), but it does **not confirm** that the size *gradient's steepness* exceeds pure genomic coverage.
+| quantity | value |
+|---|---:|
+| observed log-odds slope (TP-rate vs. log2 size) | **0.2528** |
+| opportunity-null slope, mean [95% relocation interval] | **0.5115** [0.4696, 0.5555] |
+| slope difference (observed − null) [95% relocation interval] | **−0.2587** [−0.3027, −0.2168] |
+| P(null slope ≥ observed slope), 200 replicates | **1.0** (200/200) |
 
-**Verdict:** the sanctioned, purely descriptive statement is supported and may be retained: *"Among reported Stage-2 regions, regions supported by more markers or Stage-1 units were more likely to be linked to a causal variant."* Any mechanistic framing beyond that -- in particular the abstract's current *"consistent with selection-generated local LD concentrating signal in larger correlated units"* -- is **not supported by the opportunity-effect check and should be softened**: the phrase attributes the size gradient specifically to selection, but the gradient's steepness is not shown to exceed what a chromosome-preserving random-window null already predicts from coverage alone. Recommend replacing with purely descriptive language (e.g. "...causal variants were more often linked to larger Stage-1 units, though this size-related enrichment does not exceed a genomic-coverage opportunity control, and should not be attributed to selection-generated local LD without further evidence") or removing the mechanistic clause entirely. Note also that this abstract sentence is about **Stage-1 unit size and QTN enrichment among tested units**, a related but distinct claim from this analysis's own estimand (**Stage-2 reported-region size and TP/FP status**) -- both point the same direction, but they are not the same measurement, and the manuscript should not conflate them when citing this analysis.
+The interval is a **95% relocation interval**, not a sampling-uncertainty confidence interval: `obs_slope` is a single fixed value from the real, observed regions; the interval describes variation among 200 independent relocations of that same fixed set, conditional on it -- it does not describe uncertainty in the observed slope across simulated maps.
 
-See `results/simulation_stage2_size_truth.tsv`, `results/simulation_stage2_size_models.tsv`, `results/simulation_stage2_opportunity_null.tsv`, `figureS_simulation_stage2_size_truth.pdf`.
+The observed slope is significantly *shallower* than the opportunity-null slope. The excess ratio (observed TP rate / opportunity hit rate) is large everywhere (3.2x-16.1x) but *decreases* monotonically with size -- the relative excess over chance is concentrated in small regions, not large ones, even though large regions still have a higher absolute observed TP rate.
 
-## Computational cost (actual, not estimated)
+**What this result can and cannot support.** It is a **conditional relocation test**: its interval reflects relocation-to-relocation variability of the observed regions, not map-to-map sampling uncertainty, and it evaluates **Stage-2 reported regions**, not the abstract's own claim about **Stage-1 unit size and QTN enrichment among tested units** -- a related but different estimand. It therefore cannot *directly* invalidate the abstract's Stage-1-unit sentence. What it does support: removing the abstract's mechanistic claim that selection-generated local LD explains size enrichment, while retaining an appropriately scaled, purely descriptive statement (regions with more markers/units have a higher absolute rate of being linked to a causal variant) is the safest course until a Stage-1-unit-scale version of this same check exists.
 
-- **Analysis 3** (floor decomposition): full 1,400-combo grid, ~12-12.6 minutes per run (mc.cores=7), rerun 3 times over the course of fixing bugs 1-3.
-- **Analysis 1** (null calibration): smoke test measured 0.007-0.065s/replicate; full-grid B=1,000 extrapolated to ~21.6 hours, judged impractical. Balanced design (280 combos x 2 methods x 3 schemes, B=200): **212 minutes actual** (vs. ~52 minutes estimated from the smoke test -- the gap traced directly to the unvectorised-`match()` bug above, fixed only after this run had already completed; a rerun with the fix was not performed since the run's results are numerically unaffected by a pure performance fix, and 212 minutes was judged an acceptable one-time cost rather than worth re-spending).
-- **Analysis 2** (region details + descriptive + model + opportunity): R/11 full grid ~1 minute; R/14 full run (descriptive + model with 2,000-replicate bootstrap x 2 size measures + opportunity-null draws across all 1,223 combos with >=1 detectable QTN) a few minutes.
+See `results/simulation_stage2_size_truth.tsv`, `results/simulation_stage2_size_models.tsv`, `results/simulation_stage2_opportunity_null.tsv`, `results/simulation_stage2_opportunity_slope.tsv`, `figureS_simulation_stage2_size_truth.pdf`.
+
+## Manuscript consistency
+
+The canonical `values_simulation.tex` macros are stale relative to the current, ordering-unified full-grid rerun (see "Second pass" point 1's table above for the complete set). Current canonical EMMAX values:
+
+- marker-wise (`emmax_snp_region`): 6,623 regions, 5,810 false positives, precision 0.123.
+- Simes (`emmax_simes_region`): 3,936 regions, 3,296 false positives -- a **43.3%** reduction in false-positive regions relative to marker-wise.
+- consensus (`emmax_consensus_region`): 3,450 regions, 2,846 false positives -- a **51.0%** reduction.
+
+**The provisional paragraph already placed in the manuscript's conclusion should remain marked as provisional.** In particular, any high- vs. low-gene-flow statement there should not be finalised on the strength of this document alone until PK has reviewed the between-cell null-calibration result and the corrected by-cell floor-decomposition finding above together -- both now point the same direction (high gene flow / `c=1` is the well-behaved regime; low gene flow / `c=1.5`,`c=2` is where structure dominates and LD-aggregation's advantage weakens or reverses), which is a stronger, more specific claim than what the provisional paragraph currently says, but it is PK's call whether and how to fold it in.
+
+## Computational cost (actual)
+
+- 05_score_truth full-grid rescore (ordering fix only): 1,400/1,400, 1.1 min.
+- 06_summarise: 2s. R/11: 37s (full grid, `mc.cores=12`, `{ok,data,error}` wrapper). R/12: 651s (~11 min).
+- **R/13** (final, corrected, `mc.cores=12`): 4,200/4,200 jobs, **594.9 min (~9.9h)** -- every job now a genuine fresh compute (the version bump invalidated all prior caches), versus the earlier invalid run's mix of real computation and near-instant silent failures.
+- **R/14** (final, corrected): 296s (~5 min), 1,223/1,223 combos.
+- Figures: ~1-3s each.
 
 ## Validation results (mandatory checklist)
 
-1. Floor-1 filtered-SNP results exactly equal unrestricted-SNP results -- **PASS**, all 1,400 combos, in every rerun.
-2. Canonical floor-2 Simes and consensus Stage-2 results reproduce the existing final results -- **PASS**, exact match on all 8 pooled result files and all 70 tag x cell x method strata (independent R/11 cross-check), and again via the (bug-2-fixed) floor-sweep's own floor=2 rows.
-3. Recomputing BH after marker filtering is explicitly verified -- **PASS**: arm B always calls `p.adjust()` fresh on the eligible-subset p-vector, never subsets an already-BH'd significant set (code inspection + the floor=1 identity check, which would fail if BH were reused incorrectly).
-4. The relationship matrix is identical across floors -- **PASS by construction**: `b$GRM` (built once in `02_build_ld_units.R`, already including sub-floor units) is read once per combo and never recomputed inside the floor loop.
-5. Stage-2 truth scoring uses actual constituent markers only -- **PASS**: `assemble_stage2()`'s `member_markers` come from `ld_prune_and_eMLG()`'s own `$groups$members`, never a `[Chr,from,to]` bounds sweep.
-6. Observed Stage-2 counts in the null analysis equal the corresponding observed truth-scoring counts -- **PASS by construction**: `R/13` reads observed counts from `results/simulation_stage2_region_details.rds` (R/11), never recomputes them.
-7. No null ratio is calculated using `max(n_observed, 1)` -- **PASS**, code-inspected: `R_null_obs` is `NA` when `sum_n_obs == 0`.
-8. Zero-discovery cases are retained and counted -- **PASS**: `frac_zero_obs_regions` reported per (method, scheme); 0/168 occurred in the balanced-design run, so this run happens not to exercise the NA path, but the code path is present and tested by inspection.
-9. Pooled precision and recall are calculated from pooled counts, not means of per-analysis ratios -- **PASS** throughout (R/11, R/12, R/14 all sum TP/FP/etc. before dividing).
-10. Bootstrap resampling respects the shared map/burn-in structure -- **PASS**: `bootstrap_rep_matrix()` resamples rep/burn-in clusters with replacement, retaining all paired columns per draw; R/14's model bootstrap resamples (tag, cell, rep) clusters, a finer grain than the pipeline's usual grand-pooled-by-rep-index convention, chosen deliberately for that specific analysis (see code comment).
-11. Methods and BGS treatments remain paired within bootstrap replicates -- **PASS**: every bootstrap call in R/12-14 draws one multiplicity matrix per stratum/cluster set and applies it to all methods/arms/tags together.
-12. All figures can be recreated from saved result tables without rerunning association models -- **PASS**: all three figure scripts read only `results/*.tsv`/`.rds` (the floor-decomposition figure additionally reads R/12's saved raw per-combo RDS for its own grand-pooled bootstrap, still no model refit).
-13. Every output has a receipt containing inputs, parameters, code version and random seed -- **PASS** for R/05 (bumped version), R/11, R/12, R/13 (each calls `write_receipt()`); R/14's receipt covers params/seeds but its true upstream inputs are the whole R/02-04 grid, covered transitively by those stages' own per-combo receipts, not re-hashed here (a noted limitation, not a gap in provenance).
-14. Run a balanced smoke test and inspect it before launching the full analysis -- **PASS**: done for all three analyses (3-combo smoke test for R/12; a single-combo timing probe + a 2-combo/B=50 smoke run for R/13, which directly motivated the balanced-design decision; R/14's descriptive+model logic was smoke-tested locally against R/11's already-validated output before the opportunity-effect section was added and run in full).
+1. Floor-1 filtered-SNP == unrestricted-SNP -- **PASS**, all 1,400 combos.
+2. Canonical floor-2 Simes/consensus reproduce final results -- **PASS** (unaffected by the ordering fix); marker-wise canonical numbers **intentionally changed**, with PK's sign-off.
+3. BH recomputed fresh after marker filtering, never reused -- **PASS**.
+4. GRM identical across floors -- **PASS by construction**.
+5. Truth scoring uses actual constituent markers only -- **PASS**.
+6. Observed Stage-2 counts in the null analysis equal R/11's truth-scoring counts -- **PASS by construction**.
+7. No null ratio uses `max(n_observed, 1)` -- **PASS**.
+8. Zero-discovery cases retained and counted -- **PASS**, 0 occurred in the final run.
+9. Pooled precision/recall from pooled counts, never means of ratios -- **PASS**.
+10. Bootstrap resampling respects shared map/burn-in structure -- **PASS, corrected on the second pass** (clustered by `(cell,rep)`, not `(tag,cell,rep)`).
+11. Methods/BGS treatments paired within bootstrap replicates -- **PASS, same fix as item 10.**
+12. All figures recreated from saved tables, no model rerun -- **PASS**.
+13. Every output has a receipt with inputs/params/version/seed -- **PASS**, including `null_calib_version` now in R/13's final receipt.
+14. Smoke-tested before the full run -- **PASS**, both on the second pass and again on the third pass (unit tests of the seed function, payload-shape predicate, and `{ok,data,error}` logic; a full-grid real run of the fixed R/14 before committing to the multi-hour R/13 run).
+15. **(New, third pass) Worker failures cannot silently produce apparently-complete output** -- **PASS**: R/11, R/12, R/13, R/14 all now hard-stop on any job/combo failure rather than pooling a partial result set. This is the checklist item the two Third-pass bugs would have been caught by immediately, had it existed on the second pass.
 
 ## Abstract's cluster-size statement: verdict
 
-**Soften.** See Analysis 2's verdict above in full. The purely descriptive claim (regions with more markers/units are more often linked to a causal variant) is well supported; the current mechanistic attribution to selection-generated local LD is not supported by the opportunity-effect control and should be removed or explicitly hedged. The abstract also currently conflates Stage-1-unit-size/QTN-enrichment-among-tested-units with this analysis's Stage-2-region-size/TP-FP estimand -- worth distinguishing explicitly if both are to be cited.
+**Remove the mechanistic claim, retain a scaled descriptive statement -- confirmed on the corrected, complete data.** The properly-quantified, complete-grid opportunity control shows the size gradient's steepness is significantly *below* what genomic-coverage opportunity alone predicts (final numbers above). This evaluates Stage-2 reported regions, not the abstract's own Stage-1-unit estimand, so it cannot *directly* overturn that sentence -- but pending a Stage-1-scale version of the same check, removing the "selection-generated local LD" mechanistic language and keeping only the descriptive claim (regions/units with more markers have a higher absolute rate of true-positive linkage) is the safer course.
 
 ## Recommended figures/tables for the manuscript
 
-**Main text:** none of these three analyses is proposed as a main-text figure -- they are validation/robustness analyses supporting claims already made (or, for the null-calibration and opportunity-effect results, cautionary findings that argue for *not* making certain claims), not new headline results.
+**Main text:** none of these three analyses is proposed as a main-text figure.
 
 **Supplementary Material:**
-- `figure_simulation_floor_decomposition.pdf` -- directly supports the manuscript's existing claim that LD-aggregation, not floor-based filtering, drives the precision gain; recommended alongside a sentence citing `results/simulation_floor_contrasts.tsv`'s floor=2 B-vs-A contrast (near-zero) and C/D-vs-A contrasts (the real gain).
-- `figureS_simulation_stage2_size_truth.pdf` -- supports (with the above softening) a revised, purely descriptive size-truth statement; the opportunity-null panel should accompany any such statement so the caveat is visible alongside the pattern, not asserted separately.
-- `figure_simulation_null_truth_calibration.pdf` (manuscript-ready, no title) -- recommended as a **negative/cautionary result**: none of the three structure-aware nulls tested is a reliable FDP proxy at this scale; worth including precisely because it documents a real limitation rather than a validated diagnostic, consistent with the manuscript's existing practice of reporting calibration failures (e.g. the nine-spined stress test) rather than only successes.
-- `results/simulation_floor_choice_blind.tsv` and `results/simulation_null_truth_summary.tsv` as supplementary tables, if the above figures are included.
+- `figure_simulation_floor_decomposition.pdf` and `figure_simulation_floor_decomposition_by_cell.pdf` -- together support the LD-aggregation finding *and* its cell-dependence; the by-cell figure is now important, not merely a robustness check, given the manuscript-hierarchy recommendation above.
+- `figureS_simulation_stage2_size_truth.pdf` -- with the opportunity-null slope-difference result as a co-equal finding, not a caveat.
+- `figure_simulation_null_truth_calibration.pdf` -- recommended with BOTH the within-cell (weak) and between-cell (strong, regime-level) results shown or cited, per Analysis 1's two-questions framing above; showing only the cell-adjusted numbers would discard the between-cell finding, which PK specifically flagged as the more useful one.
+- `results/simulation_floor_choice_blind.tsv`, `results/simulation_null_truth_summary.tsv`, `results/simulation_stage2_opportunity_slope.tsv` as supplementary tables.
 
-Not recommended for inclusion: `results/simulation_stage2_region_details.rds` (too large/granular; the compact `.tsv` and the figures derived from it are the reportable products) and the `_labelled` calibration figure (exploratory only, per its own design).
+Not recommended: `results/simulation_stage2_region_details.rds` (too large/granular), the `_labelled` calibration figure (exploratory only).
+
+## Follow-up: environment-genetic-structure alignment (new, 2026-09-18)
+
+PK's hypothesis: false positives should become common when environmental variation follows the same spatial pattern as genetic relatedness -- **alignment**, since relatedness is a matrix, not a single variable (see `env-structure-alignment-hypothesis.md` memory for the full design rationale). Implemented in `R/15_env_structure_alignment.R`, no new permutations or association reruns (GRM/env already in each combo's bundle; joined against R/11's observed FP and a new per-env, unpooled export from R/13).
+
+**Design:** per `(tag, cell, rep, env)` -- individual env continuations, not pooled across the 10 per map/burn-in (pooling would average away the variation of interest). Primary measure: population-level R² of env ~ top 5 eigenvectors of the population-level (block-mean) relationship matrix. Sensitivity measure: a Mantel-style correlation between the flattened relationship matrix and a Gaussian-kernel env-similarity matrix. Verified against synthetic aligned/unaligned data before running on the real grid (aligned case: R²=0.999, Mantel r=0.998; unaligned: R²=0.30, Mantel r=-0.03). All 700/700 combos succeeded (hard `{ok,data,error}`-gated, same convention as R/11/R/12/R/13).
+
+**Result: alignment does not add resolution beyond cell identity -- confirms PK's own predicted outcome.**
+
+| model | outcome | slope (log-odds / log2) | 95% cluster-bootstrap CI |
+|---|---|---:|---:|
+| unconditional | FP proportion | **+12.92** | [8.33, 16.33] -- excludes zero |
+| adjusted for cell+tag+method | FP proportion | -1.37 | [-5.52, 1.88] -- includes zero |
+| unconditional | null/obs ratio (log2) | **+19.76** | [13.38, 25.08] -- excludes zero |
+| adjusted for cell+tag+method | null/obs ratio (log2) | -2.84 | [-6.78, 1.29] -- includes zero |
+| within-cell (7 cells, both outcomes) | both | mostly near zero, sign-inconsistent | all 14 CIs include zero |
+
+The strongly positive unconditional slopes collapse to include zero once `cell` (which jointly encodes `V` and `c`) is adjusted for, and no cell shows a consistent within-cell relationship. Visually (`figureS_simulation_env_structure_alignment.pdf`): within any one panel (fixed cell) the fitted trend is flat; the panels differ sharply in *level*, not slope. **Alignment is essentially collinear with demographic regime (cell) itself in this simulation design, not an independent finer-grained predictor within a regime** -- this is a genuine, informative negative result for the between-cell vs. within-cell distinction Analysis 1 already raised, not a null result from underpowering (bootstrap CIs are reasonably tight; `n` per within-cell fit is 86-174).
+
+See `results/simulation_env_structure_alignment.tsv` (per-combo alignment measures joined to observed FP and spatial-null ratio), `results/simulation_env_structure_alignment_models.tsv` (all slope models), `results/simulation_null_truth_calibration_by_env.tsv` (the new per-env, unpooled export from R/13 this analysis depends on), `figureS_simulation_env_structure_alignment.pdf`.
+
+**Caveat found during implementation (self-caught, not PK):** the first draft of the cluster-bootstrap helper used `intersect(as.character(draw), names(cl_rows))` to build each replicate's row index, which silently *deduplicates* a cluster drawn more than once in the same resample -- breaking resampling-with-replacement into something closer to resampling-without-replacement at the cluster level. Fixed to direct list-indexing (`cl_rows[as.character(draw)]`, matching R/14's own established `.fit_size_model()` pattern exactly), verified with a small synthetic index test before rerunning.
+
+## Still outstanding
+
+- `values_simulation.tex`'s macros for `emmax_snp_region`/`lfmm_snp_region` have **not** been updated.
+- The abstract's cluster-size sentence has **not** been edited.
+- The manuscript's provisional conclusion paragraph has **not** been edited or finalised.
+- No manuscript file has been touched at any point in this work.

@@ -137,15 +137,28 @@ null_region_counts <- function(tag, cell, rep, env, method, scheme, B) {
 }
 
 ## ---- resumable per-(combo,method,scheme) cache ------------------------------
+## [!] BUG FIXED (PK, 2026-09-18 second review): the cache-hit branch used to
+## return the whole saved list (tag/cell/.../counts), not just $counts, while
+## the fresh-compute branch returned counts directly -- a shape mismatch the
+## caller's mean()/max() calls didn't catch cleanly: mean() on a list just
+## warns and returns NA, but max() throws "invalid 'type' (list) of
+## argument", caught by the caller's tryCatch and silently dropped as a
+## failed job. Confirmed in the overnight run's log: 1,134/4,200 jobs lost
+## this way. NULL_CALIB_VERSION bumped to force every job to recompute under
+## the fixed reader (the on-disk $counts values themselves were never
+## corrupted -- only this accessor was broken -- but recomputing from a
+## clean slate removes any doubt, per PK's request).
+NULL_CALIB_VERSION <- 2L
 run_one <- function(tag, cell, rep, env, method, scheme, B, force = FALSE) {
   STAGE <- "13_region_null_calibration"
   combo_id <- sprintf("%s_%s_rep%d_env%d", tag, cell, rep, env)
   target <- sprintf("%s__%s__%s", combo_id, method, scheme)
   ld_units_file <- file.path(stage_dir("02_build_ld_units", combo_id), "ld_units.rds")
   PARAMS <- list(method = method, scheme = scheme, B = B, alpha = ALPHA, size_floor = SIZE_FLOOR,
-                 region_assembly = REGION_ASSEMBLY, seed_offset = unname(SCHEME_SEED_OFFSET[scheme]))
+                 region_assembly = REGION_ASSEMBLY, seed_offset = unname(SCHEME_SEED_OFFSET[scheme]),
+                 null_calib_version = NULL_CALIB_VERSION)
   if (!force && !stage_stale(STAGE, ld_units_file, PARAMS, target = target)) {
-    return(readRDS(file.path(stage_dir(STAGE, target), "null_counts.rds")))
+    return(readRDS(file.path(stage_dir(STAGE, target), "null_counts.rds"))$counts)
   }
   counts <- null_region_counts(tag, cell, rep, env, method, scheme, B)
   OUT_DIR <- stage_dir(STAGE, target); dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
@@ -166,13 +179,45 @@ if (sys.nframe() == 0L) {
   } else if (MODE == "balanced") {
     ## Documented balanced design (used only if the full grid proves
     ## impractical -- see ADDITIONAL_ANALYSES_AUDIT.md for the timing that
-    ## justified this choice): 2 map/burn-in reps per (tag, cell), ALL 10
-    ## environmental continuations for each selected rep (required for the
+    ## justified this choice): N_REPS_PER_CELL map/burn-in reps per cell, ALL
+    ## 10 environmental continuations for each selected rep (required for the
     ## map-level pooling the spec asks for), both BGS treatments, all 7
-    ## cells. 7 cells x 2 tags x 2 reps x 10 envs = 280 combos.
+    ## cells.
+    ## [!] PAIRED MAP IDENTIFIERS (PK, 2026-09-18 review, point 3): reps are
+    ## sampled ONCE PER CELL and shared across BOTH tag values, not drawn
+    ## independently per (tag, cell) as the previous design did. BGS and
+    ## no-BGS simulations for the same (cell, rep) are the same map/burn-in
+    ## history and env draw by construction (same seed lineage) -- sampling
+    ## reps independently per tag meant the two treatments were almost never
+    ## actually comparing the same underlying map, undermining any
+    ## cell/map-level pairing in the downstream bootstrap or interpretation.
+    ## N_REPS_PER_CELL raised from 2 to 5 ("at least five paired maps" per
+    ## the review) now that the match()-vectorisation fix (2026-09-xx) has
+    ## cut per-replicate cost -- retimed on the mini before the full launch,
+    ## see ADDITIONAL_ANALYSES_AUDIT.md. 7 cells x 5 reps x 2 tags x 10 envs
+    ## = 700 combos.
+    N_REPS_PER_CELL <- 5L
     set.seed(SEEDS[["bootstrap"]])
-    reps_by_stratum <- CJ(tag = TAGS_ALL, cell = CELLS_ALL)[, .(rep = sample(REPS_ALL, 2)), by = .(tag, cell)]
-    combos <- reps_by_stratum[, .(env = ENVS_ALL), by = .(tag, cell, rep)]
+    reps_by_cell <- data.table(cell = CELLS_ALL)[, .(rep = sample(REPS_ALL, N_REPS_PER_CELL)), by = cell]
+    combos <- reps_by_cell[, CJ(tag = TAGS_ALL, env = ENVS_ALL), by = .(cell, rep)]
+
+    ## [!] Hard design-completeness assertion (PK, 2026-09-18 second review):
+    ## verify the NOMINAL design table itself -- N_REPS_PER_CELL distinct
+    ## reps per cell, BOTH tags present for every selected (cell, rep), and
+    ## all 10 envs per (tag, cell, rep) -- before spending any compute on it.
+    ## True by construction of the CJ() above, but asserted explicitly rather
+    ## than assumed, per the review.
+    reps_per_cell_n <- combos[, uniqueN(rep), by = cell]
+    tags_per_cellrep_n <- combos[, uniqueN(tag), by = .(cell, rep)]
+    envs_per_tagcellrep_n <- combos[, uniqueN(env), by = .(tag, cell, rep)]
+    if (!all(reps_per_cell_n$V1 == N_REPS_PER_CELL))
+      stop("balanced design malformed: not every cell has exactly ", N_REPS_PER_CELL, " reps")
+    if (!all(tags_per_cellrep_n$V1 == length(TAGS_ALL)))
+      stop("balanced design malformed: not every (cell, rep) has both tags")
+    if (!all(envs_per_tagcellrep_n$V1 == length(ENVS_ALL)))
+      stop("balanced design malformed: not every (tag, cell, rep) has all ", length(ENVS_ALL), " envs")
+    say("[0] design check OK: %d cells x %d reps/cell x %d tags x %d envs = %d combos\n",
+        uniqueN(combos$cell), N_REPS_PER_CELL, length(TAGS_ALL), length(ENVS_ALL), nrow(combos))
   } else {
     combos <- CJ(tag = TAGS_ALL, cell = CELLS_ALL, rep = REPS_ALL, env = ENVS_ALL)
   }
@@ -185,6 +230,17 @@ if (sys.nframe() == 0L) {
     i <- jobs$i[k]
     tryCatch({
       counts <- run_one(combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i], jobs$method[k], jobs$scheme[k], B)
+      ## [!] Payload shape/content validation (PK, 2026-09-18 second
+      ## review): the global nrow(dt)==nrow(jobs) completeness check catches
+      ## a MISSING row, but not a malformed one -- a corrupt cache file
+      ## could still return e.g. a wrong-length or NA-containing vector and
+      ## produce one silently-bad row that passes the row-count check.
+      ## Throwing here routes it through the same tryCatch/completeness-stop
+      ## path as any other job failure, rather than letting a bad value
+      ## reach mean()/max() and pool silently.
+      if (!is.numeric(counts) || length(counts) != B ||
+          !all(is.finite(counts)) || any(counts < 0) || any(counts != round(counts)))
+        stop(sprintf("malformed counts payload: class=%s length=%d (expected %d)", class(counts)[1], length(counts), B))
       data.table(tag = combos$tag[i], cell = combos$cell[i], rep = combos$rep[i], env = combos$env[i],
                 method = jobs$method[k], scheme = jobs$scheme[k], B = B, mean_null = mean(counts), max_null = max(counts))
     }, error = function(e) {
@@ -193,8 +249,15 @@ if (sys.nframe() == 0L) {
                       jobs$method[k], jobs$scheme[k], conditionMessage(e)))
       NULL
     })
-  }, mc.cores = 7)
+  }, mc.cores = 12)   ## bumped from 7 (PK, 2026-09-18): mini has 14 physical cores, 2 left for the system
   dt <- rbindlist(Filter(Negate(is.null), res))
+  ## [!] Hard completeness stop (PK, 2026-09-18 second review): a partial
+  ## result set was previously silently pooled as if complete (the
+  ## cache-shape bug fixed above lost 1,134/4,200 jobs this way without the
+  ## pipeline ever stopping). Any job failure now halts the run rather than
+  ## being averaged over.
+  if (nrow(dt) != nrow(jobs))
+    stop(sprintf("only %d/%d jobs succeeded -- see [13_region_null_calibration] messages above for which ones failed; refusing to pool a partial result set", nrow(dt), nrow(jobs)))
   say("[2] %d/%d jobs succeeded in %.1f min (%.3fs/job)\n", nrow(dt), nrow(jobs),
       as.numeric(difftime(Sys.time(), t0, units = "mins")),
       as.numeric(difftime(Sys.time(), t0, units = "secs")) / nrow(jobs))
@@ -222,6 +285,16 @@ if (sys.nframe() == 0L) {
   ## every combo x method x scheme this run actually computed
   full <- merge(dt, obs, by = c("tag", "cell", "rep", "env", "method"), all.x = TRUE)
   full[is.na(n_obs_regions), `:=`(n_obs_regions = 0L, TP = 0L, FP = 0L)]   ## combo scored 0 regions for this method -- a real zero, not missing
+
+  ## per-env (NOT pooled across the 10 envs) copy, kept for analyses that need
+  ## per-env variation rather than the map/burn-in-level pooled summary below
+  ## (e.g. environment-structure-alignment, PK 2026-09-18 -- see
+  ## env-structure-alignment-hypothesis.md; pooling across envs would average
+  ## away exactly the per-env variation that analysis needs).
+  full[, ratio_null_obs := ifelse(n_obs_regions > 0, mean_null / n_obs_regions, NA_real_)]
+  full[, FDP_truth := ifelse((TP + FP) > 0, FP / (TP + FP), NA_real_)]
+  fwrite(full, "results/simulation_null_truth_calibration_by_env.tsv", sep = "\t")
+  say("[3b] wrote results/simulation_null_truth_calibration_by_env.tsv (%d rows, per-env not pooled)\n", nrow(full))
 
   ## ---- map/burn-in level: pool the (up to) 10 environmental continuations ----
   say("[4] map/burn-in-level pooling (%d combos retained %d envs each on average)\n",
@@ -254,25 +327,49 @@ if (sys.nframe() == 0L) {
     mean_signed_diff <- if (nrow(complete)) mean(complete$R_null_obs - complete$FDP_truth) else NA_real_
     median_abs_diff <- if (nrow(complete)) stats::median(abs(complete$R_null_obs - complete$FDP_truth)) else NA_real_
 
-    ## map-cluster bootstrap CI on the grand-pooled R_null/obs and FDP_truth
-    ## (resamples the selected reps, paired across cell/tag as elsewhere;
-    ## with only 2 reps/stratum in the "balanced" design this is coarse
-    ## WITHIN a stratum but meaningful pooled across all selected reps --
-    ## documented limitation, see ADDITIONAL_ANALYSES_AUDIT.md).
-    rep_ids <- unique(ml[, .(tag, cell, rep)])
-    n_r <- nrow(rep_ids)
-    mat <- as.matrix(ml[match(paste(rep_ids$tag, rep_ids$cell, rep_ids$rep),
-                              paste(ml$tag, ml$cell, ml$rep)),
-                        .(sum_E_null, sum_n_obs, sum_TP, sum_FP)])
+    ## cell(+tag)-adjusted correlation (PK, 2026-09-18 review, point 3):
+    ## residualise RANKS of R_null_obs and FDP_truth against demographic
+    ## cell and BGS treatment before correlating, so an apparent association
+    ## driven purely by baseline differences between cells (or between BGS
+    ## treatments) doesn't get reported as evidence of null/truth
+    ## calibration. NA when too few cells vary to fit the adjustment.
+    adj_rho <- NA_real_
+    if (nrow(complete) >= 3 && uniqueN(complete$cell) >= 2) {
+      rx <- rank(complete$R_null_obs); ry <- rank(complete$FDP_truth)
+      rx_resid <- stats::resid(stats::lm(rx ~ factor(cell) + factor(tag), data = complete))
+      ry_resid <- stats::resid(stats::lm(ry ~ factor(cell) + factor(tag), data = complete))
+      adj_rho <- suppressWarnings(stats::cor(rx_resid, ry_resid))
+    }
+
+    ## map-cluster bootstrap CI on the grand-pooled R_null/obs and FDP_truth.
+    ## [!] Clustered by (cell, rep) ONLY, NOT (tag, cell, rep) (PK,
+    ## 2026-09-18 review, point 3/5 -- same principle as R/14_summarise_
+    ## additional_analyses.R's .fit_size_model() fix): BGS and no-BGS rows
+    ## for the same (cell, rep) are a PAIRED map/burn-in draw and must be
+    ## resampled together, never independently. Each cluster's bgs/no-bgs
+    ## rows are pre-summed into one row before resampling -- equivalent to
+    ## always keeping both tag rows in or out of a bootstrap draw together.
+    cluster_level <- ml[, .(sum_E_null = sum(sum_E_null), sum_n_obs = sum(sum_n_obs),
+                            sum_TP = sum(sum_TP), sum_FP = sum(sum_FP)), by = .(cell, rep)]
+    n_r <- nrow(cluster_level)
+    mat <- as.matrix(cluster_level[, .(sum_E_null, sum_n_obs, sum_TP, sum_FP)])
     bs <- if (n_r >= 2) bootstrap_rep_matrix(mat, N_BOOTSTRAP, SEEDS[["bootstrap"]]) else NULL
     ratio_b <- if (!is.null(bs)) bs[, "sum_E_null"] / bs[, "sum_n_obs"] else NA_real_
     fdp_b <- if (!is.null(bs)) bs[, "sum_FP"] / (bs[, "sum_TP"] + bs[, "sum_FP"]) else NA_real_
     ratio_b <- ratio_b[is.finite(ratio_b)]; fdp_b <- fdp_b[is.finite(fdp_b)]
 
+    ## null_role: MVN is a NEGATIVE CONTROL (matched kinship structure only,
+    ## no spatial/environmental signal -- it should show weak/no calibration
+    ## if the pipeline is sound) not a candidate FDP estimator; group/spatial
+    ## are alternative BIOLOGICAL null recipes, not interchangeable
+    ## estimates of the true FDP (PK, 2026-09-18 review, point 3).
+    null_role <- c(group = "candidate_null", mvn = "negative_control", spatial = "candidate_null")[[s]]
+
     summary_rows[[length(summary_rows) + 1]] <- data.table(
-      method = m, scheme = s, n_map_groups = nrow(ml), n_complete = nrow(complete),
+      method = m, scheme = s, null_role = null_role,
+      n_map_groups = nrow(ml), n_complete = nrow(complete),
       frac_zero_obs_regions = mean(ml$sum_n_obs == 0),
-      spearman_rho = rho, slope = slope, intercept = intercept,
+      spearman_rho = rho, cell_tag_adjusted_rho = adj_rho, slope = slope, intercept = intercept,
       mean_signed_diff = mean_signed_diff, median_abs_diff = median_abs_diff,
       pooled_E_null = sum(ml$sum_E_null), pooled_n_obs = sum(ml$sum_n_obs),
       pooled_TP = sum(ml$sum_TP), pooled_FP = sum(ml$sum_FP),
@@ -286,13 +383,15 @@ if (sys.nframe() == 0L) {
   summary_dt <- rbindlist(summary_rows)
   fwrite(summary_dt, "results/simulation_null_truth_summary.tsv", sep = "\t")
   say("[7] wrote results/simulation_null_truth_summary.tsv\n")
-  print(summary_dt[, .(method, scheme, n_map_groups, frac_zero_obs_regions, spearman_rho, slope,
-                       pooled_R_null_obs, pooled_FDP_truth)])
+  print(summary_dt[, .(method, scheme, null_role, n_map_groups, frac_zero_obs_regions,
+                       spearman_rho, cell_tag_adjusted_rho, slope, pooled_R_null_obs, pooled_FDP_truth)])
 
   write_receipt("13_region_null_calibration", inputs = region_detail_file,
                 params = list(mode = MODE, B = B, null_methods = NULL_METHODS, null_schemes = NULL_SCHEMES,
                               alpha = ALPHA, size_floor = SIZE_FLOOR, n_bootstrap = N_BOOTSTRAP,
-                              seed_bootstrap = SEEDS[["bootstrap"]], seed_offsets = SCHEME_SEED_OFFSET),
-                outputs = c("results/simulation_null_truth_calibration.tsv", "results/simulation_null_truth_summary.tsv"))
+                              seed_bootstrap = SEEDS[["bootstrap"]], seed_offsets = SCHEME_SEED_OFFSET,
+                              null_calib_version = NULL_CALIB_VERSION),
+                outputs = c("results/simulation_null_truth_calibration.tsv", "results/simulation_null_truth_summary.tsv",
+                           "results/simulation_null_truth_calibration_by_env.tsv"))
   cat("NULLCALIB_DONE\n")
 }

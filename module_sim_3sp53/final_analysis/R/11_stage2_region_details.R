@@ -98,13 +98,30 @@ if (sys.nframe() == 0L) {
   combos <- CJ(tag = TAGS_ALL, cell = CELLS_ALL, rep = REPS_ALL, env = ENVS_ALL)
   say("[1] region detail for %d combos x up to 5 region methods (floor=%d)\n", nrow(combos), SIZE_FLOOR)
   t0 <- Sys.time()
+  ## [!] {ok, data, error} worker result (PK, 2026-09-18 second review):
+  ## region_details_one_combo() itself legitimately returns NULL when a
+  ## combo has zero reported regions across every method -- a real, valid
+  ## outcome, not a failure. Plain tryCatch(..., error=function(e) NULL)
+  ## made that indistinguishable from an actual worker error (a crash, an
+  ## OOM kill under the higher mc.cores, a corrupted read), and either one
+  ## would just be silently dropped by Filter(Negate(is.null), ...) with the
+  ## script still reporting success on the remainder. Wrapping every outcome
+  ## in an explicit {ok, data} tag, and hard-stopping if any ok is FALSE,
+  ## makes a genuine failure impossible to miss while still allowing the
+  ## legitimate empty-combo case through.
   res <- mclapply(seq_len(nrow(combos)), function(i) {
-    tryCatch(region_details_one_combo(combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i]),
-             error = function(e) { message(sprintf("[11_stage2_region_details] %s_%s_rep%d_env%d: %s",
-                                                    combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i],
-                                                    conditionMessage(e))); NULL })
-  }, mc.cores = 7)
-  dt <- rbindlist(Filter(Negate(is.null), res), fill = TRUE)
+    tryCatch(list(ok = TRUE, data = region_details_one_combo(combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i])),
+             error = function(e) {
+               msg <- sprintf("[11_stage2_region_details] %s_%s_rep%d_env%d: %s",
+                              combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i], conditionMessage(e))
+               message(msg)
+               list(ok = FALSE, data = NULL, error = msg)
+             })
+  }, mc.cores = 12)   ## bumped from 7 (PK, 2026-09-18): mini has 14 physical cores, 2 left for the system
+  ok_flags <- vapply(res, `[[`, logical(1), "ok")
+  if (!all(ok_flags))
+    stop(sprintf("%d/%d combos failed -- see [11_stage2_region_details] messages above; refusing to pool a partial result set", sum(!ok_flags), nrow(combos)))
+  dt <- rbindlist(Filter(Negate(is.null), lapply(res, `[[`, "data")), fill = TRUE)
   say("[2] %s region rows from %d combos in %.1f min\n", format(nrow(dt), big.mark = ","), nrow(combos),
       as.numeric(difftime(Sys.time(), t0, units = "mins")))
 

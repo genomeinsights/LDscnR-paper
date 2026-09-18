@@ -68,16 +68,18 @@ score_truth <- function(tag, cell, rep, env, force = FALSE) {
   PARAMS <- list(va_share_detectable = VA_SHARE_DETECTABLE, maf_keep = MAF_KEEP,
                  truth_rho_r2 = TRUTH_RHO_R2, truth_rho_d = TRUTH_RHO_D, truth_dmax_cap = TRUTH_DMAX_CAP,
                  size_floor = SIZE_FLOOR, have_lfmm = have_lfmm,
-                 region_assembly = REGION_ASSEMBLY, region_scoring_version = 3L)
-  ## region_scoring_version bumped 2 -> 3: Stage-2 assembly now goes through
+                 region_assembly = REGION_ASSEMBLY, region_scoring_version = 4L)
+  ## region_scoring_version: 2 -> 3 when Stage-2 assembly moved into
   ## R/helpers_stage2_truth.R's assemble_stage2()/stage2_seed_from_*()
-  ## instead of this file's own .run_stage2() (removed) -- same
-  ## ld_prune_and_eMLG() call, same seeding logic, provably so because R/11-13
-  ## now call the identical shared functions. Bumping this forces every
-  ## combo's cached truth_scores.rds to be regenerated once, so the
-  ## refactor's validation gate (must reproduce the pre-refactor
-  ## results/simulation_performance*.tsv exactly) actually re-derives results
-  ## from the new code path rather than reading a stale cache with identical
+  ## (removed this file's own .run_stage2()) -- same ld_prune_and_eMLG()
+  ## call, same seeding logic, provably so because R/11-14 call the
+  ## identical shared functions. 3 -> 4 (PK, 2026-09-18 review):
+  ## stage2_seed_from_markers() now genomic-sorts its input (previously
+  ## native stage1$clusters row order), unifying it with
+  ## stage2_seed_from_units() -- changes emmax_snp_region/lfmm_snp_region
+  ## slightly (quantified in helpers_stage2_truth.R's header comment).
+  ## Bumping this forces every combo's cached truth_scores.rds to be
+  ## regenerated, rather than reading a stale cache with identical
   ## PARAMS/inputs that stage_stale() would otherwise consider up to date.
   if (!force && !stage_stale(STAGE, INPUTS, PARAMS, target = combo_id)) {
     return(readRDS(file.path(stage_dir(STAGE, combo_id), "truth_scores.rds")))

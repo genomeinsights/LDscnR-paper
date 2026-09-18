@@ -2,10 +2,10 @@
 ##
 ## Analysis 3 figure: how much of the precision/recall change across the
 ## floor grid comes from filtering small Stage-1 units (arms A -> B) versus
-## from LD-aggregation itself (arms B -> C/D). Five panels (tests as % of the
-## unrestricted-marker baseline, markers retained, precision, recall,
-## realised FDP) across FLOOR_GRID, one line per arm, EMMAX arms A-D and
-## LFMM arms A-C shown together (linetype = engine).
+## from LD-aggregation itself (arms B -> C/D). Four panels (tests as % of the
+## unrestricted-marker baseline, precision, recall, precision x recall)
+## across FLOOR_GRID, one line per arm, EMMAX arms A-D and LFMM arms A-C
+## shown together (linetype = engine).
 ## Grand-pooled across all 7 cells x 2 BGS treatments, with map-cluster
 ## bootstrap CIs computed here from R/12's saved raw per-combo table (the
 ## per-(tag,cell) CIs in results/simulation_floor_sweep.tsv are a different,
@@ -15,10 +15,15 @@
 ## unrestricted-marker (arm A) test count at the same floor, not a raw total
 ## across all 1,400 combos (PK, 2026-09-17: the raw total is dominated by
 ## the marker-count scale difference between arms and is hard to read as a
-## cost). A "markers retained" panel (frac_markers_retained, averaged across
-## combos) is added alongside it so the coverage cost of higher floors reads
-## directly off the figure instead of needing the separate floor-choice
-## table.
+## cost).
+##
+## [!] "Markers retained" panel REMOVED, "Precision x Recall" panel ADDED
+## (PK, 2026-09-17, follow-up request). frac_markers_retained stays in the
+## underlying TSV for reference (same convention as realised FDP below), just
+## without its own panel. Precision x Recall is a single-number summary of
+## the trade-off this analysis is about; its CI comes from the SAME
+## bootstrap draws as the Precision/Recall panels (prec_b * rec_b per
+## replicate), not from naively multiplying the two marginal CIs.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
@@ -46,14 +51,19 @@ for (i in seq_len(nrow(strata))) {
   prec_b <- bs[, "TP"] / pmax(bs[, "TP"] + bs[, "FP"], 1)
   rec_b <- bs[, "n_recovered"] / pmax(bs[, "n_detectable_qtn"], 1)
   fdp_b <- bs[, "FP"] / pmax(bs[, "TP"] + bs[, "FP"], 1)
+  prxrec_b <- prec_b * rec_b
+  point_precision <- sum(rd$TP) / pmax(sum(rd$TP) + sum(rd$FP), 1)
+  point_recall <- sum(rd$n_recovered) / pmax(sum(rd$n_detectable_qtn), 1)
   rows[[i]] <- data.table(
     method = s$method, arm = s$arm, floor = s$floor,
-    n_tests = sum(rd$n_tests), precision = sum(rd$TP) / pmax(sum(rd$TP) + sum(rd$FP), 1),
+    n_tests = sum(rd$n_tests), precision = point_precision,
     precision_ci_lo = ci_quantile(prec_b)[1], precision_ci_hi = ci_quantile(prec_b)[2],
-    recall = sum(rd$n_recovered) / pmax(sum(rd$n_detectable_qtn), 1),
+    recall = point_recall,
     recall_ci_lo = ci_quantile(rec_b)[1], recall_ci_hi = ci_quantile(rec_b)[2],
     fdp = sum(rd$FP) / pmax(sum(rd$TP) + sum(rd$FP), 1),
-    fdp_ci_lo = ci_quantile(fdp_b)[1], fdp_ci_hi = ci_quantile(fdp_b)[2])
+    fdp_ci_lo = ci_quantile(fdp_b)[1], fdp_ci_hi = ci_quantile(fdp_b)[2],
+    prec_x_rec = point_precision * point_recall,
+    prec_x_rec_ci_lo = ci_quantile(prxrec_b)[1], prec_x_rec_ci_hi = ci_quantile(prxrec_b)[2])
 }
 gp <- rbindlist(rows)
 
@@ -81,12 +91,11 @@ gp[, arm_label := factor(ARM_LABELS[arm], levels = ARM_LABELS)]
 ## given its own panel here.
 long <- rbindlist(list(
   gp[, .(engine, arm_label, floor, metric = "Tests (% of unrestricted)", value = pct_of_unrestricted_tests, lo = NA_real_, hi = NA_real_)],
-  gp[, .(engine, arm_label, floor, metric = "Markers retained (%)", value = 100 * mean_frac_markers_retained, lo = NA_real_, hi = NA_real_)],
   gp[, .(engine, arm_label, floor, metric = "Precision", value = precision, lo = precision_ci_lo, hi = precision_ci_hi)],
-  gp[, .(engine, arm_label, floor, metric = "Recall", value = recall, lo = recall_ci_lo, hi = recall_ci_hi)]
+  gp[, .(engine, arm_label, floor, metric = "Recall", value = recall, lo = recall_ci_lo, hi = recall_ci_hi)],
+  gp[, .(engine, arm_label, floor, metric = "Precision x Recall", value = prec_x_rec, lo = prec_x_rec_ci_lo, hi = prec_x_rec_ci_hi)]
 ))
-long[, metric := factor(metric, levels = c("Tests (% of unrestricted)", "Markers retained (%)",
-                                           "Precision", "Recall"))]
+long[, metric := factor(metric, levels = c("Tests (% of unrestricted)", "Precision", "Recall", "Precision x Recall"))]
 
 p <- ggplot(long, aes(floor, value, colour = arm_label, linetype = engine)) +
   geom_ribbon(aes(ymin = lo, ymax = hi, fill = arm_label), alpha = 0.12, colour = NA) +

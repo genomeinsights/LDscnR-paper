@@ -1,0 +1,2 @@
+obs_slope	n_reloc_replicates	null_slope_mean	null_slope_median	null_slope_ci_lo	null_slope_ci_hi	slope_diff	slope_diff_ci_lo	slope_diff_ci_hi	p_obs_le_null
+0.25280163059884	200	0.511546208435559	0.511301891415287	0.469599878137285	0.555543348502134	-0.258744577836719	-0.302741717903294	-0.216798247538446	1

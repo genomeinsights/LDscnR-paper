@@ -213,11 +213,17 @@ if (sys.nframe() == 0L) {
              error = function(e) { message(sprintf("[12_floor_decomposition] %s_%s_rep%d_env%d: %s",
                                                     combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i],
                                                     conditionMessage(e))); NULL })
-  }, mc.cores = 7)
+  }, mc.cores = 12)   ## bumped from 7 (PK, 2026-09-18): mini has 14 physical cores, 2 left for the system
   errs <- sum(vapply(res, is.null, logical(1)))
   dt <- rbindlist(Filter(Negate(is.null), res), fill = TRUE)
   say("[2] %s rows from %d combos (%d combo errors) in %.1f min\n", format(nrow(dt), big.mark = ","),
       nrow(combos), errs, as.numeric(difftime(Sys.time(), t0, units = "mins")))
+  ## [!] Hard stop on worker errors (PK, 2026-09-18 second review): `errs`
+  ## was counted and printed but never gated on -- the script would save and
+  ## pool a partial table as if it were complete. floor_decomposition_one_
+  ## combo() has no legitimate NULL-return case (unlike R/11's "zero
+  ## reported regions"), so any NULL here really is a worker error.
+  if (errs > 0) stop(sprintf("%d/%d combos failed -- see [12_floor_decomposition] messages above; refusing to pool a partial result set", errs, nrow(combos)))
   saveRDS(dt, "out_final_v1/12_floor_decomposition_raw.rds", compress = "xz")
 
   ## ---- validation checks 1, 3 (in-script, before any pooling) --------------
