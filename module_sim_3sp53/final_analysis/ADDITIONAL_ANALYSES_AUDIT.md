@@ -2,6 +2,18 @@
 
 Audit date: 2026-09-17. Revised 2026-09-18 after PK's first-pass review ("Second pass" section). **Revised again 2026-09-18 (later the same day)** after PK's second review, which found two silent-failure bugs in the second-pass code itself ("Third pass" section) -- **all numbers in the "Analysis 1" and "Analysis 2" RESULT sections below are from the fully corrected, complete final rerun and supersede every earlier number in this document**, including the "Second pass" section's own point-2 and point-3 tables (kept below for the historical record of what changed and why, but explicitly marked superseded where relevant).
 
+## Output provenance investigation (2026-09-18, third round)
+
+PK flagged that locally-inspected `simulation_summary_full.rds` and `simulation_stage2_region_details.rds` contained older marker-wise totals than the canonical TSVs -- correct, and traced to ground before building the primary-`c=1` summaries requested in the same message.
+
+**Independent re-aggregation, ground truth.** Every `05_score_truth/*/truth_scores.rds` file (all 1,400) was read directly and pooled from scratch, bypassing every cached summary object: `emmax_snp_region` 6,623 regions / 813 TP / 5,810 FP, `emmax_simes_region` 3,936 / 640 / 3,296, `emmax_consensus_region` 3,450 / 604 / 2,846, `lfmm_snp_region` 11,581 / 1,258 / 10,323, `lfmm_simes_region` 7,810 / 1,011 / 6,799 -- an exact match to `results/simulation_performance.tsv` on the machine where the pipeline actually runs (the mini). All 1,400 input files have mtimes within an 87-second window on 2026-09-17 (15:11:06-15:12:33) -- static, unchanged since the ordering-unification rescore; there is no possibility they were touched again afterward.
+
+**A confusing false alarm along the way, run down before concluding anything.** `R/06_summarise.R`'s own aggregation logic (`load_all_scores()`, a plain sequential loop + `rbindlist()`, no parallelism) was confirmed fully deterministic by inspection. A fresh rerun of it nonetheless appeared to disagree with per-`(tag,cell)`-stratum numbers when diffed via `git diff` **run on the mini**. Chased down rather than assumed benign: the mini has its own independent git clone of this repository that was never `git pull`ed at any point in this multi-day session (only `rsync` was ever used to move files there) -- its `HEAD` was still sitting at `7452266`, the *original pre-session* commit, entirely unrelated to any fix made since. Comparing the mini's (correct, current) working files against the mini's own ancient git history produced a spurious "these disagree" signal that had nothing to do with data correctness. Confirmed by checking `git diff --stat HEAD -- results/` **on the local Mac clone** (the one actually pushed to origin) after pulling fresh copies from the mini: every TSV was already byte-for-byte identical to what's committed -- the ordering-unification fix's numbers were correctly carried through the "Second pass" commit for every TSV output.
+
+**The one genuine gap, narrower than first feared.** Two files *are* tracked in git and *were* stale: `results/simulation_stage2_region_details.rds` and `results/simulation_summary_full.rds`, both last committed in `7452266` -- the very first commit of this module, before the ordering-unification fix, before any bug fix in this document. They were never re-synced and re-committed after later reruns because my own results-sync commands repeatedly used `rsync --exclude='*.rds'` (to avoid pulling large binary files unnecessarily for TSV-only checks) and I never went back to specifically re-pull these two tracked exceptions. R/11's own on-disk RDS and TSV agree with each other exactly on the mini (verified directly: pooled `n`/TP/FP identical for all 5 region methods) and both match the independent truth-scores aggregation -- so **R/11 itself never needed rerunning**; this was purely a local-sync/commit gap on my end, now fixed by pulling the current RDS files fresh and re-committing them (no upstream stage rerun involved).
+
+**Conclusion for the remaining steps:** no rerun of `05_score_truth`, `06_summarise`, `R/11`, or `R/13` is needed -- all are confirmed mutually consistent and correct on the execution host, and now correctly reflected in the committed repository too. The `c=1` primary summary below is built entirely from this now-verified-correct state.
+
 ## What was implemented
 
 Three connected analyses, all scored at the **Stage-2 reported-region** scale (never Stage-1 units), sharing one Stage-2-assembly/truth-scoring implementation (`R/helpers_stage2_truth.R`) with the canonical pipeline so none of them can silently diverge from it:
@@ -294,6 +306,51 @@ See `results/simulation_env_structure_alignment.tsv` (discovery-conditional, 884
 2. **`intersect()` in an earlier draft of the same helper** silently deduplicated a cluster drawn more than once in the same bootstrap resample, breaking resampling-with-replacement. Fixed to direct list-indexing (`cl_rows[as.character(draw)]`), verified with a small synthetic index test.
 
 **Figure fixes (PK's third review of the figure specifically):** confidence ribbons removed from both panels (they used ordinary model/OLS standard errors, which treat every environmental-continuation/BGS-pair row as independent -- directly contradicting the figure's own "only 5 independent histories per cell" caption; a correctly map-cluster-bootstrapped ribbon was judged not worth the added complexity for a supplementary figure, so the fitted line is now shown without one, per PK's own suggested resolution). Both panels' fitted lines now come from one model per cell with a shared alignment slope across methods (`r2_axes + method_label`), matching the saved within-cell models exactly -- the first draft fit fully independent slopes per method in panel A and left panel B unfixed even after panel A was corrected (caught and fixed together, not incrementally). "not simulated" labels added to the two (V,c) combinations this design excludes (`V1_c2`, `V2_c2`). Selection levels spelled out in full. The x-axis superscript (`R²`) rendered as "R…" in the PNG device on the mini; replaced with a plain-ASCII two-line label. The manuscript version (`figureS_simulation_env_structure_alignment.pdf`, no title) now also has no in-plot caption -- that text belongs in the manuscript's own LaTeX `\caption{}` and is written out verbatim to `figures/figureS_simulation_env_structure_alignment_caption.txt` by the same script; the `_labelled` version keeps title+caption for internal review. Caption also now states that 3 observations with `ratio_null_obs == 0` cannot appear on panel B's log axis and are omitted there only (not from panel A or the models).
+
+## c=1 primary manuscript summary (2026-09-18, fourth round)
+
+Per PK's request: the manuscript's primary method-performance analysis uses only the 600 high-gene-flow simulations at `c=1` (`V0.5_c1`, `V1_c1`, `V2_c1`); the remaining 800 (`c=1.5`/`c=2`) stay in the full-grid outputs as demographic stress tests. **Downstream summarisation only** -- no clustering, association testing, truth scoring, or null permutation was rerun; see the provenance section above for why none was needed. Implemented as new functions appended to `R/06_summarise.R` (`summarise_c1_primary()`, plus a small backward-compatible generalisation of `crossed_bootstrap_stratum()` to take a `methods` argument instead of a hardcoded global), reusing the existing `map_cluster_bootstrap_stratum()`/`crossed_bootstrap_stratum()` primitives unchanged -- fed pre-pooled-over-`V` data so a resampled rep pulls in all three `c=1` selection settings, both BGS treatments, and all ten envs together, exactly as specified, with no changes to the bootstrap machinery itself.
+
+**Point estimates -- exact match to PK's own independently-derived checkpoint table (not hard-coded, computed fresh from pooled counts):**
+
+| Method | Regions | TP | FP | Precision | Recall | Precision x Recall |
+|---|---:|---:|---:|---:|---:|---:|
+| Marker-wise EMMAX | 1,447 | 530 | 917 | 0.36628 | 0.47225 | 0.17297 |
+| EMMAX Simes | 753 | 437 | 316 | 0.58035 | 0.41785 | 0.24249 |
+| EMMAX consensus | 776 | 438 | 338 | 0.56443 | 0.41676 | 0.23523 |
+| Marker-wise LFMM | 1,792 | 697 | 1,095 | 0.38895 | 0.56366 | 0.21923 |
+| LFMM Simes | 1,032 | 563 | 469 | 0.54554 | 0.51251 | 0.27960 |
+
+Reductions relative to each engine's own marker-wise baseline: tests -80.30% (both Simes/consensus, identical unit-set); regions Simes -47.96%, consensus -46.37%; FP regions Simes -65.54%, consensus -63.14% -- all matching PK's checkpoint figures (80.3%, 48.0%/46.4%, 65.5%/63.1%) to the reported precision.
+
+**Required paired contrasts (2,000-replicate map-cluster bootstrap, percentile 95% CI, all four from the identical bootstrap draws -- verified via `stopifnot(identical(ba$b, bb$b))` in code, not assumed):**
+
+| Contrast | diff precision | 95% CI | diff recall | 95% CI |
+|---|---:|---:|---:|---:|
+| EMMAX Simes - marker-wise EMMAX | +0.2141 | [0.1718, 0.2562] | -0.0544 | [-0.0714, -0.0397] |
+| EMMAX consensus - marker-wise EMMAX | +0.1982 | [0.1724, 0.2218] | -0.0555 | [-0.0757, -0.0328] |
+| **EMMAX Simes - EMMAX consensus** | **+0.0159** | **[-0.0050, 0.0369] -- includes zero** | **+0.0011** | **[-0.0170, 0.0194] -- includes zero** |
+| LFMM Simes - marker-wise LFMM | +0.1566 | [0.1359, 0.1746] | -0.0511 | [-0.0682, -0.0362] |
+
+**The direct Simes-vs-consensus contrast PK specifically flagged (point estimates 0.580 vs 0.564 precision, 0.418 vs 0.417 recall) is not statistically distinguishable**: both the precision and recall differences have bootstrap intervals spanning zero. Per PK's explicit instruction, neither representation is described as superior on the strength of this data.
+
+**Sensitivity (labelled, not primary): crossed two-way bootstrap (reps and envs resampled independently), restricted to `c=1`.** Wider than the primary map-cluster intervals for every method (as expected -- it adds env-surface sampling uncertainty on top of map/burn-in uncertainty), but does not change which contrasts exclude/include zero. E.g. `emmax_snp_region` precision: primary [0.323, 0.418] vs crossed [0.297, 0.453].
+
+**Mandatory checks, verified not assumed:**
+
+1. Exactly 600 combos per `c=1` method -- **PASS**, hard-coded `stop()` gate in `summarise_c1_primary()`, printed and confirmed for all 5 methods including both LFMM methods (not just EMMAX).
+2. All three intended cells present, no `c1.5`/`c2` leakage -- **PASS**, exact `cell %chin% c("V0.5_c1","V1_c1","V2_c1")` selection (never substring), `setequal()`-gated.
+3. Point estimates equal direct sums from the current per-combination truth-score objects -- **PASS**, exact match to PK's independently-derived checkpoint table above.
+4. Methods, BGS treatments and the three `V` settings stay paired in every bootstrap replicate -- **PASS by construction**: `rep_dt_c1` pools over `V`/tag/env *before* the bootstrap ever runs, so one resampled rep pulls all of them together; `map_cluster_bootstrap_stratum()` is called once for all 5 methods with one seed.
+5. All ten environments remain together in the primary bootstrap -- **PASS**, same pre-pooling as check 4.
+6. Simes and consensus compared using identical bootstrap draws -- **PASS**, `stopifnot(identical(ba$b, bb$b))` in the contrast loop.
+7. Existing complete-grid outputs remain byte-identical -- **PASS**, verified directly: `results/simulation_performance.tsv`'s pooled totals unchanged (6,623/813/5,810 etc.) after adding the `c=1` code; the two RDS files in the "Output provenance investigation" section above were regenerated because they were demonstrably stale (last committed before the ordering-unification fix), not because of this `c=1` addition.
+8. New results reproducible without rerunning association analyses -- **PASS**: `results/simulation_bootstrap_replicates_c1.rds` saves the actual bootstrap replicate draws (both primary and crossed), so the intervals can be recomputed from that file alone.
+9. Log and this document report exact inputs/totals/validation -- this section.
+
+**New outputs** (full-grid files listed elsewhere in this document are unchanged): `results/simulation_performance_c1.tsv`, `results/simulation_method_contrasts_c1.tsv`, `results/simulation_bootstrap_sensitivity_c1.tsv`, `results/simulation_bootstrap_replicates_c1.rds`. `R/06_summarise.R` now also writes a receipt (it previously had none) recording `n_bootstrap`, `seed_bootstrap`, and the primary-manuscript-scope note that `c=1` is primary while the complete 7-cell grid is retained.
+
+**No manuscript, figure, or LaTeX value has been edited** -- per the standing instruction and this round's explicit request, this section is for review before any of that.
 
 ## Still outstanding
 

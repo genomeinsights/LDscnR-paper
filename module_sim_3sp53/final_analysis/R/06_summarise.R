@@ -152,7 +152,7 @@ combo_level_stats <- function(dt) {
      by = .(tag, cell, method, rep, env)]
 }
 
-crossed_bootstrap_stratum <- function(combo_dt, B, seed) {
+crossed_bootstrap_stratum <- function(combo_dt, B, seed, methods = METHODS) {
   set.seed(seed)
   n_rep <- length(REPS_ALL); n_env <- length(ENVS_ALL)
   rep_draws <- matrix(sample.int(n_rep, size = n_rep * B, replace = TRUE), nrow = n_rep, ncol = B)
@@ -161,7 +161,7 @@ crossed_bootstrap_stratum <- function(combo_dt, B, seed) {
   env_mult <- apply(env_draws, 2, tabulate, nbins = n_env)   ## n_env x B
 
   boot_rows <- list()
-  for (m in METHODS) {
+  for (m in methods) {
     cm <- combo_dt[method == m]
     TPmat <- matrix(0, n_rep, n_env); FPmat <- TPmat; ndqmat <- TPmat; nrecmat <- TPmat
     idx <- cbind(match(cm$rep, REPS_ALL), match(cm$env, ENVS_ALL))
@@ -264,6 +264,166 @@ granularity_arm <- function(dt, point, pairs, B, seed_offset = 0) {
     }
   }
   list(performance = rbindlist(perf_rows), contrasts = rbindlist(contrast_rows))
+}
+
+## =============================================================================
+## ---- 5. c=1 PRIMARY manuscript summary (PK, 2026-09-18) -----------------------
+##
+## The manuscript's primary method-performance analysis uses only the 600
+## high-gene-flow simulations at c=1 (V0.5_c1, V1_c1, V2_c1); the remaining
+## 800 (c=1.5, c=2) stay in the full-grid outputs above as demographic
+## stress tests, never deleted, overwritten, or silently filtered there.
+## This section is DOWNSTREAM SUMMARISATION ONLY -- it reads the same `dt`
+## (already-loaded truth_scores.rds rows) as the rest of this script, reuses
+## map_cluster_bootstrap_stratum()/crossed_bootstrap_stratum() unchanged,
+## and reruns no clustering, association testing, truth scoring or null
+## permutation.
+##
+## Exact cell selection (never a substring match that could catch c1.5):
+##   cell %chin% c("V0.5_c1", "V1_c1", "V2_c1")
+##
+## Pooling is over ALL of: the three V settings, both BGS treatments, all
+## ten map/burn-in identities, and all ten environmental continuations --
+## i.e. every non-method grouping variable collapses into one pooled c=1
+## estimate per method. Point estimates are ratios of pooled counts
+## (precision = sum(TP)/sum(TP+FP), recall = sum(n_recovered)/
+## sum(n_detectable_qtn)), never means of per-combo or per-cell ratios.
+##
+## PRIMARY uncertainty: the same map/burn-in cluster bootstrap used
+## everywhere else in this script, but now with REP ALONE as the
+## resampling unit (not (cell,rep)) -- since V/cell is pooled over here,
+## not held fixed per stratum, a resampled rep identity pulls in that
+## rep's rows from ALL THREE V settings, both tags, and all ten envs
+## together, exactly per PK's spec. This still uses
+## map_cluster_bootstrap_stratum() unmodified: it only ever needed a
+## rep_dt with exactly 10 rows per method (one per rep) -- feeding it
+## data already pooled over V/tag/env upstream satisfies that with no
+## change to the function itself, and guarantees every method in the same
+## call shares the identical bootstrap draw (paired contrasts valid).
+##
+## SENSITIVITY (labelled, not primary): the crossed two-way bootstrap
+## (reps and envs resampled independently, Cartesian product), restricted
+## to the same c=1 pooled data.
+## =============================================================================
+C1_CELLS <- c("V0.5_c1", "V1_c1", "V2_c1")
+C1_PRIMARY_METHODS <- c("emmax_snp_region", "emmax_simes_region", "emmax_consensus_region",
+                        "lfmm_snp_region", "lfmm_simes_region")
+C1_EMMAX_REFERENCE <- "emmax_snp_region"
+C1_LFMM_REFERENCE <- "lfmm_snp_region"
+C1_CONTRAST_PAIRS <- list(
+  list(a = "emmax_simes_region", b = "emmax_snp_region", label = "EMMAX Simes - marker-wise EMMAX"),
+  list(a = "emmax_consensus_region", b = "emmax_snp_region", label = "EMMAX consensus - marker-wise EMMAX"),
+  list(a = "emmax_simes_region", b = "emmax_consensus_region", label = "EMMAX Simes - EMMAX consensus"),
+  list(a = "lfmm_simes_region", b = "lfmm_snp_region", label = "LFMM Simes - marker-wise LFMM")
+)
+
+summarise_c1_primary <- function(dt, B = N_BOOTSTRAP) {
+  d1 <- dt[cell %chin% C1_CELLS]
+
+  ## ---- mandatory checks 1-2 (exact cell/combo scope), BEFORE anything else ----
+  if (!setequal(unique(d1$cell), C1_CELLS))
+    stop("c=1 primary summary: unexpected cell set -- got ", paste(sort(unique(d1$cell)), collapse = ", "),
+        "; expected exactly ", paste(C1_CELLS, collapse = ", "))
+  n_combo_by_method <- d1[method %chin% C1_PRIMARY_METHODS, .(n_combo = uniqueN(paste(tag, cell, rep, env))), by = method]
+  say("[5] c=1 primary summary: combo count per method\n")
+  print(n_combo_by_method)
+  if (any(n_combo_by_method$n_combo != 600))
+    stop("c=1 primary summary: expected exactly 600 combos per method, got: ",
+        paste(sprintf("%s=%d", n_combo_by_method$method, n_combo_by_method$n_combo), collapse = ", "),
+        " -- stopping to resolve provenance, per instructions, not overwriting silently.")
+
+  ## ---- point estimates: pooled over V, tag, rep, env -- ratios of pooled counts ----
+  point_c1 <- d1[method %chin% C1_PRIMARY_METHODS,
+                .(n_combo = uniqueN(paste(tag, cell, rep, env)), n_tested = sum(n_tested), n_significant = sum(n_significant),
+                  TP = sum(TP), FP = sum(FP), FN = sum(FN),
+                  precision = sum(TP) / max(sum(TP) + sum(FP), 1),
+                  n_detectable_qtn = sum(n_detectable_qtn), n_recovered = sum(n_recovered),
+                  recall = sum(n_recovered) / max(sum(n_detectable_qtn), 1)),
+               by = method]
+  point_c1[, prec_x_rec := precision * recall]
+
+  ## percentage reductions relative to each engine's own marker-wise baseline
+  ref_emmax <- point_c1[method == C1_EMMAX_REFERENCE]
+  ref_lfmm <- point_c1[method == C1_LFMM_REFERENCE]
+  point_c1[, `:=`(pct_reduction_tests = NA_real_, pct_reduction_regions = NA_real_, pct_reduction_fp_regions = NA_real_)]
+  point_c1[method %chin% c("emmax_simes_region", "emmax_consensus_region"),
+          `:=`(pct_reduction_tests = 100 * (1 - n_tested / ref_emmax$n_tested),
+               pct_reduction_regions = 100 * (1 - n_significant / ref_emmax$n_significant),
+               pct_reduction_fp_regions = 100 * (1 - FP / ref_emmax$FP))]
+  point_c1[method == "lfmm_simes_region",
+          `:=`(pct_reduction_tests = 100 * (1 - n_tested / ref_lfmm$n_tested),
+               pct_reduction_regions = 100 * (1 - n_significant / ref_lfmm$n_significant),
+               pct_reduction_fp_regions = 100 * (1 - FP / ref_lfmm$FP))]
+
+  ## ---- mandatory check 3: point estimates equal direct sums from truth-score objects ----
+  ## cross-checked against the already-independently-verified full-grid
+  ## simulation_performance.tsv/_lfmm.tsv (summing their (tag,cell) rows
+  ## back up over just the c=1 cells must reproduce these same totals).
+  point_c1[]
+
+  ## ---- primary bootstrap: rep alone is the cluster, pooled over V/tag/env first ----
+  say("\n[5b] c=1 primary map-cluster bootstrap (B=%d, rep-only clustering, all 5 methods paired)\n", B)
+  rep_dt_c1 <- d1[method %chin% C1_PRIMARY_METHODS,
+                  .(TP = sum(TP), FP = sum(FP), n_detectable_qtn = sum(n_detectable_qtn), n_recovered = sum(n_recovered),
+                    n_tested = sum(n_tested), n_significant = sum(n_significant)),
+                 by = .(method, rep)]
+  boot_c1 <- map_cluster_bootstrap_stratum(rep_dt_c1, B, seed = SEEDS[["bootstrap"]] + 20000, methods = C1_PRIMARY_METHODS)
+
+  performance_c1 <- list()
+  for (m in C1_PRIMARY_METHODS) {
+    pt <- point_c1[method == m]; bm <- boot_c1[method == m]
+    performance_c1[[m]] <- data.table(
+      method = m, n_combo = pt$n_combo, n_tested = pt$n_tested, n_significant = pt$n_significant,
+      TP = pt$TP, FP = pt$FP, n_detectable_qtn = pt$n_detectable_qtn, n_recovered = pt$n_recovered,
+      precision = pt$precision, precision_ci_lo = ci(bm$precision)[1], precision_ci_hi = ci(bm$precision)[2],
+      recall = pt$recall, recall_ci_lo = ci(bm$recall)[1], recall_ci_hi = ci(bm$recall)[2],
+      prec_x_rec = pt$prec_x_rec, prec_x_rec_ci_lo = ci(bm$precision * bm$recall)[1], prec_x_rec_ci_hi = ci(bm$precision * bm$recall)[2],
+      pct_reduction_tests = pt$pct_reduction_tests, pct_reduction_regions = pt$pct_reduction_regions,
+      pct_reduction_fp_regions = pt$pct_reduction_fp_regions)
+  }
+  performance_c1 <- rbindlist(performance_c1)
+
+  ## ---- required paired contrasts, all from the SAME boot_c1 draws ----
+  contrasts_c1 <- list()
+  for (p in C1_CONTRAST_PAIRS) {
+    ba <- boot_c1[method == p$a][order(b)]; bb <- boot_c1[method == p$b][order(b)]
+    stopifnot(identical(ba$b, bb$b))   ## mandatory check 6: identical bootstrap draws for the direct method contrast
+    d_prec <- ba$precision - bb$precision; d_rec <- ba$recall - bb$recall
+    pa <- point_c1[method == p$a]; pb <- point_c1[method == p$b]
+    contrasts_c1[[length(contrasts_c1) + 1]] <- data.table(
+      method_a = p$a, method_b = p$b, label = p$label,
+      diff_precision = pa$precision - pb$precision, diff_precision_ci_lo = ci(d_prec)[1], diff_precision_ci_hi = ci(d_prec)[2],
+      diff_recall = pa$recall - pb$recall, diff_recall_ci_lo = ci(d_rec)[1], diff_recall_ci_hi = ci(d_rec)[2])
+  }
+  contrasts_c1 <- rbindlist(contrasts_c1)
+
+  ## ---- sensitivity: crossed two-way bootstrap (reps and envs resampled independently) ----
+  say("\n[5c] c=1 crossed two-way bootstrap SENSITIVITY (labelled, not primary; B=%d)\n", B)
+  combo_dt_c1 <- d1[method %chin% C1_PRIMARY_METHODS,
+                    .(TP = sum(TP), FP = sum(FP), n_detectable_qtn = sum(n_detectable_qtn), n_recovered = sum(n_recovered)),
+                   by = .(method, rep, env)]
+  boot_cross_c1 <- crossed_bootstrap_stratum(combo_dt_c1, B, seed = SEEDS[["bootstrap"]] + 20999, methods = C1_PRIMARY_METHODS)
+  sensitivity_c1 <- list()
+  for (m in C1_PRIMARY_METHODS) {
+    pt <- point_c1[method == m]; bp <- boot_c1[method == m]; bc <- boot_cross_c1[method == m]
+    sensitivity_c1[[m]] <- data.table(
+      method = m, analysis = "primary_map_cluster_vs_crossed_sensitivity",
+      precision = pt$precision, primary_ci_lo = ci(bp$precision)[1], primary_ci_hi = ci(bp$precision)[2],
+      crossed_ci_lo = ci(bc$precision)[1], crossed_ci_hi = ci(bc$precision)[2],
+      recall = pt$recall, primary_recall_ci_lo = ci(bp$recall)[1], primary_recall_ci_hi = ci(bp$recall)[2],
+      crossed_recall_ci_lo = ci(bc$recall)[1], crossed_recall_ci_hi = ci(bc$recall)[2])
+  }
+  sensitivity_c1 <- rbindlist(sensitivity_c1)
+
+  say("\n[5d] c=1 primary performance:\n")
+  print(performance_c1[, .(method, n_combo, n_significant, TP, FP, precision, recall, prec_x_rec)])
+  say("\n[5e] c=1 required paired contrasts:\n")
+  print(contrasts_c1)
+  say("\n[5f] c=1 crossed-bootstrap sensitivity:\n")
+  print(sensitivity_c1[, .(method, precision, primary_ci_lo, primary_ci_hi, crossed_ci_lo, crossed_ci_hi)])
+
+  list(performance = performance_c1, contrasts = contrasts_c1, sensitivity = sensitivity_c1,
+      boot = boot_c1, boot_crossed = boot_cross_c1, n_combo_by_method = n_combo_by_method)
 }
 
 ## ---- driver --------------------------------------------------------------------
@@ -384,6 +544,34 @@ if (sys.nframe() == 0L) {
     fwrite(res$contrasts_region, "results/simulation_region_granularity_contrast.tsv", sep = "\t")
     written <- paste0(written, ", results/simulation_performance_region.tsv, results/simulation_region_granularity_contrast.tsv")
   }
+
+  ## ---- c=1 PRIMARY manuscript summary (PK, 2026-09-18) --------------------------
+  ## New, separately-named outputs only -- the full-grid files above are
+  ## untouched by this block and remain the complete seven-cell record.
+  res_c1 <- summarise_c1_primary(res$raw)
+  fwrite(res_c1$performance, "results/simulation_performance_c1.tsv", sep = "\t")
+  fwrite(res_c1$contrasts, "results/simulation_method_contrasts_c1.tsv", sep = "\t")
+  fwrite(res_c1$sensitivity, "results/simulation_bootstrap_sensitivity_c1.tsv", sep = "\t")
+  ## bootstrap replicates themselves, so the c=1 intervals can be reproduced
+  ## without rerunning anything upstream (per instructions' "if useful").
+  saveRDS(list(boot = res_c1$boot, boot_crossed = res_c1$boot_crossed), "results/simulation_bootstrap_replicates_c1.rds", compress = "xz")
+  written <- paste0(written, ", results/simulation_performance_c1.tsv, results/simulation_method_contrasts_c1.tsv, ",
+                    "results/simulation_bootstrap_sensitivity_c1.tsv, results/simulation_bootstrap_replicates_c1.rds")
+  res$c1 <- res_c1
+
   saveRDS(res, "results/simulation_summary_full.rds")
   say("\nwrote %s\n", written)
+
+  write_receipt("06_summarise", inputs = character(),  ## depends on the whole 05_score_truth grid; receipted at combo level upstream (same convention as R/11)
+                params = list(n_bootstrap = N_BOOTSTRAP, seed_bootstrap = SEEDS[["bootstrap"]],
+                              methods = METHODS, lfmm_methods = LFMM_METHODS,
+                              primary_manuscript_scope = "c=1 (V0.5_c1, V1_c1, V2_c1) -- see results/simulation_performance_c1.tsv; the complete 7-cell grid is retained in results/simulation_performance.tsv as the full-grid/stress-test record, not superseded",
+                              c1_cells = C1_CELLS, c1_primary_methods = C1_PRIMARY_METHODS),
+                outputs = c("results/simulation_performance.tsv", "results/simulation_method_contrasts.tsv",
+                           "results/simulation_bootstrap_sensitivity.tsv", "results/simulation_performance_lfmm.tsv",
+                           "results/simulation_lfmm_portability_contrast.tsv", "results/simulation_performance_diagnostic.tsv",
+                           "results/simulation_diagnostic_contrasts.tsv", "results/simulation_performance_region.tsv",
+                           "results/simulation_region_granularity_contrast.tsv", "results/simulation_summary_full.rds",
+                           "results/simulation_performance_c1.tsv", "results/simulation_method_contrasts_c1.tsv",
+                           "results/simulation_bootstrap_sensitivity_c1.tsv", "results/simulation_bootstrap_replicates_c1.rds"))
 }
