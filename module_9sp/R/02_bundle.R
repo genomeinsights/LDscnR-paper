@@ -116,11 +116,11 @@ stage1 <- .cache_step("stage1", stage1_fp, function() {
   ld_complexity_reduction(map = map, LD_decay = LD_decay, rho = CR_RHO, gds = gds) })
 cl <- as.data.table(stage1$clusters)
 nl <- if ("n_loci" %in% names(cl)) cl$n_loci else lengths(cl$members)
-## SIZE_FLOOR is NA -- this is the measurement that will set it (2x median, matching 3sp's
-## own derivation), not a gate applied here. Reported plainly so it can be read off and set
-## in 00_config.R once, not re-derived ad hoc by a later stage.
-say("    %s clusters ; median size %.2f (2x median = %.0f, for SIZE_FLOOR)\n",
-    format(nrow(cl), big.mark=","), median(nl), 2*median(nl))
+## Report the cluster distribution and the prespecified panel-size floor.  The
+## floor is based on the number of assayed markers, not on this phenotype-blind
+## cluster-size distribution.
+say("    %s clusters ; median size %.2f ; panel-size floor %d\n",
+    format(nrow(cl), big.mark=","), median(nl), SIZE_FLOOR)
 say("    size distribution: singletons %s (%.1f%%) ; >=2 markers %s\n",
     format(sum(nl==1), big.mark=","), 100*mean(nl==1), format(sum(nl>=2), big.mark=","))
 
@@ -162,5 +162,4 @@ write_receipt(STAGE, inputs = INPUTS, params = PARAMS, outputs = OUT)
 say("\n[6] wrote %s (%.0f MB) in %.1f min total\n", OUT, file.size(OUT)/1e6,
     as.numeric(difftime(Sys.time(), t_all, units="mins")))
 say("    receipt: %s\n", receipt_path(STAGE))
-say("\n    Next: derive SIZE_FLOOR from the median cluster size above, set it in\n")
-say("    00_config.R, then 03_EMMAX.R.\n")
+say("\n    Next: run 03_EMMAX.R using the prespecified panel-size floor.\n")

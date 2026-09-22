@@ -147,28 +147,18 @@ LDW_FLAG           <- 0.05
 
 ## ---- 5. STAGES 04+: TESTING ------------------------------------------------------
 ALPHA <- 0.05
-## SIZE_FLOOR = 10, SET (PK, 2026-09-07) -- NOT the mechanical "2x median
-## stage-1 cluster size" rule 3sp's 8 came from. 02_bundle.R's first run
-## reported 753,625 Stage-1 clusters, median size 1.00 (72.3% singletons), so
-## that rule would give floor=2 here -- excluding only true singletons, no real
-## multiplicity reduction (flagged, not applied; same situation as
-## module_sim's SIZE_FLOOR=2). PK's call instead: floor=10 is the value
-## consistently used across the Fang et al. papers and is the more obviously
-## canonical choice on its own terms -- 3sp's 8 came from a derivation ("2x
-## 4.11") that is no longer how this project sets the floor, not a value to
-## propagate to a new panel just because it was 3sp's.
+## Phenotype-blind density scaling: require approximately one Stage-1 member
+## per 100,000 assayed markers, rounded to the nearest integer.  The filtered
+## panel contains 1,195,557 markers, giving round(11.956) = 12.  The same rule
+## gives 8 for the 790,578-marker three-spined panel.  This is a pragmatic
+## panel-size normalisation, not a claim about physical marker spacing or LD.
 ##
-## [!] NOT SPECIFIC TO LD-COMPLEXITY REDUCTION (PK): this floor is a general
-## claim that fewer than 10 supporting markers is too little evidence to trust
-## a locus, and applies AT LEAST as much to single-SNP analyses as to Stage-1
-## clusters -- arguably more, since a lone SNP has no within-cluster
-## corroboration at all. Any single-marker arm this module reports (marker-
-## wise EMMAX/LFMM BH counts, matching module_3sp's) should be read with this
-## in mind, and a marker-density filter (>=10 markers in the same local
-## neighbourhood) is a live candidate for the single-SNP arms too, not only for
-## which Stage-1 clusters enter testing. Not yet implemented as a filter
-## anywhere -- recorded here so it is not lost before stage 03/04 need it.
-SIZE_FLOOR <- 10L
+## The floor is not specific to LD-complexity reduction: it specifies how much
+## marker support is required before a Stage-1 unit enters testing.  The
+## floor-matched marker analysis in the simulations separates this filtering
+## effect from the additional effect of aggregating LD-correlated markers.
+SIZE_FLOOR_DENOMINATOR <- 100000L
+SIZE_FLOOR <- 12L
 
 REGION_ASSEMBLY <- list(
   ld_w_threshold     = 0,

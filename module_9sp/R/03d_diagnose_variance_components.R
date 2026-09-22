@@ -147,7 +147,10 @@ null_con_g <- ld_outlier_perm(test_con_g, b9$stage1, b9$map, p_perm_g, GTs = b9$
 say("    greedy-GRM consensus: observed %d/%d -> %d regions | surrogate mean %.2f | p = %.4f\n",
     null_con_g$observed, nrow(test_con_g$units), nrow(test_con_g$regions),
     mean(null_con_g$surrogates), null_con_g$p)
-say("    vs stage1-pruned-GRM consensus (03_EMMAX.R): observed 55/4547 -> 21 regions | surrogate mean 67.36 | p = 0.3117\n")
+say("    vs stage1-pruned-GRM consensus (03_EMMAX.R): observed %d/%d -> %d regions | surrogate mean %.2f | p = %.4f\n",
+    sc9$consensus$null$observed, nrow(sc9$consensus$test$units),
+    nrow(sc9$consensus$test$regions), mean(sc9$consensus$null$surrogates),
+    sc9$consensus$null$p)
 say("    -> partial diagnostic improvement (lambda closer to 1), but NOT a fix: still non-significant either way.\n")
 
 ## ---- save --------------------------------------------------------------------
@@ -163,5 +166,5 @@ saveRDS(list(
 write_receipt(STAGE, inputs = c(file.path(PATHS$out, "02_bundle", "_receipt.rds"),
                                 file.path(PATHS$out, "03_EMMAX", "_receipt.rds"),
                                 path.expand("~/gitlab/LDscnR-paper/module_3sp/out/02_bundle/_receipt.rds")),
-             params = list(), outputs = OUT)
+             params = list(size_floor = SIZE_FLOOR), outputs = OUT)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))
