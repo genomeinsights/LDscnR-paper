@@ -162,16 +162,76 @@ imputed).
 
 ### Reference comparison (existing floor=2 canonical) -- separate, not blended
 
-`results/floor_stability_reference_floor2.tsv`: at the manuscript's own
-canonical floor=2 (same 600 c=1 combos, EMMAX methods only), precision is
-0.564-0.580 and recall is 0.417-0.418 -- notably HIGHER recall than even this
-analysis's "all canonical" (>=1/3, i.e. no stability filter) baseline at the
-99.7%-derived floor (recall 0.218-0.226). This is expected and NOT part of
-the stability-filter finding above: floor=2 admits far more eligible units
-per combo (a much looser floor) than the 99.7%-derived floor does by design
+`results/floor_stability_reference_floor2.tsv` (extended 2026-09-27 to
+include `lfmm_simes_region` -- an earlier version of this section only
+covered the two EMMAX methods, an oversight since `tiered` tracks
+`lfmm_simes` throughout the rest of this script too): at the manuscript's own
+canonical floor=2 (same 600 c=1 combos), precision is 0.546-0.580 and recall
+is 0.417-0.513 -- notably HIGHER recall than even this analysis's "all
+canonical" (>=1/3, i.e. no stability filter) baseline at the 99.7%-derived
+floor (recall 0.218-0.239). This is expected and NOT part of the
+stability-filter finding above: floor=2 admits far more eligible units per
+combo (a much looser floor) than the 99.7%-derived floor does by design
 (mean ~45 eligible units), so simply choosing this analysis's canonical
 floor already trades substantial recall for modest precision, BEFORE any
 cross-floor stability requirement is applied at all. Reported here as
 context only, per PK's explicit instruction to keep "changing the canonical
 floor" and "imposing a stability filter" as two separate, non-conflated
 interventions.
+
+### Are higher-floor regions genuinely new, relative to floor=2? (PK follow-up)
+
+Roughly half of every higher-floor region set is NOT found at floor=2 (using
+the same core_snp+overlap matching criterion as the cross-floor tiering
+itself), pooling all three higher floors together
+(`results/floor_stability_vs_floor2_all_floors.tsv`):
+
+| method | n higher-floor regions | n new (not at floor=2) | frac new | precision of new | precision of already-known |
+|---|---:|---:|---:|---:|---:|
+| emmax_consensus | 1,052 | 565 | 53.7% | 0.361 | 0.811 |
+| emmax_simes | 914 | 459 | 50.2% | 0.418 | 0.826 |
+| lfmm_simes | 1,045 | 503 | 48.1% | 0.338 | 0.841 |
+
+**These "new" regions are much weaker candidates than the ones floor=2 also
+reports** -- roughly 2.3x lower precision. This is the expected signature of
+BH recomputation over a far smaller candidate set: a stricter floor has
+fewer competing tests and an easier per-test significance threshold, so a
+genuinely marginal signal can clear it without being any more likely to be
+real. It is not evidence that the higher floors are surfacing a comparably-
+reliable set of genuinely novel discoveries.
+
+Restricting to the 99.7%-floor CANONICAL regions and cross-tabulating
+against stability tier (`results/floor_stability_vs_floor2_canonical_by_tier.tsv`,
+`_by_tier_summary.tsv`) makes the mechanism explicit:
+
+| tier | n | found at floor=2 | precision |
+|---|---:|---:|---:|
+| 1/3 (unstable) | 91 | 2.2% | 0.330 |
+| 2/3 | 480 | 44.4% | 0.535 |
+| 3/3 (stable) | 491 | 63.3% | 0.725 |
+
+| found at floor=2? | tier | n | precision |
+|---|---|---:|---:|
+| No | 1 | 89 | 0.315 |
+| No | 2 | 267 | 0.363 |
+| No | 3 | 180 | 0.439 |
+| Yes | 2 | 213 | 0.751 |
+| Yes | 3 | 311 | 0.891 |
+
+(Only 2 rows are both tier=1 and found-at-floor=2 -- once a region is
+confirmed by floor=2, it is almost never cross-floor unstable, hence the
+near-empty first "Yes" row, omitted above.)
+
+**Interpretation: a substantial part of the tier-based precision gain
+reported above is the stability filter re-converging on regions floor=2
+already reports**, not an independent quality signal. `found-at-floor=2`
+rate rises sharply with tier (2.2% -> 44.4% -> 63.3%), and within EACH
+found-at-floor=2 stratum precision ALSO rises with tier and reaches 0.89 at
+3/3 -- but genuinely novel (not-at-floor=2) regions never exceed 0.44
+precision even at full 3/3 stability. There is a real, smaller residual
+precision gain among genuinely novel candidates (0.315 -> 0.439 with tier),
+so the stability filter is not purely redundant with floor=2 -- but the
+bulk of the headline effect (precision 0.578 -> 0.692 for EMMAX consensus,
+all-canonical vs. 3/3) should be read as "mostly recovering floor=2's own
+hits, with a smaller genuine improvement on top," not as a wholly
+independent precision signal.

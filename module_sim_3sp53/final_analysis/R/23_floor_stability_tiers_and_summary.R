@@ -251,7 +251,12 @@ say("\n[12] reference only -- existing floor=2 canonical analysis, same c=1 comb
 ref_file <- file.path(MODULE_ROOT, "results", "simulation_stage2_region_details.rds")
 if (file.exists(ref_file)) {
   ref <- readRDS(ref_file)
-  ref_method_map <- c(emmax_consensus_region = "emmax_consensus", emmax_simes_region = "emmax_simes")
+  ## [!] EXTENDED (PK follow-up, 2026-09-27): originally EMMAX-only, but
+  ## `tiered` tracks lfmm_simes throughout this script too -- omitting it
+  ## here left the reference comparison, and the new cross-check below,
+  ## silently incomplete for one of the three primary methods.
+  ref_method_map <- c(emmax_consensus_region = "emmax_consensus", emmax_simes_region = "emmax_simes",
+                      lfmm_simes_region = "lfmm_simes")
   ref_c1 <- ref[cell %chin% C1_CELLS & method %chin% names(ref_method_map)]
   ref_c1[, method := ref_method_map[method]]
   ref_c1[, combo_id := sprintf("%s_%s_rep%d_env%d", tag, cell, rep, env)]
@@ -271,6 +276,74 @@ if (file.exists(ref_file)) {
   print(ref_summary)
 } else {
   say("    %s not found on this host -- reference comparison skipped, not fabricated\n", ref_file)
+}
+
+## ---- 10. cross-check vs. floor=2 canonical: are higher-floor regions genuinely NEW? --
+## PK's follow-up question (2026-09-27), after seeing the tier results: are
+## there regions found at the higher floors that floor=2 never reports? A
+## region can appear only at a higher floor for two very different reasons --
+## it is a genuinely novel candidate the looser floor=2 test missed, or it
+## only clears BH there because a much stricter floor has far FEWER
+## competing tests (a smaller candidate set, an easier per-test threshold) --
+## and these two explanations make very different predictions about that
+## region's precision. Same match_region_sets() criterion as the cross-floor
+## tiering above (core_snp + overlap), just matched against `ref_c1`
+## (section 9) instead of another floor_stability floor.
+if (exists("ref_c1")) {
+  say("\n[14] cross-check vs. floor=2 canonical: are higher-floor regions genuinely new?\n")
+  .found_at_floor2 <- function(region_source) {
+    rows <- list()
+    for (m in unique(region_source$method)) {
+      side <- ref_c1[method == m]
+      combos_m <- unique(region_source[method == m, combo_id])
+      for (cid in combos_m) {
+        canon <- copy(region_source[method == m & combo_id == cid])
+        s <- side[combo_id == cid]
+        mm <- match_region_sets(canon, s, use_core_snp = TRUE)
+        canon[, found_at_floor2 := mm$recovered]
+        rows[[length(rows) + 1]] <- canon
+      }
+    }
+    rbindlist(rows, fill = TRUE)
+  }
+
+  ## (a) across ALL three higher floors pooled (995/997/999) -- "are there
+  ## regions at ANY higher floor floor=2 never reports, and how good are they?"
+  all_higher <- .found_at_floor2(region_dt)
+  new_vs_known <- all_higher[, .(n = .N, n_new = sum(!found_at_floor2), frac_new = mean(!found_at_floor2),
+                                 precision_new = mean(TP[!found_at_floor2]),
+                                 precision_known = mean(TP[found_at_floor2])), by = method]
+  say("    across all three higher floors pooled (995/997/999):\n")
+  print(new_vs_known)
+  fwrite(all_higher[, .(combo_id, method, floor, Chr, from, to, n_markers, TP, found_at_floor2)],
+        file.path(MODULE_ROOT, "results", "floor_stability_vs_floor2_all_floors.tsv"), sep = "\t")
+
+  ## (b) restricted to the CANONICAL (99.7%-floor) regions, cross-tabulated
+  ## against stability tier -- "does the tiering precision gain just track
+  ## re-discovering floor=2's own hits, or is it doing something more?"
+  ## [!] member_units MUST be kept -- match_region_sets() needs it for the
+  ## core_snp criterion. Dropping it (an earlier version of this line did)
+  ## does not error: cr$member_units resolves to NULL, `mu %chin% NULL` is
+  ## FALSE for every side region, so every region silently comes back
+  ## "not recovered" instead of failing loudly. Caught by checking the
+  ## actual output (frac_found_at_floor2 == 0 for every tier, implausible on
+  ## its face and contradicted by the ad hoc version of this same check run
+  ## just before writing this section), not assumed correct from a clean exit code.
+  canon_only <- .found_at_floor2(tiered[, .(combo_id, method, Chr, from, to, n_markers, member_units, TP, tier_effective)])
+  by_tier <- canon_only[, .(n = .N, frac_found_at_floor2 = mean(found_at_floor2), precision = mean(TP)),
+                        by = tier_effective][order(tier_effective)]
+  by_tier_found <- canon_only[, .(n = .N, precision = mean(TP)), by = .(found_at_floor2, tier_effective)][
+    order(found_at_floor2, tier_effective)]
+  say("\n    canonical (99.7%%-floor) regions: found-at-floor=2 rate and precision BY TIER:\n")
+  print(by_tier)
+  say("\n    ... split further by found_at_floor2 x tier (does stability filtering just recover floor=2's hits?):\n")
+  print(by_tier_found)
+  fwrite(canon_only[, .(combo_id, method, Chr, from, to, n_markers, TP, tier_effective, found_at_floor2)],
+        file.path(MODULE_ROOT, "results", "floor_stability_vs_floor2_canonical_by_tier.tsv"), sep = "\t")
+  fwrite(by_tier_found, file.path(MODULE_ROOT, "results", "floor_stability_vs_floor2_by_tier_summary.tsv"), sep = "\t")
+  say("[15] wrote results/floor_stability_vs_floor2_all_floors.tsv, _canonical_by_tier.tsv, _by_tier_summary.tsv\n")
+} else {
+  say("\n[14] ref_c1 not available (floor=2 reference file missing) -- cross-check vs floor=2 skipped\n")
 }
 
 cat("TIERS_AND_SUMMARY_DONE\n")
