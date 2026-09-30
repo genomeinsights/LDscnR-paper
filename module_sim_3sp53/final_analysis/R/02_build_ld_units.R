@@ -81,7 +81,7 @@ build_ld_units <- function(tag, cell, rep, env, force = FALSE) {
     stop("unknown GRM_BASIS: ", GRM_BASIS))
   say("    %s of %s markers (%.1f%%)\n", format(length(grm_markers), big.mark = ","),
       format(nrow(map), big.mark = ","), 100 * length(grm_markers) / nrow(map))
-  GRM <- SNPRelate::snpgdsGRM(gds, snp.id = grm_markers, method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE)$grm
+  GRM <- SNPRelate::snpgdsGRM(gds, snp.id = grm_markers, method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
   say("    %d x %d GRM ; mean diagonal %.4f\n", nrow(GRM), ncol(GRM), mean(diag(GRM)))
 
   stopifnot("map/GTs correspondence broken after Stage 1" = identical(colnames(GTs), map$marker))

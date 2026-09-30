@@ -105,13 +105,13 @@ pruned_SNPs_rho_ld05 <- c(map_cl_rho_ld05[n_loci==1,marker],one_SNP_per_cluster)
 
 eco_bin <- ifelse(pheno_3sp$ecotype=="Marine",1,2)
 
-GRM_r208 <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs_r208)$grm
+GRM_r208 <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs_r208, missing.rate = 1)$grm
 emx_r208 <- emmax(eco_bin,GTs_3sp,K = GRM_r208) ## function lives in ./R/emmax.R
 
-GRM_rho_ld05 <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs_rho_ld05)$grm
+GRM_rho_ld05 <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs_rho_ld05, missing.rate = 1)$grm
 emx_rho_ld05 <- emmax(eco_bin,GTs_3sp,K = GRM_rho_ld05) ## function lives in ./R/emmax.R
 
-GRM <- snpgdsGRM(gds_3sp)$grm
+GRM <- snpgdsGRM(gds_3sp, missing.rate = 1)$grm
 emx <- emmax(eco_bin,GTs_3sp,K = GRM) ## function lives in ./R/emmax.R
 
 
@@ -825,7 +825,7 @@ ggplot(map_filt[log_p>1.3],aes(Pos,log_p,col=CL_uid)) +
 
 
 
-GRM <- snpgdsGRM(gds_3sp)$grm
+GRM <- snpgdsGRM(gds_3sp, missing.rate = 1)$grm
 
 eco_bin  <- as.numeric(as.factor(pheno_3sp$ecotype))
 
@@ -1025,7 +1025,7 @@ emx_eMLG$pval["phy2_ld1319"]
 peak_summary[,hist(n_snps)]
 map_joint_3sp[!duplicCL_id,hist(unique(CL_id))]
 pruned_SNPs <- map_joint_3sp[,sample(marker,1),by=CL_id]$V1
-GRM_pruned <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs)$grm
+GRM_pruned <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs, missing.rate = 1)$grm
 
 map_joint_3sp[!is.na(CL_id),length(unique(CL_id))]
 
@@ -1340,7 +1340,7 @@ table(ids$snp_id %in% pruned_SNPs$core_snp)
 pruned_SNPs$core_snp[!(pruned_SNPs$core_snp %in% ids$snp_id)]
 pruned_SNPs
 
-GRM <- snpgdsGRM(gds_3sp,method = "GCTA",snp.id = pruned_SNPs$core_snp,verbose = FALSE,autosome.only = FALSE)$grm
+GRM <- snpgdsGRM(gds_3sp,method = "GCTA",snp.id = pruned_SNPs$core_snp,verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
 
 ## the binary phenotype
 eco_bin  <- as.numeric(as.factor(pheno_3sp$ecotype))

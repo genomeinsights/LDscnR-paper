@@ -121,7 +121,7 @@ grm_markers <- map$marker[which(map$ld_w_095 < GRM_LDW_THRESHOLD)]
 cat(sprintf("[3] GRM markers (ld_w_095 < %.2f): %d / %d (%.1f%%)\n",
             GRM_LDW_THRESHOLD, length(grm_markers), nrow(map), 100 * length(grm_markers) / nrow(map)))
 GRM <- snpgdsGRM(gds, snp.id = grm_markers, method = "GCTA",
-                 verbose = FALSE, autosome.only = FALSE)$grm
+                 verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
 
 ## ---- 4. single-SNP EMMAX (F-test p + genomic control) ----------------
 ## conventional-association track for the Manhattan; the C-score + structured

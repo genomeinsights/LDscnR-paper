@@ -76,7 +76,7 @@ if(!file.exists("./3sp_data/ld_decay_3sp_MAF01.rds")){
 
 
 library(MASS)
-GRM <- snpgdsGRM(gds_3sp)$grm
+GRM <- snpgdsGRM(gds_3sp, missing.rate = 1)$grm
 
 ld_ws_3sp <- precalculate_ld_w(c(seq(0.75,0.95,by=0.05),0.99),ld_decay_3sp)
 
@@ -286,7 +286,7 @@ ggplot(map_filt[log_p>1.3],aes(Pos,log_p,col=CL_uid)) +
 
 
 
-GRM <- snpgdsGRM(gds_3sp)$grm
+GRM <- snpgdsGRM(gds_3sp, missing.rate = 1)$grm
 
 eco_bin  <- as.numeric(as.factor(pheno_3sp$ecotype))
 
@@ -486,7 +486,7 @@ emx_eMLG$pval["phy2_ld1319"]
 peak_summary[,hist(n_snps)]
 map_joint_3sp[!duplicCL_id,hist(unique(CL_id))]
 pruned_SNPs <- map_joint_3sp[,sample(marker,1),by=CL_id]$V1
-GRM_pruned <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs)$grm
+GRM_pruned <- snpgdsGRM(gds_3sp,snp.id = pruned_SNPs, missing.rate = 1)$grm
 
 map_joint_3sp[!is.na(CL_id),length(unique(CL_id))]
 
@@ -801,7 +801,7 @@ table(ids$snp_id %in% pruned_SNPs$core_snp)
 pruned_SNPs$core_snp[!(pruned_SNPs$core_snp %in% ids$snp_id)]
 pruned_SNPs
 
-GRM <- snpgdsGRM(gds_3sp,method = "GCTA",snp.id = pruned_SNPs$core_snp,verbose = FALSE,autosome.only = FALSE)$grm
+GRM <- snpgdsGRM(gds_3sp,method = "GCTA",snp.id = pruned_SNPs$core_snp,verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
 
 ## the binary phenotype
 eco_bin  <- as.numeric(as.factor(pheno_3sp$ecotype))

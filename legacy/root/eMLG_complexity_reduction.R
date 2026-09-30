@@ -930,7 +930,7 @@ file <- files[1]
 
   gts_reduced <- cbind(eMLGs$eMLG,GTs_chr[,non_clustered_SNPs])
 
-  GRM <- snpgdsGRM(gds,method="GCTA",autosome.only = FALSE)$grm
+  GRM <- snpgdsGRM(gds,method="GCTA",autosome.only = FALSE, missing.rate = 1)$grm
   emx_eMLG <- emmax(env,X = gts_reduced,K=GRM)
   length(emx_eMLG$pval)
 

@@ -358,7 +358,7 @@ ld_ws <- precalculate_ld_w(c(seq(0.2,0.95,by=0.05),0.99),ld_decay)
 
 for(ch in unique(map$Chr_9sp)){
   idx <- which(map$Chr_9sp==ch)
-  GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE)$grm
+  GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
 
   ## EMMAX does not expect a file in 012 format so the maximum likelihood genotypes can be used (without rounding)
   emx <- emmax(env,GTs[,idx],K = GRM)
@@ -616,7 +616,7 @@ abline(h=1.3)
 
         for(ch in unique(map_perm$Chr_9sp)){
           idx <- which(map_perm$Chr_9sp==ch)
-          GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE)$grm
+          GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
 
           ## EMMAX does not expect a file in 012 format so the maximum likelihood genotypes can be used (without rounding)
           emx <- emmax(Y[,x],GTs[,idx],K = GRM)
@@ -911,7 +911,7 @@ abline(h=1.3)
 
         for(ch in unique(map_perm$Chr_9sp)){
           idx <- which(map_perm$Chr_9sp==ch)
-          GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE)$grm
+          GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
 
           ## EMMAX does not expect a file in 012 format so the maximum likelihood genotypes can be used (without rounding)
           emx <- emmax(Y[,x],GTs[,idx],K = GRM)
@@ -949,7 +949,7 @@ abline(h=1.3)
       #env_sim <- env
       for(ch in unique(map_perm$Chr_9sp)){
         idx <- which(map_perm$Chr_9sp==ch)
-        GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE)$grm
+        GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
 
         ## EMMAX does not expect a file in 012 format so the maximum likelihood genotypes can be used (without rounding)
         emx <- emmax(env_sim,GTs[,idx],K = GRM)
@@ -984,7 +984,7 @@ abline(h=1.3)
       #env_sim <- env
       for(ch in unique(map_perm$Chr_9sp)){
         idx <- which(map_perm$Chr_9sp==ch)
-        GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE)$grm
+        GRM <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
 
         ## EMMAX does not expect a file in 012 format so the maximum likelihood genotypes can be used (without rounding)
         emx <- emmax(env_sim,GTs[,idx],K = GRM)

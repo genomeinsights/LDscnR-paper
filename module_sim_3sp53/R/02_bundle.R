@@ -193,7 +193,7 @@ say("    %s of %s markers (%.1f%%)\n", format(length(grm_markers), big.mark = ",
 say("    GRM: snpgdsGRM(method = \"%s\")\n", GRM_METHOD)
 t0 <- Sys.time()
 GRM <- snpgdsGRM(gds, snp.id = grm_markers, method = GRM_METHOD,
-                 verbose = FALSE, autosome.only = FALSE)$grm
+                 verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
 ut <- upper.tri(GRM)
 say("    %d x %d ; mean diagonal %.4f ; off-diagonal mean %+.4f sd %.4f ; %.2f min\n",
     nrow(GRM), ncol(GRM), mean(diag(GRM)), mean(GRM[ut]), sd(GRM[ut]),

@@ -518,7 +518,7 @@ parse_raw_data <- function(file_gz,
 
   message("GRM pruning: ", length(pruned_markers), " / ", nrow(map), " markers kept")
 
-  GRM <- snpgdsGRM(gds,snp.id = pruned_markers,method = "GCTA",verbose = FALSE,autosome.only = FALSE)$grm
+  GRM <- snpgdsGRM(gds,snp.id = pruned_markers,method = "GCTA",verbose = FALSE,autosome.only = FALSE, missing.rate = 1)$grm
   #GRM_full <- snpgdsGRM(gds,method = "GCTA",verbose = FALSE,autosome.only = FALSE)$grm
 
 

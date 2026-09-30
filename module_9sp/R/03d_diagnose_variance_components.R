@@ -118,7 +118,7 @@ set.seed(1)
 pruned <- unlist(snpgdsLDpruning(gds, ld.threshold = GRM_GREEDY$ld.threshold,
                                  slide.max.bp = GRM_GREEDY$slide.max.bp,
                                  autosome.only = FALSE, verbose = FALSE), use.names = FALSE)
-GRM_greedy <- snpgdsGRM(gds, snp.id = pruned, method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE)$grm
+GRM_greedy <- snpgdsGRM(gds, snp.id = pruned, method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
 say("    greedy-pruned markers: %s (vs %s stage1-pruned)\n",
     format(length(pruned), big.mark=","), format(length(b9$grm_markers), big.mark=","))
 p_greedy <- emmax_fast(emmax_setup(b9$GTs, GRM_greedy), eco_resid)

@@ -897,7 +897,7 @@ regen_from_parsed <- function(d, out_path) {
   }
   message(sprintf("  GRM (%s): %d / %d markers", GRM_METHOD, length(grm_markers), nrow(map)))
   GRM <- snpgdsGRM(gds, snp.id = grm_markers, method = "GCTA",
-                   verbose = FALSE, autosome.only = FALSE)$grm
+                   verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
 
   ## EMMAX on the GRM + genomic control if gif > 1.1
   emx <- emmax(env_ind$env, GTs, K = GRM)

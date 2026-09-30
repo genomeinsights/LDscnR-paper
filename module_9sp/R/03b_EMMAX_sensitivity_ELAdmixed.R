@@ -59,7 +59,7 @@ sample_ids_keep <- sample_ids_full[keep]
 say("\n[2] rebuilding GRM on %d individuals, %s markers (%s)\n",
     sum(keep), format(length(b$grm_markers), big.mark=","), GRM_METHOD)
 GRM <- snpgdsGRM(gds, sample.id = sample_ids_keep, snp.id = b$grm_markers,
-                 method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE)$grm
+                 method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
 stopifnot(nrow(GRM) == sum(keep), ncol(GRM) == sum(keep))
 ut <- upper.tri(GRM)
 say("    %d x %d ; off-diagonal mean %+.4f sd %.4f\n", nrow(GRM), ncol(GRM), mean(GRM[ut]), sd(GRM[ut]))

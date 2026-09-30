@@ -101,7 +101,7 @@ run_stage12 <- function(GTs, map, env_dt, label) {
   set.seed(SEEDS[["clusters"]])
   stage1 <- ld_complexity_reduction(map = map, LD_decay = LD_decay, rho = CR_RHO, gds = gds)
   grm_markers <- unique(na.omit(stage1$pruned))
-  GRM <- SNPRelate::snpgdsGRM(gds, snp.id = grm_markers, method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE)$grm
+  GRM <- SNPRelate::snpgdsGRM(gds, snp.id = grm_markers, method = GRM_METHOD, verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
   Pm <- emmax_setup(GTs, GRM)
   pm_obs <- emmax_fast(Pm, env_dt$env)
   list(stage1 = stage1, grm_markers = grm_markers, GRM = GRM, p = stats::setNames(pm_obs, map$marker), map = map)

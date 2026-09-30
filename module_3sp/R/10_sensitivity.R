@@ -179,7 +179,7 @@ if (all(rho_keys %in% names(OLD_RESULTS))) {
     stage1_alt <- ld_complexity_reduction(map = map, LD_decay = b$LD_decay, rho = rho_alt, gds = gds_sens)
     grm_markers_alt <- unique(na.omit(stage1_alt$pruned))
     GRM_alt <- snpgdsGRM(gds_sens, snp.id = grm_markers_alt, method = GRM_METHOD,
-                         verbose = FALSE, autosome.only = FALSE)$grm
+                         verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
     cl <- as.data.table(stage1_alt$clusters)
     nl <- if ("n_loci" %in% names(cl)) cl$n_loci else cl$n_snps
     say("    %s clusters ; %s at floor %d ; GRM from %s markers (%.1f min to build)\n",

@@ -194,7 +194,7 @@ say("    %s of %s markers (%.1f%%)\n", format(length(grm_markers), big.mark=",")
 say("    GRM: snpgdsGRM(method = \"%s\")\n", GRM_METHOD)
 t0 <- Sys.time()
 GRM <- snpgdsGRM(gds, snp.id = grm_markers, method = GRM_METHOD,
-                 verbose = FALSE, autosome.only = FALSE)$grm
+                 verbose = FALSE, autosome.only = FALSE, missing.rate = 1)$grm
 ## GRM's sample order matches GTs' row order by construction -- create_gds_from_geno()
 ## assigns sample.id = paste0("ind_", seq_len(nrow(geno))) directly off GTs' row order at
 ## GDS-creation time (gds_utils.R), and no sample-level subset/reorder happens between that
