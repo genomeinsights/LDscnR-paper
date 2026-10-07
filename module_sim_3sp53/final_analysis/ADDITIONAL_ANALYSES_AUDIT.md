@@ -90,7 +90,9 @@ Only the two marker-seeded methods are affected. Relative to the marker-wise bas
 
 **Issue:** two bootstraps resampled `(tag, cell, rep)` as the clustering unit, resampling BGS and no-BGS rows independently despite them being a paired map/burn-in draw.
 
-**Fixed** in `R/14`'s `.fit_size_model()` and `R/13`'s own summary bootstrap, both now clustering by `(cell, rep)` only. This fix is correct and unaffected by the Third-pass bugs.
+**Fixed** in `R/14`'s `.fit_size_model()` and `R/13`'s own summary bootstrap, both now clustering by `(cell, rep)`. This fix was correct as far as it went (BGS/no-BGS pairing), but incomplete.
+
+**[!] FURTHER CORRECTED (PK, 2026-09-26 third review): `(cell, rep)` is still too fine.** Per `~/gitlab/LDscnR-NEMO/make_prod.sh`'s STEP 1, the genetic maps/QTN positions/environmental values/dispersal template are built ONCE per `rep` and reused identically across ALL 7 cells and both tags -- so rows sharing a `rep` are not independent even across different cells, and any bootstrap pooling multiple cells (R/13's grand-pooled summary; R/14's `.fit_size_model()`, which includes `cell` as a covariate across all 7 cells) needs to cluster by `rep` alone, not `(cell, rep)`. This is also what materials_and_methods.tex:60 already describes for the manuscript's PRIMARY performance numbers ("2,000 bootstrap samples of the ten map/burn-in histories... the three selection strengths were also retained together") -- R/13/R/14's own bootstraps had simply drifted from that already-correct design description. Point estimates in both scripts are unaffected (refit on the same full data regardless of resampling scheme); only the CI columns changed. Rerun summary-only (not the expensive upstream stages) via `R/13b_refresh_null_summary_after_cluster_fix.R` and `R/14b_refresh_size_models_after_cluster_fix.R`, both reading already-saved per-combo/per-region tables rather than recomputing them. R/15's alignment-model bootstrap had the identical `(cell,rep)` bug (inherited by a since-corrected `R/20_fst_alignment_joint_null_model.R` too) -- refreshed the same way (`R/15b_refresh_alignment_models_after_cluster_fix.R`); see the updated numbers throughout the Analysis-4 section below. `results/simulation_stage2_size_models.tsv`'s refreshed CIs are also now quoted correctly in `LDscnR_manuscript/Supplementary.tex:614` (point estimates $-0.628$/$-1.090$ unchanged; CIs updated from $[-0.706,-0.566]$/$[-1.230,-0.967]$ to $[-0.723,-0.559]$/$[-1.204,-0.984]$).
 
 ## Third pass (2026-09-18, later the same day): two silent-failure bugs in the second-pass code
 
@@ -173,13 +175,13 @@ In the `c=1` cells, the spatial null under-predicts the observed region count (r
 
 `mvn` is labelled `null_role = "negative_control"` (no spatial/environmental signal by construction; its role is to confirm the pipeline doesn't manufacture spurious calibration from kinship structure alone, not to be judged as an FDP proxy). `group`/`spatial` are labelled `"candidate_null"`.
 
-See `results/simulation_null_truth_calibration.tsv` (per-map/burn-in-level rows, 70 unique `(tag,cell,rep)` groups), `results/simulation_null_truth_summary.tsv` (raw and cell+tag-adjusted rho, `null_role`, pooled ratios with `(cell,rep)`-clustered bootstrap CIs), `figure_simulation_null_truth_calibration.pdf` / `_labelled.pdf`.
+See `results/simulation_null_truth_calibration.tsv` (per-map/burn-in-level rows, 70 unique `(tag,cell,rep)` groups), `results/simulation_null_truth_summary.tsv` (raw and cell+tag-adjusted rho, `null_role`, pooled ratios with `rep`-clustered bootstrap CIs -- see item 4's further correction above; point estimates unchanged), `figure_simulation_null_truth_calibration.pdf` / `_labelled.pdf`.
 
 ## Analysis 2: Stage-2 region size and false-positive status -- RESULT
 
 **Descriptive.** FP proportion declines monotonically with both size measures, consistently across all 5 region methods and both BGS treatments: e.g. for `emmax_consensus_region`, 2-marker regions are 90.1% FP (bgs) / 86.5% FP (nobgs), falling to 64.8% FP (bgs) / 22.4% FP (nobgs) for 51+-marker regions -- the decline is real in both treatments, but BGS retains a substantially higher FP rate at large sizes than no-BGS.
 
-**Model.** `FP ~ log2(size) + method + cell + tag`, map/burn-in-cluster bootstrap (B=2,000, clustered by `(cell,rep)`): `log2(n_markers)` coefficient **-0.628** (95% CI -0.706 to -0.566), `log2(n_units)` coefficient **-1.090** (95% CI -1.230 to -0.967) -- both stable after controlling for method, cell and BGS treatment. Manual VIF confirms span/density are severely collinear with marker count and correctly excluded from the primary model.
+**Model.** `FP ~ log2(size) + method + cell + tag`, map/burn-in-cluster bootstrap (B=2,000, clustered by `rep` -- corrected 2026-09-26 from `(cell,rep)`, see item 4): `log2(n_markers)` coefficient **-0.628** (95% CI -0.723 to -0.559), `log2(n_units)` coefficient **-1.090** (95% CI -1.204 to -0.984) -- both stable after controlling for method, cell and BGS treatment; both still clearly exclude zero, same direction as before the fix. Manual VIF confirms span/density are severely collinear with marker count and correctly excluded from the primary model.
 
 **Opportunity-effect sensitivity (final, corrected numbers -- see "Third pass" point 2 for the bug that affected the first version of this result).** Every observed region relocated by an exact circular shift of its own marker-spacing pattern on its own chromosome, R=200 replicates, **all 1,223/1,223 combos with >=1 detectable QTN represented** (the previous run silently dropped 619 of them):
 
@@ -227,7 +229,7 @@ The canonical `values_simulation.tex` macros are stale relative to the current, 
 7. No null ratio uses `max(n_observed, 1)` -- **PASS**.
 8. Zero-discovery cases retained and counted -- **PASS**, 0 occurred in the final run.
 9. Pooled precision/recall from pooled counts, never means of ratios -- **PASS**.
-10. Bootstrap resampling respects shared map/burn-in structure -- **PASS, corrected on the second pass** (clustered by `(cell,rep)`, not `(tag,cell,rep)`).
+10. Bootstrap resampling respects shared map/burn-in structure -- **PASS, corrected on the second pass, then further corrected 2026-09-26** (clustered by `rep` alone -- the actual shared map/burn-in unit, reused across all 7 cells per `make_prod.sh`'s STEP 1 -- not `(cell,rep)`, which was itself an improvement on the original `(tag,cell,rep)` but still too fine; see item 4).
 11. Methods/BGS treatments paired within bootstrap replicates -- **PASS, same fix as item 10.**
 12. All figures recreated from saved tables, no model rerun -- **PASS**.
 13. Every output has a receipt with inputs/params/version/seed -- **PASS**, including `null_calib_version` now in R/13's final receipt.
@@ -262,21 +264,25 @@ PK's hypothesis: false positives should become common when environmental variati
 
 | model | outcome | r2_axes slope (log-odds / log2) | 95% cluster-bootstrap CI |
 |---|---|---:|---:|
-| unconditional | FP proportion | **+12.92** | [8.33, 16.33] -- excludes zero |
-| adjusted for cell+tag+method | FP proportion | -1.37 | [-5.52, 1.88] -- includes zero |
-| unconditional | null/obs ratio (log2) | **+19.76** | [14.45, 24.04] -- excludes zero |
-| adjusted for cell+tag+method | null/obs ratio (log2) | -2.84 | [-6.26, 1.05] -- includes zero |
+| unconditional | FP proportion | **+12.92** | [11.02, 14.63] -- excludes zero |
+| adjusted for cell+tag+method | FP proportion | -1.37 | [-4.96, 0.71] -- includes zero |
+| unconditional | null/obs ratio (log2) | **+19.76** | [14.53, 24.17] -- excludes zero |
+| adjusted for cell+tag+method | null/obs ratio (log2) | -2.84 | [-5.82, 0.31] -- includes zero |
+
+*(CIs above refreshed 2026-09-26 for the `rep`-alone clustering fix -- see item 4. Point estimates unchanged; both rows' zero-crossing conclusions are unaffected.)*
 
 **B. Complementary full-grid outcomes (PK's point 3, added on second review) -- adjusted effect does NOT vanish:** `gp` above is conditioned on >=1 reported region existing (884/1,400 (combo,method) pairs; the other 516 had zero reported regions and are silently excluded, since FP proportion is undefined there). `results/simulation_env_structure_alignment_full_grid.tsv` keeps all 1,400 pairs (zero-filled, a real zero not a missing value) and models whether a false positive occurs at all, how many occur, and the expected spatial-null burden -- without conditioning on a discovery having happened:
 
 | model | outcome | r2_axes slope | 95% cluster-bootstrap CI |
 |---|---|---:|---:|
-| unconditional | any FP occurred (logit) | +14.86 | [11.66, 18.38] -- excludes zero |
-| **adjusted** for cell+tag+method | any FP occurred (logit) | **+9.35** | **[5.75, 13.45] -- excludes zero** |
-| unconditional | # FP regions (log, Poisson) | +15.93 | [12.34, 19.46] -- excludes zero |
-| **adjusted** for cell+tag+method | # FP regions (log, Poisson) | **+9.38** | **[7.13, 11.60] -- excludes zero** |
-| unconditional | expected null region count (log2) | +17.52 | [14.28, 20.25] -- excludes zero |
-| **adjusted** for cell+tag+method | expected null region count (log2) | **+0.99** | **[0.30, 1.75] -- excludes zero** |
+| unconditional | any FP occurred (logit) | +14.86 | [11.34, 18.53] -- excludes zero |
+| **adjusted** for cell+tag+method | any FP occurred (logit) | **+9.35** | **[5.38, 13.60] -- excludes zero** |
+| unconditional | # FP regions (log, Poisson) | +15.93 | [14.42, 17.47] -- excludes zero |
+| **adjusted** for cell+tag+method | # FP regions (log, Poisson) | **+9.38** | **[7.66, 10.46] -- excludes zero** |
+| unconditional | expected null region count (log2) | +17.52 | [15.44, 18.80] -- excludes zero |
+| **adjusted** for cell+tag+method | expected null region count (log2) | **+0.99** | **[0.69, 1.31] -- excludes zero** |
+
+*(CIs above refreshed 2026-09-26 for the `rep`-alone clustering fix -- see item 4. Point estimates unchanged; all six rows' zero-crossing conclusions are unaffected -- this section's "adjusted effect does NOT vanish" finding stands.)*
 
 **Once zero-discovery combos are correctly retained, alignment DOES predict both whether a false positive occurs and how many occur, net of demographic cell.** This contradicts the "collinear with cell, no independent effect" reading of A alone.
 
@@ -284,10 +290,12 @@ PK's hypothesis: false positives should become common when environmental variati
 
 | outcome | adjusted r2_axes slope | adjusted mantel_r slope |
 |---|---:|---:|
-| FP proportion | -1.37 [-5.52, 1.88] (incl. zero) | **-2.89 [-4.85, -1.28]** (excl. zero, negative) |
-| any FP occurred | **+9.35 [5.75, 13.45]** (excl. zero, positive) | **-2.26 [-4.08, -0.41]** (excl. zero, **negative**) |
-| # FP regions | **+9.38 [7.13, 11.60]** (excl. zero, positive) | **-1.35 [-2.63, -0.33]** (excl. zero, **negative**) |
-| expected null count | **+0.99 [0.30, 1.75]** (excl. zero, positive) | **-0.68 [-1.03, -0.29]** (excl. zero, **negative**) |
+| FP proportion | -1.37 [-4.96, 0.71] (incl. zero) | **-2.89 [-4.62, -1.35]** (excl. zero, negative) |
+| any FP occurred | **+9.35 [5.38, 13.60]** (excl. zero, positive) | **-2.26 [-3.68, -0.52]** (excl. zero, **negative**) |
+| # FP regions | **+9.38 [7.66, 10.46]** (excl. zero, positive) | **-1.35 [-2.30, -0.80]** (excl. zero, **negative**) |
+| expected null count | **+0.99 [0.69, 1.31]** (excl. zero, positive) | **-0.68 [-0.96, -0.36]** (excl. zero, **negative**) |
+
+*(CIs above refreshed 2026-09-26 for the `rep`-alone clustering fix -- see item 4. Point estimates unchanged; all four rows' zero-crossing conclusions, and the "measures disagree on direction" finding, are unaffected. Note: the unconditional -- not adjusted -- `fp_prop x mantel_r` row, not shown in this table, is the one row anywhere in this section whose zero-crossing status changed: [-2.87, 0.28] (incl. zero) -> [-2.20, -0.20] (excl. zero); it does not appear in any of this document's stated conclusions.)*
 
 The two alignment measures **disagree on direction** for 3 of 4 adjusted comparisons where both are significant. This means "does alignment predict FP risk beyond cell" does not have one clean answer -- it depends on which of the two measures is used, and R² on 5 arbitrarily-chosen axes vs. a full-matrix Mantel correlation are not simply two views of the same thing; they can rank the same combos differently. **This divergence, not either measure's result taken alone, is the honest summary of the sensitivity check** -- reported per PK's request, not silently resolved in favour of one measure.
 
@@ -296,6 +304,8 @@ The two alignment measures **disagree on direction** for 3 of 4 adjusted compari
 - FP proportion, `V2_c1.5`: **-15.00 [-51.76, -4.32]**.
 
 No cell shows a positive within-cell relationship; the correct summary is "no consistent *positive* within-cell relationship," not "all intervals include zero." Both exceptions are single-cell, wide-CI, and in the direction that argues against the hypothesis, not for it -- not treated as a second finding requiring its own explanation, but not hidden either.
+
+*(The `rep`-alone clustering fix -- see item 4 -- does not change any number in this section: restricting to one cell already makes `(cell,rep)` and `rep`-alone identical clustering, verified byte-identical against the pre-fix values.)*
 
 **Overall:** the between-cell separation (Analysis 1's spatial-null regime-level result) remains the dominant, most robust pattern. Alignment adds real, adjusted-significant information about false-positive *occurrence and count* beyond cell identity (panel B), but not about false-positive *proportion among discoveries* or the *null/obs ratio* (panel A) -- and even where it is significant, the two ways of measuring alignment disagree on direction (panel C). This is a genuinely mixed result, not a clean confirmation or refutation of PK's hypothesis, and should be reported as such.
 
@@ -352,9 +362,120 @@ Reductions relative to each engine's own marker-wise baseline: tests -80.30% (bo
 
 **No manuscript, figure, or LaTeX value has been edited** -- per the standing instruction and this round's explicit request, this section is for review before any of that.
 
-## Still outstanding
+## Bootstrapped c=1 floor decomposition (2026-09-19, fifth round)
 
-- `values_simulation.tex`'s macros for `emmax_snp_region`/`lfmm_snp_region` have **not** been updated.
-- The abstract's cluster-size sentence has **not** been edited.
-- The manuscript's provisional conclusion paragraph has **not** been edited or finalised.
-- No manuscript file has been touched at any point in this work.
+Per PK's request: quantify, within the 600 primary high-gene-flow simulations, how much of the precision/recall change across the floor grid comes from (1) filtering small Stage-1 units below the floor vs. (2) Simes/consensus aggregation. **Downstream summary only** -- implemented as a new standalone script, `R/16_floor_decomposition_c1.R`, that reads `out_final_v1/12_floor_decomposition_raw.rds` (already computed, unchanged) and never sources or re-executes `R/12_floor_decomposition.R` itself, which has no per-combo caching and would otherwise recompute the full 1,400-combo x 6-floor x 4-arm Stage-2 assembly grid from scratch. Chromosome pooling is satisfied by construction: each row of the raw table is already a per-combo total summed across both simulated chromosomes.
+
+**Bootstrap design, exactly as specified:** 2,000 replicates, the ten map/burn-in identities as the sole resampling unit. All three `V` settings, both BGS treatments and all ten envs are pooled to `(method, arm, floor, rep)` *before* the bootstrap runs, so a resampled rep pulls all of them together automatically. Reuses `bootstrap_rep_matrix()` (already used throughout this pipeline) called with the **identical fixed seed for every one of the 42 (method, arm, floor) combinations** -- since that function reseeds internally before drawing, one shared seed guarantees byte-identical resampling multiplicities everywhere, so every contrast (including across floors, not just within one) is paired by construction.
+
+### Two bugs found and fixed before trusting any output (both caught by the mandatory checks, not assumed correct from the script running without error)
+
+1. **Wrong region-count column.** The raw table has two distinct counts: `n_significant` (significant Stage-1 units/markers *before* Stage-2 assembly) and `n_regions` (the actual assembled Stage-2 region count -- the one that belongs with TP/FP and matches `simulation_performance_c1.tsv`). The first draft summed `n_significant`, silently reporting a region count 7-15x too large (e.g. 10,861 instead of 1,447 at floor=2/arm A/EMMAX) while TP/FP were correct throughout. Caught immediately by mandatory check 5 (below), not forced past: fixed by summing `n_regions` instead.
+2. **Missing count columns in the bootstrap helper.** `.derived()` (this script's per-(method,arm,floor) point-estimate/bootstrap-ratio helper) originally returned only precision/recall/fdp/frac_markers_retained/coverage, omitting the raw `n_tests`/`n_regions`/`FP` counts the count-based contrasts (`diff_n_tests`, `diff_n_regions`, `diff_n_fp`) need. This produced an all-`NA` (auto-typed `logical`) CI column rather than an error -- the first pass of mandatory check 8 (finiteness) did not catch it because it only inspected the per-arm bootstrap tables, which never had those columns to begin with, not the downstream contrasts table. Fixed by adding the three counts to `.derived()`'s output, and check 8 was strengthened with a second pass that explicitly inspects every `_ci_lo`/`_ci_hi` column of the final contrasts table for non-numeric/non-finite values -- this second pass is what would have caught the original bug, and is now permanent.
+
+### Mandatory checks -- all PASS, verified not assumed
+
+1. Exactly 600 combos per applicable (method, arm, floor) -- **PASS**, printed and gated for all 42 combinations.
+2. Cells exactly `V0.5_c1`/`V1_c1`/`V2_c1` -- **PASS**.
+3. No `c1.5`/`c2` leakage -- **PASS**.
+4. Floor=1 arm B == arm A per combo, before pooling -- **PASS**, `TRUE` for both EMMAX (600/600) and LFMM (600/600), checked on TP/FP/`n_significant`/`n_regions`/`n_tests` together.
+5. Floor=2 arms A/C/D reproduce `simulation_performance_c1.tsv` -- **PASS after the bug-1 fix above**: `n_regions`/TP/FP identical for EMMAX A/C/D and LFMM A/C (1,447/530/917; 753/437/316; 776/438/338; 1,792/697/1,095; 1,032/563/469) -- confirms both paths (the floor-sweep's own Stage-2 assembly and `05_score_truth.R`'s canonical scoring) are the same code on the same ordering-unified pipeline, not two implementations that happen to agree by luck.
+6. Methods/BGS/`V`/envs/floors/arms paired within every bootstrap draw -- **PASS by construction**: pooling happens before the bootstrap; one seed for all 42 strata.
+7. Simes/consensus-vs-marker contrasts use identical draws -- **PASS**, asserted via `stopifnot(nrow(ba)==nrow(bb))` plus the shared-seed construction.
+8. All bootstrap replicates finite -- **PASS after the bug-2 fix above**, both the per-arm tables and (now explicitly checked) the final contrasts table.
+9. Existing full-grid floor outputs byte-for-byte unchanged -- **PASS**, verified via a SHA-256 checksum of `results/simulation_floor_sweep.tsv` taken before and after this script ran, not merely "the script didn't write to that path."
+
+### Point estimates at the canonical floor (2), EMMAX -- ratios of pooled counts, 95% percentile bootstrap CI
+
+| Arm | Regions | TP | FP | Precision | Recall | FDP | Precision x Recall |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A: Unrestricted marker | 1,447 | 530 | 917 | 0.3663 [0.324, 0.419] | 0.4723 [0.435, 0.508] | 0.6337 [0.581, 0.676] | 0.1730 [0.150, 0.203] |
+| B: Floor-filtered marker | 1,372 | 535 | 837 | 0.3899 [0.347, 0.445] | 0.4625 [0.425, 0.498] | 0.6101 [0.555, 0.653] | 0.1803 [0.157, 0.209] |
+| C: Stage-1 Simes | 753 | 437 | 316 | 0.5803 [0.544, 0.628] | 0.4178 [0.378, 0.454] | 0.4197 [0.372, 0.456] | 0.2425 [0.216, 0.267] |
+| D: Stage-1 consensus | 776 | 438 | 338 | 0.5644 [0.526, 0.611] | 0.4168 [0.376, 0.451] | 0.4356 [0.389, 0.474] | 0.2352 [0.214, 0.259] |
+
+### Required paired contrasts at floor=2, EMMAX
+
+| Contrast | diff precision | 95% CI | diff recall | 95% CI | diff FP regions | 95% CI |
+|---|---:|---:|---:|---:|---:|---:|
+| B - A (filtering alone) | +0.0237 | [0.0088, 0.0395] excl. 0 | -0.0098 | [-0.0250, 0.0022] incl. 0 | -80 | [-121, -45] excl. 0 |
+| C - B (Simes after matching floor) | +0.1904 | [0.1394, 0.2377] excl. 0 | -0.0446 | [-0.0509, -0.0378] excl. 0 | -521 | [-696, -364] excl. 0 |
+| C - A (filtering + Simes, total) | +0.2141 | [0.1712, 0.2583] excl. 0 | -0.0544 | [-0.0716, -0.0397] excl. 0 | -601 | [-764, -442] excl. 0 |
+| D - B (consensus after matching floor) | +0.1745 | [0.1375, 0.2064] excl. 0 | -0.0457 | [-0.0636, -0.0270] excl. 0 | -499 | [-659, -358] excl. 0 |
+| D - A (filtering + consensus, total) | +0.1982 | [0.1729, 0.2228] excl. 0 | -0.0555 | [-0.0754, -0.0334] excl. 0 | -579 | [-727, -442] excl. 0 |
+
+### Does filtering alone explain a meaningful part of the improvement? -- Yes, within c=1, unlike the full 7-cell grid
+
+At floor=2, B-A's precision CI **excludes zero** (+0.0237 [0.0088, 0.0395]) -- small but real. This is a genuine refinement of the full-grid finding (`ADDITIONAL_ANALYSES_AUDIT.md`'s Analysis 3 section, where the pooled-across-all-7-cells B-A contrast at floor=2 was reported as "close to zero, CI spans zero"): restricted to the high-gene-flow regime specifically, filtering alone is doing real, non-trivial, statistically supported work even at the canonical floor, not none. The effect **grows monotonically with floor** -- B-A precision diff is +0.0424 [0.0220, 0.0640] at floor=3, +0.0574 [0.0309, 0.0901] at floor=5, +0.1175 [0.0635, 0.1815] at floor=10, +0.1718 [0.0714, 0.3047] at floor=20 -- but so does the recall cost (diff recall -0.0098 at floor=2 down to -0.351 at floor=20) and the FP-region reduction (-80 at floor=2 down to -826 at floor=20, all CIs excluding zero from floor=2 onward). **None of this should be read as evidence that filtering explains most of the LD-aggregation-vs-filtering gap** -- C-B and D-B (the aggregation-after-matching-floor contrasts) remain roughly 4-8x larger than B-A in absolute precision terms at every floor -- but "filtering alone contributes nothing" is no longer an accurate summary for the c=1 regime specifically.
+
+### Are Simes and consensus distinguishable after floor matching? -- Not at floor=2, but yes from floor=3 upward
+
+A direct C-D (Simes minus consensus) paired contrast was added (not one of the 5 required contrasts, but needed to answer this question at every floor, not only floor=2 where the separate `R/06` c=1 primary summary already checked it once): reuses the same paired bootstrap draws as everything else here.
+
+| Floor | diff precision (Simes - consensus) | 95% CI |
+|---|---:|---:|
+| 1 | +0.0109 | [-0.0090, 0.0342] includes 0 |
+| 2 | +0.0159 | [-0.0047, 0.0379] includes 0 |
+| 3 | +0.0420 | [0.0108, 0.0724] **excludes 0** |
+| 5 | +0.0509 | [0.0342, 0.0690] **excludes 0** |
+| 10 | +0.0405 | [0.0195, 0.0604] **excludes 0** |
+| 20 | +0.0316 | [0.0034, 0.0676] **excludes 0** |
+
+At floor=2 this exactly reproduces the earlier, independently-built `R/06` c=1 primary summary's result (+0.0159 [-0.0050, 0.0369] there vs. +0.0159 [-0.0047, 0.0379] here -- same point estimate, matching CIs within bootstrap noise, cross-validating both independently-written implementations). **At floor=2, the manuscript's canonical value, Simes and consensus remain statistically indistinguishable on precision, consistent with the earlier finding.** But at every higher floor tested (3, 5, 10, 20), Simes becomes **significantly more precise** than consensus, with recall differences staying small and mostly non-significant. This is a genuinely new finding from this analysis, not previously reported: the choice between Simes and consensus is closer to immaterial only near the floor actually used in the manuscript; at more aggressive floors it is not.
+
+### Precision x Recall across the floor grid -- U-shaped for the aggregation arms, peaking around floor 2-3
+
+Unrestricted marker's Precision x Recall is constant across floors by construction (0.1730). Floor-filtered marker peaks at floor=2-3 (~0.180) before declining to 0.065 at floor=20. Stage-1 Simes and consensus both peak at floor=2 (0.2425 and 0.2352 respectively) and decline similarly at high floors, with Simes consistently at or above consensus from floor=2 onward -- matching the C-D contrast above. Full table in `results/simulation_floor_sweep_c1.tsv`.
+
+### Phenotype-blind floor-choice table, c=1 (no association testing, structural only)
+
+Pooled as **ratios of pooled counts** (a deliberate methodological difference from the full-grid `results/simulation_floor_choice_blind.tsv`, which averages per-combo fractions -- noted here explicitly, not an oversight): `frac_markers_retained = sum(markers retained across 600 combos) / sum(total markers across 600 combos)`.
+
+| Floor | Mean eligible units | Mean tests | Fraction markers retained | Mean chromosomes represented |
+|---|---:|---:|---:|---:|
+| 1 | 8,971.4 | 8,971.4 | 1.0000 | 2.000 |
+| 2 | 2,994.9 | 2,994.9 | 0.6068 | 2.000 |
+| 3 | 1,261.7 | 1,261.7 | 0.3788 | 2.000 |
+| 5 | 357.4 | 357.4 | 0.1822 | 2.000 |
+| 10 | 56.8 | 56.8 | 0.0626 | 2.000 |
+| 20 | 11.5 | 11.5 | 0.0251 | 1.952 |
+
+At floor=20, mean chromosome representation drops below 2 (1.952) -- a minority of c=1 combos lose an entire chromosome's worth of eligible units at the most aggressive floor tested, consistent with the severe coverage cost already flagged for floor=20 elsewhere in this document.
+
+### Outputs, provenance, seeds
+
+New files (existing full-grid files listed elsewhere in this document are unchanged, confirmed by checksum): `results/simulation_floor_sweep_c1.tsv`, `results/simulation_floor_contrasts_c1.tsv` (the 5 required contrasts plus the supplementary C-D), `results/simulation_floor_choice_blind_c1.tsv`, `results/simulation_floor_bootstrap_replicates_c1.rds` (the actual bootstrap draws, so intervals can be recomputed without rerunning anything upstream). `figures/figureS_simulation_floor_decomposition_c1.pdf`/`.png` (no title, no in-plot caption; the caption text is written verbatim to `figures/figureS_simulation_floor_decomposition_c1_caption.txt` for the manuscript's own LaTeX `\caption{}`) -- four panels (tests as % of unrestricted, precision, recall, precision x recall), arms A-D, EMMAX solid/LFMM dashed (no LFMM consensus arm), 95% bootstrap ribbons on the three bootstrapped panels (the tests panel is a deterministic percentage, not bootstrapped, and has no ribbon). `R/16_floor_decomposition_c1.R` writes its own receipt recording `c1_cells`, `floor_grid`, `n_bootstrap`, and the fixed `boot_seed` (`SEEDS[["bootstrap"]] + 30000`). The existing `figure_simulation_floor_decomposition_by_cell.pdf` (all 7 cells, showing where methods fail at `c=1.5`/`c=2`) is untouched and remains the complementary view, per PK's explicit instruction to retain it.
+
+**No manuscript file has been touched.** This section is for review before any of it is incorporated.
+
+## Status (2026-10-07 audit)
+
+The earlier "Still outstanding" list is resolved: `values_simulation.tex` is
+generated by `LDscnR_manuscript/generate_simulation_manuscript.R`, the abstract's
+cluster-size sentence is gone, and the manuscript has since been edited against
+these results. All generators and outputs the manuscript reads (R/16-R/18, the
+floor-stability tables, `module_9sp/R/02b`) are now committed.
+
+Caveats and open items:
+
+- **Rep-only bootstraps have only 9 clusters.** The null-calibration and
+  alignment inputs use 5 randomly chosen reps per cell (`R/13`), and rep 7 is
+  never drawn, so the rep-clustered bootstraps in R/13-R/15 and R/20 resample 9
+  units. Percentile intervals from 9 clusters are likely anti-conservative; 17
+  of 20 alignment-model intervals narrowed after the fix. Treat these CIs as
+  descriptive. The one row that newly excludes zero (fp_prop x mantel_r,
+  unconditional, [-2.20, -0.20]) is not quoted in the manuscript.
+- **Fst adds no out-of-sample prediction in c=1.** `R/20` leave-rep-out
+  delta-R^2 (joint vs alignment-only) is 0.028 [-0.008, 0.063] in
+  `c1_primary` (`results/exploratory_fst_alignment_joint_delta_r2_oos.tsv`); it
+  is small but positive in the stress cells (0.0075 [0.0031, 0.0125]) and pooled
+  (0.0026 [0.0013, 0.0037]). This qualifies commit 7409c69's reading that Fst
+  carries independent information: in the primary regime it does not generalise
+  across reps.
+- **R/19 LD-decay provenance mismatch is unresolved.** R/19 still reads
+  `module_sim/out/02_bundle` (pre-correction parser). It is exploratory and not
+  cited, but `RESTRUCTURE.sh` would move `module_sim/` and break it. Recompute
+  decay from the final_analysis bundles or retire R/19 before restructuring.
+- **R/13-R/15 should be rerun end to end** once the bundles are mounted, so the
+  13b/14b/15b summary-only refresh scripts (which duplicate their parents' code)
+  can be retired.

@@ -133,22 +133,30 @@ Implemented so far:
   real primary result: no cluster-bootstrap uncertainty, no map/burn-in
   pairing, this is a sanity check, not a reportable number):
 
-  | method | n_significant | TP | FP | pooled precision |
+  | method | n_significant | QTN-linked calls | unmatched calls | QTN-linked fraction |
   |---|---|---|---|---|
   | `emmax_snp` | 36,027 | 6,274 | 29,753 | 0.174 |
   | `emmax_snp_nonsingleton` | 35,007 | 6,190 | 28,817 | 0.177 |
   | `emmax_simes` | 5,016 | 974 | 4,042 | 0.194 |
   | `emmax_consensus` | 4,483 | 961 | 3,522 | 0.214 |
 
-  Precision rises monotonically size-conscious-method -> Stage-1 Simes ->
-  Stage-1 consensus, exactly the qualitative pattern the reanalysis's
-  central question asks about (does phenotype-blind Stage-1 LD complexity
-  reduction improve precision relative to unrestricted marker-wise
-  testing) -- encouraging, but this raw pooled-count preview is not the
-  primary result: it doesn't yet use the map-cluster bootstrap the
-  instructions require for uncertainty, and recall isn't shown here since
-  it needs unique-QTN deduplication across the whole grid, not a per-
-  combo sum.
+  These are hypothesis-level diagnostics, not comparable precision
+  estimates. In particular, the marker rows count every significant SNP
+  linked to a detectable QTN, even when many SNPs tag the same QTN. The
+  primary comparison therefore converts every method to Stage-2 reported
+  regions before calculating precision and recall. `R/17_marker_qtn_redundancy.R`
+  quantifies marker redundancy separately and reports marker support as a
+  QTN-linked fraction rather than marker precision.
+
+- `R/18_bgs_marker_noise.R` -- downstream paired sensitivity analysis asking
+  whether BGS removes some isolated marker-wise noise. It uses the saved
+  marker-QTN and singleton classifications from `R/17`, keeps matched BGS and
+  no-BGS runs together, and resamples the ten map/burn-in identities while
+  retaining all three primary selection strengths and all environmental
+  continuations. It also checks the exact number of common markers entering
+  the scans, so fewer discoveries are not automatically attributed to fewer
+  tests. The same paired bootstrap directly compares the precision and recall
+  gains from LD aggregation between BGS and no-BGS treatments.
 
 - `R/06_summarise.R` -- the real pooled result (supersedes the raw preview
   above). Point estimates are ratios of pooled counts, never means of
@@ -356,6 +364,28 @@ independently during this project's structured-null work (`kmeans(k=5)`
 on coordinates recovers the identical grouping). See `00_config.R`'s
 `LFMM_K` comment. LFMM was subsequently built and run in full (see
 `R/04_lfmm.R` above).
+
+## Run order for the additional analyses (R/11-R/23)
+
+Run after the core pipeline (R/01-R/10). Arrows are hard input dependencies.
+
+| Script | Role | Depends on | Status |
+|---|---|---|---|
+| `R/11_stage2_region_details.R` | Per-region record of every canonical Stage-2 region | R/05 | pipeline |
+| `R/12_floor_decomposition.R` | Floor decomposition, full 7-cell grid | R/05 | pipeline |
+| `R/13_region_null_calibration.R` | Structured-null burden vs realised FP | R/11 | pipeline |
+| `R/14_summarise_additional_analyses.R` | Stage-2 region size vs FP status | R/11 | pipeline |
+| `R/15_env_structure_alignment.R` | Env-vs-structure alignment models | R/11, R/13 | pipeline |
+| `R/13b`, `R/14b`, `R/15b` | One-off summary refresh after the rep-only clustering fix | saved R/13-R/15 tables | retire after an end-to-end rerun of R/13-R/15 |
+| `R/16_floor_decomposition_c1.R` | Bootstrapped c=1 floor decomposition (manuscript) | R/12 | pipeline |
+| `R/17_marker_qtn_redundancy.R` | Marker-QTN redundancy and singletons (manuscript) | R/02-R/04 | pipeline |
+| `R/18_bgs_marker_noise.R` | Paired BGS marker-noise sensitivity (manuscript) | R/17 | pipeline |
+| `R/19_ld_fst_vs_null_burden_exploration.R` | LD/Fst vs null burden | R/13 + old `module_sim` bundle | exploratory; LD-decay provenance mismatch, not cited |
+| `R/20_fst_alignment_joint_null_model.R` | Joint Fst + alignment model, in-sample and leave-rep-out delta-R^2 | R/13, sources R/15 | exploratory |
+| `R/21` -> `R/22` -> `R/23` | Floor-stability floors, regions, tiers/summary | R/02, R/03 (R/22 also R/21; R/23 also R/21-R/22) | exploratory (manuscript quotes R/23 outputs) |
+
+Note: `module_sim_3sp53/R/14_random_removal_control.R` (one level up) is a
+different script from `final_analysis/R/14_summarise_additional_analyses.R`.
 
 ## Output roots (new, none overlapping old `module_sim_3sp53` paths)
 
