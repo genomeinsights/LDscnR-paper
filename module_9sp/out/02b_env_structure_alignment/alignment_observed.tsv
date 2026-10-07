@@ -1,0 +1,4 @@
+species	phenotype	structure_group	n_individuals	n_populations	n_structure_groups	grm_axes_r2_population	grm_axes_adjusted_r2_population	structure_r2_population	structure_r2_individual_weighted
+Three-spined stickleback	Raw habitat	pop_locality	117	35	4	0.103466762460166	-0.051107933667391	0.0541958041958042	0.111359628026295
+Nine-spined stickleback	Raw habitat	lineage	149	30	4	0.204034906588429	0.0382088454610189	0.548494983277592	0.721787559190702
+Nine-spined stickleback	Lineage-adjusted habitat	lineage	149	30	4	0.323523805283637	0.182591264717728	0.0523260366959422	1.93185285214647e-30
