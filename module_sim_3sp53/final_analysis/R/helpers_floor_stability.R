@@ -103,8 +103,8 @@ match_region_sets <- function(canonical, side, use_core_snp = TRUE) {
 ## the original 99.5/99.7/99.9% test-reduction profile and keeps every output
 ## name unchanged. The density schemes make the CANONICAL floor the
 ## simulation analysis's fixed floor of 2 (PK 2026-10-07: the marker-density
-## rule, max(2, round(markers per Mb / 250)), gives 2 in 568/600 c=1 runs and
-## 3 in the 32 on the shortest map, so 2 is used throughout; the density value
+## rule, max(2, round(markers per Mb / 250)), gives 2 in 567/600 c=1 runs and
+## 3 in the 33 on the shortest map, so 2 is used throughout; the density value
 ## is still recorded per combo in `markers_per_mb`), and add two
 ## STRICTER side floors (a canonical floor of 2 has no admissible looser
 ## side): "density_x2" uses 2f and 4f, "density_x1.5" uses round(1.5f) and 2f.

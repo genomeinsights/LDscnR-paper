@@ -240,7 +240,7 @@ independent precision signal.
 
 PK replaced the 99.5/99.7/99.9% test-reduction profile with the marker-density
 floor rule, floor = round(markers per Mb / 250) with a minimum of 2. It gives
-8 (3sp), 12 (9sp) and 2 in 568/600 primary c=1 simulations (3 in the 32 runs
+8 (3sp), 12 (9sp) and 2 in 567/600 primary c=1 simulations (3 in the 33 runs
 on the shortest replicate map), so the simulations keep their fixed floor of
 2. Stability is now assessed at 0.5x and 2x the reported floor. `R/21`-`R/23`
 take `FLOOR_SCHEME` (env var): `pct` (default; the original analysis above,
