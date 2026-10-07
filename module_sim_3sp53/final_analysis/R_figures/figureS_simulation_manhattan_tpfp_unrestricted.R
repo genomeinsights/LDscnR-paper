@@ -50,6 +50,7 @@ dt[, engine := factor(engine, levels = c("EMMAX", "LFMM"))]
 dt[, status := factor(status, levels = c("TP", "FP"))]
 
 status_pal <- c(TP = "#1B9E77", FP = "#D95F02")
+status_lab <- c(TP = "QTN-matched", FP = "unmatched")
 
 d_bg_dot <- dt[is_qtn == FALSE & is.na(status)]
 d_fg_dot <- dt[is_qtn == FALSE & !is.na(status)]
@@ -62,20 +63,17 @@ p <- ggplot(dt) +
   geom_rect(data = g$band_rects, aes(xmin = xmin - 1e5, xmax = xmax + 1e5, ymin = -Inf, ymax = Inf),
             fill = "grey90", alpha = 0.5, inherit.aes = FALSE) +
   geom_hline(yintercept = -log10(ALPHA_LINE), linetype = "dashed", colour = "grey40", linewidth = 0.4) +
-  geom_point(data = d_bg_dot, aes(pos_cum, -log10(q)), colour = "grey78", size = 0.9, alpha = 0.85) +
+  ggrastr::rasterise(geom_point(data = d_bg_dot, aes(pos_cum, -log10(q)), colour = "grey78", size = 0.9, alpha = 0.85), dpi = 400) +
   geom_point(data = d_fg_dot, aes(pos_cum, -log10(q), colour = status), size = 1.8, alpha = 0.95) +
   geom_point(data = d_bg_qtn, aes(pos_cum, -log10(q)), shape = 3, size = 3, stroke = 1, colour = "grey78") +
   geom_point(data = d_fg_qtn, aes(pos_cum, -log10(q), colour = status), shape = 3, size = 3, stroke = 1) +
   facet_grid(engine ~ ., scales = "free_y") +
-  scale_colour_manual(values = status_pal, na.value = "grey78", name = "Significant marker\n(unrestricted)",
+  scale_colour_manual(values = status_pal, na.value = "grey78", name = "Significant marker\n(unrestricted)", labels = status_lab,
                        guide = guide_legend(override.aes = list(size = 3, shape = 16))) +
   scale_x_continuous(breaks = g$chr_mid$mid, labels = g$chr_mid$global_chr) +
-  labs(x = "Chromosome (odd = real, grey/even = near-neutral; 2 per rep x 10 reps)", y = expression(-log[10](q)),
-       title = sprintf("%s / %s / env %d -- unrestricted marker-wise (emmax_snp/lfmm_snp)", g$tag, g$cell, g$envn),
-       subtitle = sprintf("+ = QTN; EVERY significant marker is its own hypothesis (no Stage-1 borrowing), TP (%d) vs FP (%d); grey78 = not significant -- compare to figureS_simulation_manhattan_tpfp.R", n_tp, n_fp)) +
+  labs(x = "Concatenated replicate chromosomes (shaded: near-neutral chromosome)", y = expression(-log[10](q))) +
   theme_bw(10) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(),
-        plot.subtitle = element_text(size = 8, colour = "grey30"),
         axis.text.x = element_text(size = 7))
 
 FIG_DIR <- file.path(PATHS$module, "figures")
