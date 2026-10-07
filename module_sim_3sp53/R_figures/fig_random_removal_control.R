@@ -31,8 +31,12 @@ all <- rbindlist(lapply(FILES, readRDS), fill = TRUE)
 ## old consensus-only files predate the `arm` column
 if (!"arm" %in% names(all)) all[, arm := NA_character_]
 all[is.na(arm), arm := "emmax_consensus"]
+## files written before R/14 gained mvn/spatial predate the `scheme` column;
+## they are all group-null. Never pool across schemes.
+if (!"scheme" %in% names(all)) all[, scheme := NA_character_]
+all[is.na(scheme), scheme := "group"]
 all[, fdr_size := n_surr_size / max(n_obs_size, 1), by = seq_len(nrow(all))]
-say("[1] %d rows, %d cells x %d tags x %d arms\n", nrow(all), uniqueN(all$cell), uniqueN(all$tag), uniqueN(all$arm))
+say("[1] %d rows, %d cells x %d tags x %d arms x %d null schemes\n", nrow(all), uniqueN(all$cell), uniqueN(all$tag), uniqueN(all$arm), uniqueN(all$scheme))
 
 .se <- function(x) { x <- x[is.finite(x)]; if (length(x) < 2) return(NA_real_); stats::sd(x) / sqrt(length(x)) }
 
@@ -40,25 +44,26 @@ by_tag_arm <- all[n_obs_size > 0, .(
     fdr_size = mean(fdr_size), fdr_size_se = .se(fdr_size),
     fdr_random = mean(fdr_random_conditional, na.rm = TRUE), fdr_random_se = .se(fdr_random_conditional),
     n_combo = .N
-  ), by = .(arm, tag, size_floor)]
+  ), by = .(scheme, arm, tag, size_floor)]
 
-plot_long <- melt(by_tag_arm, id.vars = c("arm", "tag", "size_floor", "n_combo"),
+plot_long <- melt(by_tag_arm, id.vars = c("scheme", "arm", "tag", "size_floor", "n_combo"),
                   measure.vars = list(mean = c("fdr_size", "fdr_random"), se = c("fdr_size_se", "fdr_random_se")))
 plot_long[, variant := factor(variable, levels = 1:2, labels = c("size-based (>= floor)", "random, same cardinality"))]
 plot_long[, arm := factor(arm, levels = c("emmax_consensus", "emmax_simes"))]
 plot_long[, tag := factor(tag, levels = c("bgs", "nobgs"))]
+plot_long[, scheme := factor(scheme, levels = intersect(c("group", "mvn", "spatial"), unique(scheme)))]
 
 p <- ggplot(plot_long, aes(size_floor, mean, colour = variant, fill = variant)) +
   geom_ribbon(aes(ymin = mean - se, ymax = mean + se), alpha = 0.15, colour = NA) +
   geom_line(linewidth = 0.7) +
   geom_point(aes(size = n_combo)) +
-  facet_grid(arm ~ tag) +
+  facet_grid(arm ~ scheme + tag) +
   scale_x_continuous(breaks = c(2, 3, 5, 10, 20, 50)) +
   scale_colour_manual(values = c("size-based (>= floor)" = "#C62828", "random, same cardinality" = "#1565C0"), name = NULL) +
   scale_fill_manual(values = c("size-based (>= floor)" = "#C62828", "random, same cardinality" = "#1565C0"), guide = "none") +
   scale_size_continuous(name = "n combos\n(n_obs>0)", range = c(1, 4)) +
   labs(x = "minimum stage-1 unit size (markers) / matched random-subset cardinality",
-       y = "group-null realised FDR (mean +/- SE across rep x env combos)",
+       y = "structured-null realised FDR (mean +/- SE across rep x env combos)",
        title = "Size-based restriction vs. a matched-cardinality random control",
        subtitle = "Full 7-cell x 2-tag x 10x10 rep-env grid. Identical at floor=2 by construction (the whole candidate pool).\nBeyond that, random is equal or BETTER at every floor -- in every arm x tag combination checked.") +
   theme_bw(11) +
@@ -67,6 +72,7 @@ p <- ggplot(plot_long, aes(size_floor, mean, colour = variant, fill = variant)) 
 FIG_DIR <- file.path(PATHS$module, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 OUT <- file.path(FIG_DIR, "fig_random_removal_control.pdf")
-ggsave(OUT, p, width = 10, height = 8, device = cairo_pdf)
-ggsave(sub("\\.pdf$", ".png", OUT), p, width = 10, height = 8, dpi = 200)
+FIG_W <- 10 * nlevels(plot_long$scheme)
+ggsave(OUT, p, width = FIG_W, height = 8, device = cairo_pdf)
+ggsave(sub("\\.pdf$", ".png", OUT), p, width = FIG_W, height = 8, dpi = 200)
 say("\n[2] wrote %s (+ .png)\n", OUT)

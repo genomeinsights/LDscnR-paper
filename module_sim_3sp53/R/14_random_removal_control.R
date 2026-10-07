@@ -53,34 +53,47 @@
 ## N_PERM_SIMES (vs N_PERM_CONSENSUS=200) -- Simes is markedly slower
 ## per-draw (per-marker EMMAX + a .simes() pass per unit vs. one EMMAX
 ## call on the small unit matrix), so this keeps wall-time comparable.
-## Output/pooling: consensus keeps the original rrc_<tag>_<cell>.rds name
-## (no `arm` column in those older rows -- add one when pooling, it's
-## implicitly "emmax_consensus"); simes writes rrc_<tag>_<cell>_simes.rds
-## and DOES carry an explicit `arm` column.
+## Output/pooling: consensus/group keeps the original rrc_<tag>_<cell>.rds
+## name (no `arm`/`scheme` column in those older rows -- add them when
+## pooling, implicitly "emmax_consensus"/"group"); every other combination
+## writes rrc_<tag>_<cell>[_<arm-suffix>][_<scheme-suffix>].rds and DOES
+## carry explicit `arm`/`scheme` columns.
 ##
-## Usage: Rscript R/14_random_removal_control.R <tag> <cell> [consensus|simes]
-## Writes out/14_random_removal_control/rrc_<tag>_<cell>[_simes].rds. Pool
-## all per-cell files into results/random_removal_control_summary.rds with
-## rbindlist(lapply(Sys.glob("out/14_random_removal_control/rrc_*.rds"),
-## readRDS), fill=TRUE) + saveRDS -- fill=TRUE matters, an early batch of
-## consensus files was written with 2 extra now-dropped intermediate
-## columns, and simes files carry the extra `arm` column consensus ones
-## don't.
+## [!] UPDATED 2026-09-09 -- PK: "run mvn and spatial too." Added a 4th
+## arg (scheme = group|mvn|spatial, default "group"). mvn/spatial use
+## R/12_structured_null.R's own draw recipes VERBATIM, including its seed
+## offsets (mvn: set.seed(b+1e6), spatial: set.seed(b+2e6), vs group's
+## plain set.seed(b)) -- s ~ MVN(0, GRM) or MVN(0, Gaussian kernel over
+## individual (x,y)), orthogonalised against y by resid(lm(s~y)). Neither
+## needs the 5-population-group machinery group's perm_group() does, so
+## that block only builds when scheme=="group".
+##
+## Usage: Rscript R/14_random_removal_control.R <tag> <cell> [consensus|simes] [group|mvn|spatial]
+## Writes out/14_random_removal_control/rrc_<tag>_<cell>_<arm>_<scheme>.rds
+## (consensus+group keeps the original bare rrc_<tag>_<cell>.rds name for
+## backward compatibility). Pool all per-cell files into results/random_
+## removal_control_summary.rds with rbindlist(lapply(Sys.glob("out/14_
+## random_removal_control/rrc_*.rds"), readRDS), fill=TRUE) + saveRDS --
+## fill=TRUE matters, older files are missing the arm/scheme columns
+## newer ones carry.
 suppressMessages({library(data.table); library(LDscnR)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 TAG <- args[1]; CELL <- args[2]
 ARM <- if (length(args) >= 3 && !is.na(args[3])) args[3] else "consensus"
-if (is.na(TAG) || is.na(CELL)) stop("Usage: Rscript R/14_random_removal_control.R <tag> <cell> [consensus|simes]")
+SCHEME <- if (length(args) >= 4 && !is.na(args[4])) args[4] else "group"
+if (is.na(TAG) || is.na(CELL)) stop("Usage: Rscript R/14_random_removal_control.R <tag> <cell> [consensus|simes] [group|mvn|spatial]")
 if (!ARM %in% c("consensus", "simes")) stop("3rd arg must be \"consensus\" or \"simes\", got: ", ARM)
+if (!SCHEME %in% c("group", "mvn", "spatial")) stop("4th arg must be \"group\", \"mvn\" or \"spatial\", got: ", SCHEME)
 SIZE_FLOOR <- 2L; ALPHA <- 0.05
 SIZE_FLOOR_GRID <- c(2, 3, 5, 10, 20, 50)
 N_PERM <- if (ARM == "consensus") 200L else 100L  ## matches R/12's N_PERM_CONSENSUS / N_PERM_SIMES
 N_RANDOM <- 100L    ## random subsets drawn per (combo, floor); vectorised rowSums makes this cheap
 STATISTIC <- if (ARM == "consensus") "unit" else "simes"
+SEED_OFFSET <- switch(SCHEME, group = 0, mvn = 1e6, spatial = 2e6)
 
-say("=== R/14_random_removal_control: %s/%s, group null, emmax_%s ===\n\n", TAG, CELL, ARM)
+say("=== R/14_random_removal_control: %s/%s, %s null, emmax_%s ===\n\n", TAG, CELL, SCHEME, ARM)
 
 all_rows <- list()
 for (REP in 1:10) for (ENVN in 1:10) {
@@ -90,12 +103,30 @@ for (REP in 1:10) for (ENVN in 1:10) {
   GTs <- bd$GTs; map <- bd$map; stage1 <- bd$stage1; GRM <- bd$GRM; env <- bd$env
   y <- env$env; n_ind <- nrow(GTs)
 
-  ## same group-null recipe as R/12_structured_null.R section 1
-  pos <- unique(env[, .(pop, x, y)])
-  set.seed(1L); km <- kmeans(pos[, .(x, y)], centers = 5, nstart = 10)
-  pos[, pop_group := km$cluster]
-  POPT <- merge(unique(env[, .(pop, env)]), pos[, .(pop, pop_group)], by = "pop")
-  perm_group <- function() { pt <- copy(POPT)[, ep := sample(env), by = pop_group]; pt$ep[match(env$pop, pt$pop)] }
+  ## null-draw function, exactly R/12_structured_null.R's own recipes
+  if (SCHEME == "group") {
+    pos <- unique(env[, .(pop, x, y)])
+    set.seed(1L); km <- kmeans(pos[, .(x, y)], centers = 5, nstart = 10)
+    pos[, pop_group := km$cluster]
+    POPT <- merge(unique(env[, .(pop, env)]), pos[, .(pop, pop_group)], by = "pop")
+    gen_null <- function() { pt <- copy(POPT)[, ep := sample(env), by = pop_group]; pt$ep[match(env$pop, pt$pop)] }
+  } else if (SCHEME == "mvn") {
+    eK <- eigen(GRM, symmetric = TRUE)
+    Lv <- pmax(eK$values, 0); Vk <- eK$vectors
+    gen_null <- function() {
+      s <- as.numeric(Vk %*% (sqrt(Lv) * stats::rnorm(n_ind)))
+      as.numeric(stats::resid(stats::lm(s ~ y)))
+    }
+  } else {
+    coords <- as.matrix(env[, .(x, y)])
+    Dm <- as.matrix(stats::dist(coords)); l_bw <- stats::median(Dm[lower.tri(Dm)])
+    eK_sp <- eigen(exp(-0.5 * (Dm / l_bw)^2), symmetric = TRUE)
+    Lv_sp <- pmax(eK_sp$values, 0); Vk_sp <- eK_sp$vectors
+    gen_null <- function() {
+      s <- as.numeric(Vk_sp %*% (sqrt(Lv_sp) * stats::rnorm(n_ind)))
+      as.numeric(stats::resid(stats::lm(s ~ y)))
+    }
+  }
 
   units_base <- LDscnR:::.ld_outlier_units(stage1, map, SIZE_FLOOR)
   N_UNITS <- nrow(units_base)
@@ -112,8 +143,8 @@ for (REP in 1:10) for (ENVN in 1:10) {
 
   sig_matrix <- matrix(FALSE, nrow = N_PERM, ncol = N_UNITS)
   for (b in seq_len(N_PERM)) {
-    set.seed(b)
-    p_perm <- emmax_fast(Pu, perm_group())
+    set.seed(b + SEED_OFFSET)
+    p_perm <- emmax_fast(Pu, gen_null())
     u <- LDscnR:::.ld_outlier_tested_units(stage1, map, p_perm, STATISTIC, SIZE_FLOOR, ALPHA, units = units_base)
     sig_matrix[b, ] <- u$significant
   }
@@ -133,7 +164,8 @@ for (REP in 1:10) for (ENVN in 1:10) {
     }))
 
     all_rows[[length(all_rows) + 1]] <- data.table(
-      tag = TAG, cell = CELL, arm = sprintf("emmax_%s", ARM), rep = REP, env = ENVN, size_floor = f, pool_m = m,
+      tag = TAG, cell = CELL, arm = sprintf("emmax_%s", ARM), scheme = SCHEME, rep = REP, env = ENVN,
+      size_floor = f, pool_m = m,
       n_obs_size = n_obs_size, n_surr_size = n_surr_size,
       n_random_draws_pos = sum(rnd$n_obs_r > 0),
       frac_random_draws_pos = mean(rnd$n_obs_r > 0),
@@ -153,7 +185,13 @@ print(out[n_obs_size > 0, .(n_combo = .N, mean_n_obs_size = mean(n_obs_size), me
 
 OUT_DIR <- file.path(PATHS$out, "14_random_removal_control")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
-OUT <- file.path(OUT_DIR, if (ARM == "consensus") sprintf("rrc_%s_%s.rds", TAG, CELL)
-                          else sprintf("rrc_%s_%s_simes.rds", TAG, CELL))
+## grandfather BOTH pre-existing group-scheme naming conventions (bare for
+## consensus, _simes for simes -- neither carries a scheme suffix, since
+## group was the only scheme that existed when they were written); mvn/
+## spatial always get the full, unambiguous tag_cell_arm_scheme name.
+OUT <- file.path(OUT_DIR,
+  if (SCHEME == "group" && ARM == "consensus") sprintf("rrc_%s_%s.rds", TAG, CELL)
+  else if (SCHEME == "group" && ARM == "simes") sprintf("rrc_%s_%s_simes.rds", TAG, CELL)
+  else sprintf("rrc_%s_%s_%s_%s.rds", TAG, CELL, ARM, SCHEME))
 saveRDS(out, OUT)
 say("\nwrote %s (%d rows)\n", OUT, nrow(out))
