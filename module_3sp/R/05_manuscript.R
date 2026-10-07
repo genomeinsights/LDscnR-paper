@@ -67,6 +67,7 @@ add("StickReportedRegions", nrow(con$test$regions), "03_EMMAX.R", "consensus, EM
 add("StickEcoPeakRegions", con$rotation$observed, "03_EMMAX.R")
 add("StickEcoPeakPct", sprintf("%.1f", 100*con$rotation$observed/nrow(con$test$regions)), "03_EMMAX.R")
 add("StickMedianOccupancy", sprintf("%.3f", median(con$test$regions$occupancy)), "03_EMMAX.R")
+add("StickMedianOccupancyPct", sprintf("%.1f", 100*median(con$test$regions$occupancy)), "03_EMMAX.R")
 add("EcoPeakRotationP", sprintf("%.4f", con$rotation$p), "03_EMMAX.R", "consensus, EMMAX")
 add("StickConsensusRotFold", sprintf("%.2f", con$rotation$fold), "03_EMMAX.R", "consensus, EMMAX")
 add("StickRegionalPermP", sprintf("%.4f", con$null$p), "03_EMMAX.R", "consensus, EMMAX, 1000 surrogates")
@@ -83,9 +84,70 @@ add("StickSimesNullObsRatio", sprintf("%.1f", 100*sim$null$realised_fdr), "03_EM
 ## used once to build the Simes test then discarded), so recompute it here -- cheap
 ## (~10s for 790,578 markers with the fitted GRM already in the bundle).
 p_marker_emmax <- emmax_fast(emmax_setup(b$GTs, b$GRM), b$eco)
-add("StickMarkerWiseEMMAX", sum(p.adjust(p_marker_emmax, method="BH") < 0.05, na.rm=TRUE), "03_EMMAX.R (recomputed)",
+q_marker_emmax <- p.adjust(p_marker_emmax, method="BH")
+q_marker_lfmm <- p.adjust(lf$lfmm_p, method="BH")
+sig_marker_emmax <- which(q_marker_emmax < 0.05)
+sig_marker_lfmm <- which(q_marker_lfmm < 0.05)
+
+marker_in_intervals <- function(index, intervals, chr_col, from_col, to_col) {
+  vapply(index, function(i) {
+    any(intervals[[chr_col]] == b$map$Chr[i] &
+        intervals[[from_col]] <= b$map$Pos[i] &
+        intervals[[to_col]] >= b$map$Pos[i])
+  }, logical(1))
+}
+regions_with_markers <- function(regions, index) {
+  vapply(seq_len(nrow(regions)), function(i) {
+    any(b$map$Chr[index] == regions$Chr[i] &
+        b$map$Pos[index] >= regions$from[i] &
+        b$map$Pos[index] <= regions$to[i])
+  }, logical(1))
+}
+regions_overlapping <- function(a, b) {
+  vapply(seq_len(nrow(a)), function(i) {
+    any(b$Chr == a$Chr[i] & b$from <= a$to[i] & b$to >= a$from[i])
+  }, logical(1))
+}
+
+add("StickMarkerWiseEMMAX", length(sig_marker_emmax), "03_EMMAX.R (recomputed)",
     "marker-wise BH, q<0.05")
-add("StickMarkerWiseLFMM", sum(p.adjust(lf$lfmm_p, method="BH") < 0.05, na.rm=TRUE), "04_lfmm.R", "marker-wise BH, q<0.05")
+add("StickMarkerWiseLFMM", length(sig_marker_lfmm), "04_lfmm.R", "marker-wise BH, q<0.05")
+
+emmax_marker_ecopeak <- sum(marker_in_intervals(sig_marker_emmax, sc$ecopeaks,
+                                                "chr", "start", "end"))
+emmax_marker_in_con <- sum(marker_in_intervals(sig_marker_emmax, con$test$regions,
+                                               "Chr", "from", "to"))
+lfmm_marker_ecopeak <- sum(marker_in_intervals(sig_marker_lfmm, sc$ecopeaks,
+                                               "chr", "start", "end"))
+lfmm_marker_in_regions <- sum(marker_in_intervals(sig_marker_lfmm, lf$test$regions,
+                                                  "Chr", "from", "to"))
+add("StickMarkerEMMAXEcoPeakN", emmax_marker_ecopeak, "05_manuscript.R")
+add("StickMarkerEMMAXEcoPeakPct", sprintf("%.1f", 100 * emmax_marker_ecopeak / length(sig_marker_emmax)),
+    "05_manuscript.R")
+add("StickMarkerEMMAXInConsensusN", emmax_marker_in_con, "05_manuscript.R")
+add("StickMarkerEMMAXInConsensusPct", sprintf("%.1f", 100 * emmax_marker_in_con / length(sig_marker_emmax)),
+    "05_manuscript.R")
+add("StickConsensusRegionsWithMarkerEMMAX", sum(regions_with_markers(con$test$regions, sig_marker_emmax)),
+    "05_manuscript.R")
+add("StickMarkerLFMMEcoPeakN", lfmm_marker_ecopeak, "05_manuscript.R")
+add("StickMarkerLFMMEcoPeakPct", sprintf("%.1f", 100 * lfmm_marker_ecopeak / length(sig_marker_lfmm)),
+    "05_manuscript.R")
+add("StickMarkerLFMMInRegionsN", lfmm_marker_in_regions, "05_manuscript.R")
+add("StickMarkerLFMMInRegionsPct", sprintf("%.1f", 100 * lfmm_marker_in_regions / length(sig_marker_lfmm)),
+    "05_manuscript.R")
+add("StickLFMMRegionsWithMarkerLFMM", sum(regions_with_markers(lf$test$regions, sig_marker_lfmm)),
+    "05_manuscript.R")
+
+con_over_sim <- regions_overlapping(con$test$regions, sim$test$regions)
+sim_over_con <- regions_overlapping(sim$test$regions, con$test$regions)
+sim_over_lfmm <- regions_overlapping(sim$test$regions, lf$test$regions)
+lfmm_over_sim <- regions_overlapping(lf$test$regions, sim$test$regions)
+add("StickConsensusRegionsOverlappingSimes", sum(con_over_sim), "05_manuscript.R")
+add("StickSimesRegionsOverlappingConsensus", sum(sim_over_con), "05_manuscript.R")
+add("StickConsensusOnlyRegions", sum(!con_over_sim), "05_manuscript.R")
+add("StickSimesOnlyRegions", sum(!sim_over_con), "05_manuscript.R")
+add("StickSimesRegionsOverlappingLFMM", sum(sim_over_lfmm), "05_manuscript.R")
+add("StickLFMMRegionsOverlappingSimes", sum(lfmm_over_sim), "05_manuscript.R")
 
 ## EMMAX Simes: region/EcoPeak counts were not previously emitted (only the significant-
 ## unit count, StickSimesClusters, was).
