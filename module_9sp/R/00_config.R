@@ -147,17 +147,17 @@ LDW_FLAG           <- 0.05
 
 ## ---- 5. STAGES 04+: TESTING ------------------------------------------------------
 ALPHA <- 0.05
-## Phenotype-blind density scaling: require approximately one Stage-1 member
-## per 100,000 assayed markers, rounded to the nearest integer.  The filtered
-## panel contains 1,195,557 markers, giving round(11.956) = 12.  The same rule
-## gives 8 for the 790,578-marker three-spined panel.  This is a pragmatic
-## panel-size normalisation, not a claim about physical marker spacing or LD.
+## Phenotype-blind marker-density rule (PK, 2026-10-07): one required Stage-1
+## member per 250 markers per Mb of assayed sequence, rounded, minimum 2.
+## 1,195,557 markers over 403.3 Mb = 2,965 per Mb -> round(11.86) = 12; the
+## same rule gives 8 for the three-spined panel. Replaces the earlier "one per
+## 100,000 markers" wording (same value here), which depends on panel size.
 ##
 ## The floor is not specific to LD-complexity reduction: it specifies how much
 ## marker support is required before a Stage-1 unit enters testing.  The
 ## floor-matched marker analysis in the simulations separates this filtering
 ## effect from the additional effect of aggregating LD-correlated markers.
-SIZE_FLOOR_DENOMINATOR <- 100000L
+SIZE_FLOOR_MARKERS_PER_MB <- 250L
 SIZE_FLOOR <- 12L
 
 REGION_ASSEMBLY <- list(

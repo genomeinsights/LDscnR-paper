@@ -39,8 +39,9 @@ BUNDLE_PATH <- file.path(PATHS$out, "02_bundle", "bundle.rds")
 b <- readRDS(BUNDLE_PATH)
 GTs <- b$GTs; map <- b$map; eco <- b$eco; stage1 <- b$stage1
 GRM <- b$GRM; pheno <- b$pheno
-stopifnot("SIZE_FLOOR must follow the prespecified panel-size rule" =
-            SIZE_FLOOR == round(ncol(GTs) / SIZE_FLOOR_DENOMINATOR))
+stopifnot("SIZE_FLOOR must follow the marker-density rule" =
+            SIZE_FLOOR == max(2L, round(nrow(map) / map[, (max(Pos) - min(Pos)) / 1e6, by = Chr][, sum(V1)] /
+                                        SIZE_FLOOR_MARKERS_PER_MB)))
 say("[0] bundle: %d individuals x %s markers ; %s stage-1 units at floor %d\n",
     nrow(GTs), format(ncol(GTs), big.mark=","),
     format(sum({cl<-stage1$clusters; nl<-if("n_loci" %in% names(cl)) cl$n_loci else cl$n_snps;

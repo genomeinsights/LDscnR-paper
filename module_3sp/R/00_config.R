@@ -180,11 +180,13 @@ LDW_FLAG           <- 0.05     # ours; fe's assembly uses 0.025, run alongside i
 
 ## ---- 5. STAGES 04-07: TESTING -----------------------------------------------
 ALPHA      <- 0.05
-## Phenotype-blind density scaling: approximately one required Stage-1 member
-## per 100,000 assayed markers.  The filtered panel has 790,578 markers, giving
-## round(7.906) = 8.  This scales the support threshold to panel size; it does
-## not imply one marker per 100 kb of physical distance.
-SIZE_FLOOR_DENOMINATOR <- 100000L
+## Phenotype-blind marker-density rule (PK, 2026-10-07): one required Stage-1
+## member per 250 markers per Mb of assayed sequence, rounded, minimum 2.
+## 790,578 markers over 380.4 Mb = 2,078 per Mb -> round(8.31) = 8. Replaces
+## the earlier "one per 100,000 markers" wording, which gave the same 8 here
+## but depends on panel size (a two-chromosome subset got floor 2); density
+## does not. Checked by helpers_floor_tiers.R::density_floor() in stage 14.
+SIZE_FLOOR_MARKERS_PER_MB <- 250L
 SIZE_FLOOR <- 8L
 
 ## ---- REGION ASSEMBLY (post hoc; cannot affect a p-value) --------------------
