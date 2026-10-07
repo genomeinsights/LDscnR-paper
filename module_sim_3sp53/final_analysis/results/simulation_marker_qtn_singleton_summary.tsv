@@ -1,0 +1,4 @@
+group	n_significant	n_qtn_linked	n_unmatched	n_distinct_qtn_recovered	qtn_linked_fraction	unmatched_fraction
+all significant EMMAX markers	10861	4602	6259	431	0.423717889697081	0.576282110302919
+markers in Stage-1 units >=2	10424	4526	5898	407	0.434190330007675	0.565809669992325
+markers in singleton Stage-1 units	437	76	361	24	0.173913043478261	0.826086956521739
