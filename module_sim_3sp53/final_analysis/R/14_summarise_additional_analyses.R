@@ -96,24 +96,26 @@ say("\n[3] logistic model: FP ~ log2(size) + method + cell + BGS\n")
   co <- summary(fit)$coefficients
   point <- data.table(term = rownames(co), estimate = co[, "Estimate"])
 
-  ## map/burn-in cluster bootstrap: refit on data resampled by (cell,rep)
-  ## cluster. [!] Deliberately NOT (tag,cell,rep) (PK, 2026-09-18 review):
-  ## BGS and no-BGS simulations are PAIRED by parameter combination, map and
-  ## environment and share a deterministic seed (materials_and_methods.tex) --
-  ## they are not independent replicates of each other. Clustering by
-  ## (tag,cell,rep) would let a bootstrap draw select one treatment's rows
-  ## for a given (cell,rep) without its paired treatment, breaking that
-  ## pairing silently despite this file's own header claiming methods/BGS
-  ## stay paired. (cell,rep) as the cluster means both tag rows for a
-  ## resampled (cell,rep) always move together.
-  clusters <- unique(d[, .(cell, rep)])
-  n_cl <- nrow(clusters)
+  ## map/burn-in cluster bootstrap: refit on data resampled by `rep` alone.
+  ## [!] FIXED (PK, 2026-09-26 third review): previously clustered by
+  ## (cell,rep) -- correct for keeping BGS/no-BGS paired (still true: both
+  ## tag rows for a given rep always move together below), but too fine
+  ## across CELLS. Per `~/gitlab/LDscnR-NEMO/make_prod.sh`'s STEP 1, the
+  ## genetic maps/QTN positions/environmental values/dispersal template are
+  ## built ONCE per `rep` and reused identically across ALL 7 cells and
+  ## both tags -- this model pools all 7 cells (as a `cell` covariate, not a
+  ## stratum), so rows sharing a `rep` across different cells are not
+  ## independent either. Clustering by `rep` alone keeps every cell AND
+  ## both tags sharing that rep moving together in a draw. Point estimates
+  ## (`point$estimate`, fit once on the full data above) are unchanged --
+  ## only ci_lo/ci_hi below are affected.
+  clusters <- sort(unique(d$rep))
+  n_cl <- length(clusters)
   set.seed(SEEDS[["bootstrap"]])
   boot_coef <- matrix(NA_real_, nrow = N_BOOTSTRAP, ncol = nrow(point), dimnames = list(NULL, point$term))
-  d[, cl_id := .GRP, by = .(cell, rep)]
-  cl_rows <- split(seq_len(nrow(d)), d$cl_id)   ## computed ONCE, not per bootstrap replicate
+  cl_rows <- split(seq_len(nrow(d)), d$rep)   ## computed ONCE, not per bootstrap replicate
   for (bb in seq_len(N_BOOTSTRAP)) {
-    draw <- sample.int(n_cl, n_cl, replace = TRUE)
+    draw <- sample(clusters, n_cl, replace = TRUE)
     idx <- unlist(cl_rows[as.character(draw)], use.names = FALSE)
     fit_b <- tryCatch(stats::glm(FP ~ log2_size + method + cell + tag, data = d[idx], family = stats::binomial()),
                       error = function(e) NULL, warning = function(w) NULL)

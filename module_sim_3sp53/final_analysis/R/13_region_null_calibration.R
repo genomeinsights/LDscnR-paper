@@ -342,15 +342,23 @@ if (sys.nframe() == 0L) {
     }
 
     ## map-cluster bootstrap CI on the grand-pooled R_null/obs and FDP_truth.
-    ## [!] Clustered by (cell, rep) ONLY, NOT (tag, cell, rep) (PK,
-    ## 2026-09-18 review, point 3/5 -- same principle as R/14_summarise_
-    ## additional_analyses.R's .fit_size_model() fix): BGS and no-BGS rows
-    ## for the same (cell, rep) are a PAIRED map/burn-in draw and must be
-    ## resampled together, never independently. Each cluster's bgs/no-bgs
-    ## rows are pre-summed into one row before resampling -- equivalent to
-    ## always keeping both tag rows in or out of a bootstrap draw together.
+    ## [!] FIXED (PK, 2026-09-26 third review): clustered by (cell, rep),
+    ## which is too fine when `ml` pools multiple cells (as it does here --
+    ## the grand-pooled summary is exactly the case this matters for). Per
+    ## `~/gitlab/LDscnR-NEMO/make_prod.sh`'s STEP 1, the genetic maps/QTN
+    ## positions/environmental values/dispersal template are built ONCE per
+    ## `rep` and reused identically across ALL 7 cells and both tags --
+    ## rows sharing a `rep` are not independent even across different
+    ## cells. Clustered by `rep` alone below: pre-summing bgs/no-bgs (and
+    ## now also all cells present) into one row per `rep` before resampling
+    ## keeps every tag AND every cell sharing that rep moving together in a
+    ## draw, which is the map/burn-in pairing the analysis-plan document
+    ## asks for, not a narrower same-cell-only pairing.
+    ## Point estimates (spearman_rho, pooled_R_null_obs, pooled_FDP_truth,
+    ## etc., all computed above from `ml` directly) are UNCHANGED by this --
+    ## only the CI columns below are affected.
     cluster_level <- ml[, .(sum_E_null = sum(sum_E_null), sum_n_obs = sum(sum_n_obs),
-                            sum_TP = sum(sum_TP), sum_FP = sum(sum_FP)), by = .(cell, rep)]
+                            sum_TP = sum(sum_TP), sum_FP = sum(sum_FP)), by = .(rep)]
     n_r <- nrow(cluster_level)
     mat <- as.matrix(cluster_level[, .(sum_E_null, sum_n_obs, sum_TP, sum_FP)])
     bs <- if (n_r >= 2) bootstrap_rep_matrix(mat, N_BOOTSTRAP, SEEDS[["bootstrap"]]) else NULL

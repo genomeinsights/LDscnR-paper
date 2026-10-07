@@ -85,6 +85,78 @@ alignment_one_combo <- function(tag, cell, rep, env) {
             r2_axes = r2_axes, mantel_r = mantel_r)
 }
 
+## ---- reusable helpers, kept at top level (not inside the sys.nframe() guard --
+## below) so other scripts can source() this file for them without re-
+## triggering the bundle-dependent combo-level computation. R/20_fst_
+## alignment_joint_null_model.R needed exactly this and previously had to
+## copy both functions instead (fixed there too, 2026-09-26) -- moved here
+## once, rather than left duplicated.
+##
+## [!] FIXED (PK, 2026-09-26 review of R/20, same bug inherited from here):
+## `.boot_slope()` clustered by (cell, rep). Too fine -- per
+## `~/gitlab/LDscnR-NEMO/make_prod.sh`'s STEP 1, the genetic maps/QTN
+## positions/environmental values/dispersal template are built ONCE per
+## `rep` and reused identically across ALL 7 cells and both tags (selection
+## intensity V is applied downstream of this shared template); the
+## analysis-plan document's "Pooling and uncertainty" section also frames
+## this as "the ten map/burn-in IDs", not up to seventy (cell,rep) pairs.
+## Now clusters by `rep` alone -- resampling whole `rep` values naturally
+## keeps every cell/tag/method sharing that rep together in the same draw,
+## which is the pairing that document asks for, with no separate
+## bookkeeping. Point estimates in results/simulation_env_structure_
+## alignment_models.tsv are unchanged (verified: identical to 1e-12); CI
+## widths are NOT uniformly wider (PK, 2026-09-26 fourth review, correcting
+## this comment's own prior "wider, not reversed" claim, which understated
+## how the fix behaved -- coarser-but-correct clustering does not guarantee
+## a wider interval for every contrast, particularly once cell_f/tag_f are
+## already in the model absorbing between-cell variance). Directly verified
+## (not re-asserted from memory): of the 20 non-within-cell rows, 3 widened
+## and 17 narrowed; all 14 within-cell rows are byte-identical, correctly
+## so, since restricting to one cell already collapses (cell,rep) and
+## rep-alone to the same clustering. One row flipped from including zero
+## to excluding it: fp_prop x mantel_r x unconditional, [-2.87, 0.28] ->
+## [-2.20, -0.20] -- not quoted anywhere in ADDITIONAL_ANALYSES_AUDIT.md's
+## prose (only the ADJUSTED mantel_r/fp_prop row is discussed there, a
+## different, unaffected-in-conclusion row), but the audit doc's own quoted
+## numbers throughout section 4 have been updated to match this refresh.
+## This 3-widened/17-narrowed count (direct computation from the two saved
+## TSVs, old vs refreshed models.tsv) initially disagreed with PK's own
+## independently stated count from the same review ("13 widened, 20
+## narrowed"); flagged rather than silently reconciled, then PK confirmed
+## this session's count is the correct one.
+## See R/15b_refresh_alignment_models_after_cluster_fix.R, which regenerates
+## that file from the already-saved gp/full_grid tables (this host cannot
+## reach the 02_build_ld_units bundles needed to rerun the block below from
+## scratch right now; the fix itself does not depend on them).
+.prep <- function(d) {
+  d <- copy(d)
+  d[, cell_f := factor(cell, levels = CELLS_ALL)]
+  d[, tag_f := factor(tag, levels = TAGS_ALL)]
+  d[, method_f := factor(method, levels = c("emmax_consensus", "emmax_simes"))]
+  d
+}
+.boot_slope <- function(fit_fn, extract_fn, data) {
+  data <- copy(data)
+  clusters <- sort(unique(data$rep))
+  n_cl <- length(clusters)
+  cl_rows <- split(seq_len(nrow(data)), data$rep)
+  fit0 <- tryCatch(fit_fn(data), error = function(e) NULL)
+  if (is.null(fit0)) return(data.table(estimate = NA_real_, ci_lo = NA_real_, ci_hi = NA_real_, n = nrow(data), n_boot_converged = 0L))
+  point <- extract_fn(fit0)
+  set.seed(SEEDS[["bootstrap"]])
+  boot <- rep(NA_real_, N_BOOTSTRAP)
+  for (bb in seq_len(N_BOOTSTRAP)) {
+    draw <- sample(clusters, n_cl, replace = TRUE)
+    idx <- unlist(cl_rows[as.character(draw)], use.names = FALSE)
+    fit_b <- tryCatch(fit_fn(data[idx]), error = function(e) NULL, warning = function(w) NULL)
+    if (!is.null(fit_b)) boot[bb] <- tryCatch(extract_fn(fit_b), error = function(e) NA_real_)
+  }
+  boot <- boot[is.finite(boot)]
+  data.table(estimate = point, ci_lo = if (length(boot)) ci_quantile(boot)[1] else NA_real_,
+            ci_hi = if (length(boot)) ci_quantile(boot)[2] else NA_real_,
+            n = nrow(data), n_boot_converged = length(boot))
+}
+
 if (sys.nframe() == 0L) {
   by_env <- fread("results/simulation_null_truth_calibration_by_env.tsv")
   combos <- unique(by_env[, .(tag, cell, rep, env)])
@@ -153,61 +225,13 @@ if (sys.nframe() == 0L) {
 
   ## =============================================================================
   ## [4] Slope models. Map-cluster bootstrap (refit per replicate), clustered
-  ## by (cell, rep) -- 10 env continuations of a (cell,rep) share a map/
-  ## burn-in history and must be resampled together, paired across tag (same
-  ## convention as R/14's .fit_size_model()).
-  ##
-  ## [!] BUG FIXED (PK, 2026-09-18 third review): the previous version built
-  ## `cl_rows`/`n_cl` ONCE from the full `gp` table and reused them for the
-  ## ratio model too, which is fit on `ratio_d` (`gp` filtered to
-  ## ratio_null_obs>0, a SMALLER table with its OWN 1..nrow(ratio_d) row
-  ## numbering). A bootstrap index built from gp's numbering routinely
-  ## exceeded ratio_d's row count; data.table silently returns an all-NA row
-  ## for an out-of-range index rather than erroring, corrupting that
-  ## replicate's resample instead of failing loudly. `.boot_slope()` below
-  ## now ALWAYS builds its own cluster info fresh from whatever `data` it is
-  ## actually given, so this class of mismatch cannot recur regardless of
-  ## which subset is passed in (unconditional/adjusted/within-cell/
-  ## full-grid all reuse the identical helper now, replacing the previous
-  ## separate, duplicated .boot_slope_c()).
+  ## by `rep` alone -- see the FIXED note on `.boot_slope()`/`.prep()` at
+  ## this file's top level, where both now live (moved out of this guarded
+  ## block so other scripts can reuse them without recomputation).
   ## =============================================================================
   say("\n[4] slope models: alignment vs. FP occurrence/burden and null calibration\n")
-  .prep <- function(d) {
-    d <- copy(d)
-    d[, cell_f := factor(cell, levels = CELLS_ALL)]
-    d[, tag_f := factor(tag, levels = TAGS_ALL)]
-    d[, method_f := factor(method, levels = c("emmax_consensus", "emmax_simes"))]
-    d
-  }
   gp <- .prep(gp)
   full_grid <- .prep(full_grid)
-
-  .boot_slope <- function(fit_fn, extract_fn, data) {
-    data <- copy(data)
-    clusters <- unique(data[, .(cell, rep)])
-    n_cl <- nrow(clusters)
-    data[, cl_id := .GRP, by = .(cell, rep)]
-    cl_rows <- split(seq_len(nrow(data)), data$cl_id)
-    fit0 <- tryCatch(fit_fn(data), error = function(e) NULL)
-    if (is.null(fit0)) return(data.table(estimate = NA_real_, ci_lo = NA_real_, ci_hi = NA_real_, n = nrow(data), n_boot_converged = 0L))
-    point <- extract_fn(fit0)
-    set.seed(SEEDS[["bootstrap"]])
-    boot <- rep(NA_real_, N_BOOTSTRAP)
-    for (bb in seq_len(N_BOOTSTRAP)) {
-      draw <- sample.int(n_cl, n_cl, replace = TRUE)
-      ## list-index by the draw vector directly (NOT intersect(), which
-      ## would deduplicate repeated draws and break resampling-with-
-      ## replacement) -- indexing a list by a vector of names naturally
-      ## repeats an element as many times as its name appears in the index.
-      idx <- unlist(cl_rows[as.character(draw)], use.names = FALSE)
-      fit_b <- tryCatch(fit_fn(data[idx]), error = function(e) NULL, warning = function(w) NULL)
-      if (!is.null(fit_b)) boot[bb] <- tryCatch(extract_fn(fit_b), error = function(e) NA_real_)
-    }
-    boot <- boot[is.finite(boot)]
-    data.table(estimate = point, ci_lo = if (length(boot)) ci_quantile(boot)[1] else NA_real_,
-              ci_hi = if (length(boot)) ci_quantile(boot)[2] else NA_real_,
-              n = nrow(data), n_boot_converged = length(boot))
-  }
 
   ratio_d <- gp[ratio_null_obs > 0]
   ratio_d[, log2_ratio := log2(ratio_null_obs)]
