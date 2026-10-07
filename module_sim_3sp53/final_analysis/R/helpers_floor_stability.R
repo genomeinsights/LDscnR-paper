@@ -97,3 +97,47 @@ match_region_sets <- function(canonical, side, use_core_snp = TRUE) {
   }
   rbindlist(rows)
 }
+
+## ---- 3. floor scheme (2026-10-07) -------------------------------------------
+## FLOOR_SCHEME selects how the three floors are chosen. "pct" (default) is
+## the original 99.5/99.7/99.9% test-reduction profile and keeps every output
+## name unchanged. The density schemes make the CANONICAL floor the
+## simulation analysis's fixed floor of 2 (PK 2026-10-07: the marker-density
+## rule, max(2, round(markers per Mb / 250)), gives 2 in 568/600 c=1 runs and
+## 3 in the 32 on the shortest map, so 2 is used throughout; the density value
+## is still recorded per combo in `markers_per_mb`), and add two
+## STRICTER side floors (a canonical floor of 2 has no admissible looser
+## side): "density_x2" uses 2f and 4f, "density_x1.5" uses round(1.5f) and 2f.
+## "density_half_double" (PK's primary design) is symmetric instead: f/2 and
+## 2f, i.e. floors 1, 2 and 4 here. Floor 1 (singletons included) is only a
+## comparison floor, never the reported one.
+## The canonical floor sits in the floor_997 column and the two sides in
+## floor_995 (less strict side) and floor_999 (stricter side), so R/22-R/23's
+## tier logic is reused unchanged. Density-scheme outputs are written under
+## floor_stability_<scheme>_* names and never overwrite the pct results.
+FLOOR_SCHEME <- Sys.getenv("FLOOR_SCHEME", "pct")
+stopifnot(FLOOR_SCHEME %in% c("pct", "density_half_double", "density_x2", "density_x1.5"))
+DENSITY_MARKERS_PER_MB <- 250
+fs_name <- function(x) {
+  if (FLOOR_SCHEME == "pct") paste0("floor_stability_", x) else paste0("floor_stability_", FLOOR_SCHEME, "_", x)
+}
+fs_stage <- function(x) if (FLOOR_SCHEME == "pct") x else paste0(x, "_", FLOOR_SCHEME)
+
+## Density-rule canonical floor plus two stricter sides, in the same long
+## shape select_stability_floors() returns (`target` 0.995/0.997/0.999 is
+## used here only as a role code: less-strict side / canonical / stricter side).
+select_density_floors <- function(units1, map, scheme = FLOOR_SCHEME, canonical = 2L) {
+  m <- data.table::as.data.table(map)
+  span_mb <- m[, .(mb = (max(Pos) - min(Pos)) / 1e6), by = Chr][, sum(mb)]
+  dens <- nrow(m) / span_mb
+  f <- canonical
+  sides <- switch(scheme, density_half_double = c(max(1L, as.integer(round(f / 2))), 2L * f),
+                          density_x2 = c(2L * f, 4L * f),
+                          `density_x1.5` = c(as.integer(round(1.5 * f)), 2L * f))
+  fl <- c(sides[1], f, sides[2])
+  sizes <- units1$n_markers
+  data.table(target = c(0.995, 0.997, 0.999), floor = fl,
+             achieved_reduction = vapply(fl, function(x) 1 - sum(sizes >= x) / nrow(m), numeric(1)),
+             n_eligible_units = vapply(fl, function(x) sum(sizes >= x), integer(1)),
+             markers_per_mb = dens)
+}

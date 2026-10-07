@@ -235,3 +235,41 @@ bulk of the headline effect (precision 0.578 -> 0.692 for EMMAX consensus,
 all-canonical vs. 3/3) should be read as "mostly recovering floor=2's own
 hits, with a smaller genuine improvement on top," not as a wholly
 independent precision signal.
+
+## Density-rule floor schemes (2026-10-07) -- SUPERSEDES the 99.7% profile
+
+PK replaced the 99.5/99.7/99.9% test-reduction profile with the marker-density
+floor rule, floor = round(markers per Mb / 250) with a minimum of 2. It gives
+8 (3sp), 12 (9sp) and 2 in 568/600 primary c=1 simulations (3 in the 32 runs
+on the shortest replicate map), so the simulations keep their fixed floor of
+2. Stability is now assessed at 0.5x and 2x the reported floor. `R/21`-`R/23`
+take `FLOOR_SCHEME` (env var): `pct` (default; the original analysis above,
+unchanged file names), `density_half_double` (primary: floors 1/2/4),
+`density_x1.5` (2/3/4) and `density_x2` (2/4/8). Density-scheme outputs are
+`results/floor_stability_<scheme>_*`. Run locally (11 cores, ~40 min per
+scheme) on the 600 c=1 combos' 02/03/04 stage outputs copied from mini1.
+
+Validation: every scheme's "all canonical" row reproduces the main floor-2
+analysis exactly (precision 0.564/0.580/0.546, recall 0.417/0.418/0.513 for
+EMMAX consensus/EMMAX Simes/LFMM Simes), and a single-combo spot check
+matched `simulation_stage2_region_details.rds` region-for-region.
+
+Primary result (`density_half_double`), pooled precision by tier
+(incremental groups; 95% rep-clustered bootstrap):
+
+| method | all | 1/3 | 2/3 | 3/3 | recall all -> 3/3 |
+|---|---:|---:|---:|---:|---|
+| emmax_consensus | 0.564 | 0.222 | 0.466 | 0.794 [0.736, 0.856] | 0.417 -> 0.291 |
+| emmax_simes | 0.580 | 0.159 | 0.535 | 0.796 [0.733, 0.857] | 0.418 -> 0.286 |
+| lfmm_simes | 0.546 | 0.184 | 0.444 | 0.749 [0.693, 0.804] | 0.513 -> 0.381 |
+
+Dropping the 1/3 tier costs almost no recall (paired change -0.008 to -0.016)
+for +0.068 to +0.094 precision; keeping only 3/3 gives +0.20 to +0.23
+precision for -0.13 recall. The ordering holds in every V level and both BGS
+treatments. The LOOSER side is the informative one: regions recovered at
+floor 1 and 4 have precision 0.78 (n=1,151), floor 1 only 0.53 (642), floor
+4 only 0.37 (323), neither 0.19 (445) -- surviving the harsher BH burden of
+floor 1 is evidence, whereas a stricter floor's easier threshold adds little.
+The one-sided schemes give weaker gradients (2/3/4: 3/3 precision 0.68-0.72)
+or larger recall losses (2/4/8: 0.80-0.82 at recall 0.20-0.25). 78/2,561
+canonical regions (3.0%) have an ambiguous side-floor match.

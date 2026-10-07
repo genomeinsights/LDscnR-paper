@@ -40,7 +40,8 @@ select_floors_one_combo <- function(tag, cell, rep, env) {
   b <- readRDS(bf)
   units1 <- LDscnR:::.ld_outlier_units(b$stage1, b$map, 1L)
   n_total <- nrow(b$map)
-  sel <- select_stability_floors(units1, n_total, targets = TARGETS)
+  sel <- if (FLOOR_SCHEME == "pct") select_stability_floors(units1, n_total, targets = TARGETS)
+         else select_density_floors(units1, b$map)
   sel[, `:=`(tag = tag, cell = cell, rep = rep, env = env, combo_id = combo_id, n_total_markers = n_total)]
   list(ok = TRUE, data = sel, error = NA_character_)
 }
@@ -65,7 +66,7 @@ if (sys.nframe() == 0L) {
   sel <- rbindlist(lapply(res, `[[`, "data"))
   say("[2] %d rows (%d combos x %d targets) -- 0 failures\n", nrow(sel), nrow(combos), length(TARGETS))
 
-  fwrite(sel, file.path(MODULE_ROOT, "results", "floor_stability_floor_selection.tsv"), sep = "\t")
+  fwrite(sel, file.path(MODULE_ROOT, "results", fs_name("floor_selection.tsv")), sep = "\t")
   say("[3] wrote results/floor_stability_floor_selection.tsv\n")
 
   ## ---- collapse diagnostics: per combo, do 99.5/99.7/99.9 pick the SAME ----
@@ -79,7 +80,7 @@ if (sys.nframe() == 0L) {
              collapsed_997_999 = floor_997 == floor_999,
              collapsed_995_999 = floor_995 == floor_999)]
   wide[, n_distinct_floors := vapply(seq_len(.N), function(i) uniqueN(c(floor_995[i], floor_997[i], floor_999[i])), integer(1))]
-  fwrite(wide, file.path(MODULE_ROOT, "results", "floor_stability_floor_selection_wide.tsv"), sep = "\t")
+  fwrite(wide, file.path(MODULE_ROOT, "results", fs_name("floor_selection_wide.tsv")), sep = "\t")
   say("[4] wrote results/floor_stability_floor_selection_wide.tsv\n")
 
   say("\n[5] collapse frequency (of %d combos):\n", nrow(wide))
@@ -92,8 +93,8 @@ if (sys.nframe() == 0L) {
   print(sel[, .(mean_achieved = mean(achieved_reduction), min_achieved = min(achieved_reduction),
                max_achieved = max(achieved_reduction), mean_n_eligible_units = mean(n_eligible_units)), by = target])
 
-  write_receipt("21_floor_stability_select_floors", inputs = character(),
+  write_receipt(fs_stage("21_floor_stability_select_floors"), inputs = character(),
                 params = list(targets = TARGETS, canonical_target = CANONICAL_TARGET, cells = C1_CELLS),
-                outputs = c("results/floor_stability_floor_selection.tsv", "results/floor_stability_floor_selection_wide.tsv"))
+                outputs = c(paste0("results/", fs_name("floor_selection.tsv")), paste0("results/", fs_name("floor_selection_wide.tsv"))))
   cat("FLOOR_SELECTION_DONE\n")
 }

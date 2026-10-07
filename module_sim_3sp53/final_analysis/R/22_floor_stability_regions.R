@@ -114,7 +114,7 @@ floor_stability_regions_one_combo <- function(tag, cell, rep, env, floors_needed
 }
 
 if (sys.nframe() == 0L) {
-  sel_wide <- fread(file.path(MODULE_ROOT, "results", "floor_stability_floor_selection_wide.tsv"))
+  sel_wide <- fread(file.path(MODULE_ROOT, "results", fs_name("floor_selection_wide.tsv")))
   say("[1] loaded floor selection for %d combos\n", nrow(sel_wide))
 
   say("[2] rerunning association + Stage-2 assembly at each combo's distinct floor(s)\n")
@@ -141,11 +141,11 @@ if (sys.nframe() == 0L) {
   stopifnot("combo_meta must have exactly one row per combo (n_detectable_qtn denominator source)" =
               nrow(combo_meta) == nrow(sel_wide))
 
-  saveRDS(dt, file.path(MODULE_ROOT, "results", "floor_stability_region_details.rds"), compress = "xz")
+  saveRDS(dt, file.path(MODULE_ROOT, "results", fs_name("region_details.rds")), compress = "xz")
   compact <- dt[, .(tag, cell, rep, env, combo_id, method, floor, region_id, Chr, from, to,
                     n_markers, n_units, TP, n_tests, n_significant, n_detectable_qtn)]
-  fwrite(compact, file.path(MODULE_ROOT, "results", "floor_stability_region_details.tsv"), sep = "\t")
-  fwrite(combo_meta, file.path(MODULE_ROOT, "results", "floor_stability_combo_meta.tsv"), sep = "\t")
+  fwrite(compact, file.path(MODULE_ROOT, "results", fs_name("region_details.tsv")), sep = "\t")
+  fwrite(combo_meta, file.path(MODULE_ROOT, "results", fs_name("combo_meta.tsv")), sep = "\t")
   say("[3b] wrote results/floor_stability_combo_meta.tsv (%d combos, n_detectable_qtn for every combo including zero-region ones)\n",
       nrow(combo_meta))
   say("[4] wrote results/floor_stability_region_details.rds (full, list-cols) + .tsv (compact)\n")
@@ -159,10 +159,10 @@ if (sys.nframe() == 0L) {
       uniqueN(dt[, .(combo_id, method, floor)]))
   say("    methods present: %s\n", paste(sort(unique(dt$method)), collapse = ", "))
 
-  write_receipt("22_floor_stability_regions", inputs = "results/floor_stability_floor_selection_wide.tsv",
+  write_receipt(fs_stage("22_floor_stability_regions"), inputs = paste0("results/", fs_name("floor_selection_wide.tsv")),
                 params = list(alpha = ALPHA, maf_keep = MAF_KEEP, va_share_detectable = VA_SHARE_DETECTABLE,
                               truth_rho_r2 = TRUTH_RHO_R2, truth_rho_d = TRUTH_RHO_D),
-                outputs = c("results/floor_stability_region_details.rds", "results/floor_stability_region_details.tsv",
-                           "results/floor_stability_combo_meta.tsv"))
+                outputs = c(paste0("results/", fs_name("region_details.rds")), paste0("results/", fs_name("region_details.tsv")),
+                           paste0("results/", fs_name("combo_meta.tsv"))))
   cat("REGION_GENERATION_DONE\n")
 }

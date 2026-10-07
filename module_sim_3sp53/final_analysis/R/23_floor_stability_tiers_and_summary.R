@@ -41,9 +41,9 @@ C1_CELLS <- c("V0.5_c1", "V1_c1", "V2_c1")
 PRIMARY_METHODS <- c("emmax_consensus", "emmax_simes")
 
 ## ---- 1. load ------------------------------------------------------------------
-sel_wide <- fread(file.path(MODULE_ROOT, "results", "floor_stability_floor_selection_wide.tsv"))
-region_dt <- readRDS(file.path(MODULE_ROOT, "results", "floor_stability_region_details.rds"))
-combo_meta <- fread(file.path(MODULE_ROOT, "results", "floor_stability_combo_meta.tsv"))
+sel_wide <- fread(file.path(MODULE_ROOT, "results", fs_name("floor_selection_wide.tsv")))
+region_dt <- readRDS(file.path(MODULE_ROOT, "results", fs_name("region_details.rds")))
+combo_meta <- fread(file.path(MODULE_ROOT, "results", fs_name("combo_meta.tsv")))
 say("[1] loaded %d combos' floor selection, %s region rows, %d combo-meta rows\n",
     nrow(sel_wide), format(nrow(region_dt), big.mark = ","), nrow(combo_meta))
 methods_present <- intersect(c(PRIMARY_METHODS, "lfmm_simes"), unique(region_dt$method))
@@ -102,7 +102,7 @@ audit_cols <- tiered[, .(combo_id, method, Chr, from, to, n_markers, n_units,
                         TP, recovered_995, recovered_999, n_matches_995, n_matches_999,
                         collapsed_995_997, collapsed_997_999, tier_naive, tier_effective, tier_overlap_only)]
 audit_cols <- merge(audit_cols, sel_wide[, .(combo_id, floor_995, floor_997, floor_999)], by = "combo_id")
-fwrite(audit_cols, file.path(MODULE_ROOT, "results", "floor_stability_region_audit.tsv"), sep = "\t")
+fwrite(audit_cols, file.path(MODULE_ROOT, "results", fs_name("region_audit.tsv")), sep = "\t")
 say("[4] wrote results/floor_stability_region_audit.tsv (%d rows)\n", nrow(audit_cols))
 
 ## ---- 5. zero-call frequency (never silently dropped) ---------------------------
@@ -115,7 +115,7 @@ zero_call <- merge(zero_call, combo_meta[, .(combo_id, tag, cell, rep)], by = "c
 zero_call[, V := sub("_c.*", "", cell)]
 zero_summary <- zero_call[, .(n_combos = .N, n_zero_call = sum(!has_call), frac_zero_call = mean(!has_call)),
                           by = .(method, V, tag)]
-fwrite(zero_summary, file.path(MODULE_ROOT, "results", "floor_stability_zero_call_summary.tsv"), sep = "\t")
+fwrite(zero_summary, file.path(MODULE_ROOT, "results", fs_name("zero_call_summary.tsv")), sep = "\t")
 say("[5] wrote results/floor_stability_zero_call_summary.tsv -- overall zero-call rate by method:\n")
 print(zero_call[, .(n = .N, n_zero = sum(!has_call), frac_zero = mean(!has_call)), by = method])
 
@@ -192,7 +192,7 @@ summary_dt <- rbindlist(summary_rows)
 summary_dt <- merge(summary_dt, summary_dt[call_set == "all_ge1", .(method, FP_all = FP)], by = "method")
 summary_dt[, fp_reduction_vs_all := ifelse(FP_all > 0, 1 - FP / FP_all, NA_real_)]
 summary_dt[, FP_all := NULL]
-fwrite(summary_dt, file.path(MODULE_ROOT, "results", "floor_stability_summary.tsv"), sep = "\t")
+fwrite(summary_dt, file.path(MODULE_ROOT, "results", fs_name("summary.tsv")), sep = "\t")
 say("[7] wrote results/floor_stability_summary.tsv\n")
 print(summary_dt[call_set %in% c("all_ge1", "ge2", "eq3"),
                  .(method, call_set, n_regions, TP, FP, precision, recall, fp_reduction_vs_all)])
@@ -217,7 +217,7 @@ for (m in methods_present) for (cs in c("ge2", "eq3")) {
     diff_recall_ci_lo = ci_quantile(d_rec)[1], diff_recall_ci_hi = ci_quantile(d_rec)[2])
 }
 contrast_dt <- rbindlist(contrast_rows)
-fwrite(contrast_dt, file.path(MODULE_ROOT, "results", "floor_stability_contrasts.tsv"), sep = "\t")
+fwrite(contrast_dt, file.path(MODULE_ROOT, "results", fs_name("contrasts.tsv")), sep = "\t")
 say("[9] wrote results/floor_stability_contrasts.tsv\n")
 print(contrast_dt)
 
@@ -243,7 +243,7 @@ for (m in methods_present) {
   }
 }
 strat_dt <- rbindlist(strat_rows)
-fwrite(strat_dt, file.path(MODULE_ROOT, "results", "floor_stability_summary_by_strata.tsv"), sep = "\t")
+fwrite(strat_dt, file.path(MODULE_ROOT, "results", fs_name("summary_by_strata.tsv")), sep = "\t")
 say("[11] wrote results/floor_stability_summary_by_strata.tsv\n")
 
 ## ---- 9. reference comparison: existing floor=2 canonical (SEPARATE, never blended) --
@@ -271,7 +271,7 @@ if (file.exists(ref_file)) {
   ref_summary[, precision := TP / pmax(TP + FP, 1)]
   ref_summary <- merge(ref_summary, ref_recall, by = "method")
   ref_summary[, recall := n_recovered_total / n_dq_total]
-  fwrite(ref_summary, file.path(MODULE_ROOT, "results", "floor_stability_reference_floor2.tsv"), sep = "\t")
+  fwrite(ref_summary, file.path(MODULE_ROOT, "results", fs_name("reference_floor2.tsv")), sep = "\t")
   say("    wrote results/floor_stability_reference_floor2.tsv (floor=2 canonical, c=1 cells only, EMMAX methods)\n")
   print(ref_summary)
 } else {
@@ -316,7 +316,7 @@ if (exists("ref_c1")) {
   say("    across all three higher floors pooled (995/997/999):\n")
   print(new_vs_known)
   fwrite(all_higher[, .(combo_id, method, floor, Chr, from, to, n_markers, TP, found_at_floor2)],
-        file.path(MODULE_ROOT, "results", "floor_stability_vs_floor2_all_floors.tsv"), sep = "\t")
+        file.path(MODULE_ROOT, "results", fs_name("vs_floor2_all_floors.tsv")), sep = "\t")
 
   ## (b) restricted to the CANONICAL (99.7%-floor) regions, cross-tabulated
   ## against stability tier -- "does the tiering precision gain just track
@@ -339,8 +339,8 @@ if (exists("ref_c1")) {
   say("\n    ... split further by found_at_floor2 x tier (does stability filtering just recover floor=2's hits?):\n")
   print(by_tier_found)
   fwrite(canon_only[, .(combo_id, method, Chr, from, to, n_markers, TP, tier_effective, found_at_floor2)],
-        file.path(MODULE_ROOT, "results", "floor_stability_vs_floor2_canonical_by_tier.tsv"), sep = "\t")
-  fwrite(by_tier_found, file.path(MODULE_ROOT, "results", "floor_stability_vs_floor2_by_tier_summary.tsv"), sep = "\t")
+        file.path(MODULE_ROOT, "results", fs_name("vs_floor2_canonical_by_tier.tsv")), sep = "\t")
+  fwrite(by_tier_found, file.path(MODULE_ROOT, "results", fs_name("vs_floor2_by_tier_summary.tsv")), sep = "\t")
   say("[15] wrote results/floor_stability_vs_floor2_all_floors.tsv, _canonical_by_tier.tsv, _by_tier_summary.tsv\n")
 } else {
   say("\n[14] ref_c1 not available (floor=2 reference file missing) -- cross-check vs floor=2 skipped\n")
