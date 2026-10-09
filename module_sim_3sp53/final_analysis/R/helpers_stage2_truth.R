@@ -225,15 +225,19 @@ bootstrap_rep_matrix <- function(rep_stat_matrix, B, seed) {
 ci_quantile <- function(x, probs = c(0.025, 0.975)) stats::quantile(x, probs, na.rm = TRUE, names = FALSE)
 
 ## ---- neutral chromosomes (PK, 2026-10-09) --------------------------------------
-## Chromosomes carrying no QTN of non-zero effect. In this design every
-## replicate genome has one QTN chromosome (Chr1) and one near-neutral
-## chromosome (Chr2); a handful of runs list a zero-effect (allelic_values NA)
-## "QTN" on Chr2, which flag_true_qtns() already treats as non-detectable, so
-## it does not make Chr2 a QTN chromosome. Any region or significant marker on
+## In this design every replicate genome has one QTN chromosome (Chr1) and
+## one neutral chromosome (Chr2); a handful of runs list a zero-effect
+## (allelic_values NA) "QTN" on Chr2, which flag_true_qtns() already treats as
+## non-detectable, so it does not make Chr2 a QTN chromosome. Any region or significant marker on
 ## a neutral chromosome is a false positive by construction, independent of
 ## the truth-matching distance rule.
-neutral_chromosomes <- function(map) {
+neutral_chromosomes <- function(map, neutral = "Chr2") {
+  ## By DESIGN, not inferred from the filtered map: a run whose QTN were all
+  ## lost or fixed (none left after MAF filtering) still has Chr1 as its
+  ## selected chromosome, so "no segregating QTN" must not make Chr1 neutral
+  ## (the first version of this helper did, 2026-10-09, for 5 c=1 runs).
   m <- data.table::as.data.table(map)
-  qtn_chr <- unique(m[type == "QTN" & !is.na(allelic_values) & allelic_values != 0, Chr])
-  setdiff(unique(as.character(m$Chr)), as.character(qtn_chr))
+  bad <- m[as.character(Chr) %in% neutral & type == "QTN" & !is.na(allelic_values) & allelic_values != 0]
+  if (nrow(bad)) stop("neutral chromosome carries a QTN of non-zero effect: ", paste(bad$marker, collapse = ", "))
+  neutral
 }
