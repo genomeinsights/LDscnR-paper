@@ -1,0 +1,4 @@
+method	n_runs	n_significant	n_significant_ntrl	n_false_positive	n_false_positive_ntrl	share_sig_on_ntrl	share_fp_on_ntrl	ntrl_sig_per_run
+emmax_snp	600	10861	510	6259	510	0.0469570021176687	0.0814826649624541	0.85
+emmax_snp_nonsingleton	600	10424	363	5898	363	0.034823484267076	0.0615462868769074	0.605
+lfmm_snp	600	11600	818	6037	818	0.0705172413793103	0.135497763789962	1.36333333333333

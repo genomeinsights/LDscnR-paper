@@ -108,6 +108,16 @@ floor_decomposition_one_combo <- function(tag, cell, rep, env) {
                                  units1$core_snp)
   }
 
+  ## Per-chromosome split (2026-10-09, additive): regions on a neutral
+  ## chromosome (no QTN of non-zero effect) are false by construction.
+  ntrl_chr <- neutral_chromosomes(map)
+  .chr_split <- function(detail) {
+    if (!nrow(detail)) return(list(n_regions_ntrl = 0L, FP_ntrl = 0L, TP_qtnchr = 0L, FP_qtnchr = 0L))
+    on_ntrl <- as.character(detail$Chr) %in% ntrl_chr
+    list(n_regions_ntrl = sum(on_ntrl), FP_ntrl = sum(on_ntrl & !detail$TP),
+         TP_qtnchr = sum(!on_ntrl & detail$TP), FP_qtnchr = sum(!on_ntrl & !detail$TP))
+  }
+
   ## ---- generic per-arm scorer at one floor ---------------------------------
   ## `eligible_ids`/`p_vec`/`seed_fun` differ by arm; returns one summary row.
   .arm_row <- function(arm, floor, eligible_markers, n_units_eligible, p_vec, seed) {
@@ -130,7 +140,7 @@ floor_decomposition_one_combo <- function(tag, cell, rep, env) {
       frac_dqtn_covered = if (n_dq) length(qtn_covered) / n_dq else NA_real_,
       n_significant = length(sig_ids), n_regions = n_regions, TP = TP, FP = FP,
       n_detectable_qtn = n_dq, n_recovered = length(recovered_qtn),
-      n_qtn_covered_by_eligible = length(qtn_covered))
+      n_qtn_covered_by_eligible = length(qtn_covered), as.data.table(.chr_split(detail)))
   }
 
   rows <- list()
@@ -151,7 +161,8 @@ floor_decomposition_one_combo <- function(tag, cell, rep, env) {
       n_eligible_markers = nrow(map), n_eligible_units = nrow(units1),
       n_tests = length(pm_obs), frac_markers_retained = 1, frac_dqtn_covered = if (n_dq) 1 else NA_real_,
       n_significant = length(sig_A), n_regions = nrow(detail_A), TP = TP_A, FP = FP_A,
-      n_detectable_qtn = n_dq, n_recovered = length(rec_A), n_qtn_covered_by_eligible = n_dq)
+      n_detectable_qtn = n_dq, n_recovered = length(rec_A), n_qtn_covered_by_eligible = n_dq,
+      as.data.table(.chr_split(detail_A)))
 
     ## Arm B: floor-filtered marker -- BH RECOMPUTED on the eligible subset
     p_B <- pm_obs[eligible_markers]
@@ -186,7 +197,7 @@ floor_decomposition_one_combo <- function(tag, cell, rep, env) {
         n_tests = length(lp_obs), frac_markers_retained = 1, frac_dqtn_covered = if (n_dq) 1 else NA_real_,
         n_significant = length(sig_LA), n_regions = nrow(detail_LA), TP = TP_LA, FP = FP_LA,
         n_detectable_qtn = n_dq, n_recovered = length(rec_LA), n_qtn_covered_by_eligible = n_dq,
-        method = "lfmm")
+        as.data.table(.chr_split(detail_LA)), method = "lfmm")
       rows[[length(rows) + 1]] <- r
 
       p_LB <- lp_obs[eligible_markers]

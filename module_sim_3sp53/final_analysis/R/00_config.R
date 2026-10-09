@@ -222,3 +222,14 @@ stage_stale <- function(stage, inputs = character(), params = list(), target = "
 
 git_sha <- function() tryCatch(system2("git", c("-C", PATHS$module, "rev-parse", "--short", "HEAD"),
                                        stdout = TRUE, stderr = FALSE), error = function(e) NA_character_)
+
+## ---- LDscnR benchmark helpers (2026-10-09) ----------------------------------
+## LDscnR >= 0.9.0 no longer exports the simulation-truth helpers this module
+## calls unqualified (flag_true_qtns(), score_thresholds(), qtn_ld_table();
+## LDscnR commit 03853fa). Bind them from the namespace when they are not
+## visible, so every script keeps working against both older and current
+## installs. Same functions, no behaviour change.
+for (.f in c("flag_true_qtns", "score_thresholds", "qtn_ld_table")) {
+  if (!exists(.f, mode = "function")) assign(.f, utils::getFromNamespace(.f, "LDscnR"), envir = globalenv())
+}
+rm(.f)

@@ -38,6 +38,7 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))   ## neutral_chromosomes()
 say("=== 17_marker_qtn_redundancy ===\n\n")
 
 C1_CELLS <- c("V0.5_c1", "V1_c1", "V2_c1")
@@ -75,10 +76,20 @@ redundancy_one_combo <- function(tag, cell, rep, env) {
               n_unique_qtn_recovered = length(unique_qtn), n_redundant = qtn_linked_naive - length(unique_qtn))
   }
 
+  ## Per-chromosome split (2026-10-09, additive columns): significant markers on
+  ## a neutral chromosome (no QTN of non-zero effect) are false by construction.
+  ntrl_markers <- map[as.character(Chr) %in% neutral_chromosomes(map), marker]
+  .partition_split <- function(sig_markers) {
+    base <- .partition(sig_markers)
+    on_ntrl <- sig_markers %chin% ntrl_markers
+    nt <- .partition(sig_markers[on_ntrl])
+    cbind(base, n_significant_ntrl = nt$n_significant, n_qtn_linked_ntrl = nt$n_qtn_linked_naive,
+          n_false_positive_ntrl = nt$n_false_positive)
+  }
   rows <- list()
-  rows[["emmax_snp"]] <- cbind(method = "emmax_snp", .partition(em$marker$marker[em$marker$significant_snp]))
-  rows[["emmax_snp_nonsingleton"]] <- cbind(method = "emmax_snp_nonsingleton", .partition(em$marker$marker[em$marker$significant_snp_nonsingleton]))
-  if (have_lfmm) rows[["lfmm_snp"]] <- cbind(method = "lfmm_snp", .partition(lf$marker$marker[lf$marker$significant_snp]))
+  rows[["emmax_snp"]] <- cbind(method = "emmax_snp", .partition_split(em$marker$marker[em$marker$significant_snp]))
+  rows[["emmax_snp_nonsingleton"]] <- cbind(method = "emmax_snp_nonsingleton", .partition_split(em$marker$marker[em$marker$significant_snp_nonsingleton]))
+  if (have_lfmm) rows[["lfmm_snp"]] <- cbind(method = "lfmm_snp", .partition_split(lf$marker$marker[lf$marker$significant_snp]))
 
   out <- rbindlist(rows)
   out[, `:=`(tag = tag, cell = cell, rep = rep, env = env, n_detectable_qtn = length(detectable_qtn))]

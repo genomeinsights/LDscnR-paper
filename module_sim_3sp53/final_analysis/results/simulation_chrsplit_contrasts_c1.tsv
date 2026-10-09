@@ -1,0 +1,10 @@
+method	versus	statistic	estimate	ci_lo	ci_hi
+emmax_simes_region	emmax_snp_region	ratio_fp_ntrl_per_run	0.323232323232323	0.228391605033138	0.450556206088993
+emmax_simes_region	emmax_snp_region	ratio_fp_qtnchr_per_run	0.354838709677419	0.298994762664675	0.423914501827798
+emmax_simes_region	emmax_snp_region	diff_precision_qtnchr	0.204275031434055	0.156696256949612	0.246997948890737
+emmax_consensus_region	emmax_snp_region	ratio_fp_ntrl_per_run	0.36026936026936	0.279888481572925	0.4672150298759
+emmax_consensus_region	emmax_snp_region	ratio_fp_qtnchr_per_run	0.37258064516129	0.330543403868	0.423078583765112
+emmax_consensus_region	emmax_snp_region	diff_precision_qtnchr	0.193838954961981	0.167533522615692	0.215779333246909
+lfmm_simes_region	lfmm_snp_region	ratio_fp_ntrl_per_run	0.371657754010695	0.335011663833431	0.413793103448276
+lfmm_simes_region	lfmm_snp_region	ratio_fp_qtnchr_per_run	0.457697642163662	0.42140343433335	0.501524624046087
+lfmm_simes_region	lfmm_snp_region	diff_precision_qtnchr	0.138921749953012	0.115960745724301	0.159271782848697
