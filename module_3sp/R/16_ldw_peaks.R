@@ -111,3 +111,31 @@ out <- stage_dir(STAGE); dir.create(out, showWarnings = FALSE, recursive = TRUE)
 fwrite(res, file.path(out, "ldw_peaks.tsv"), sep = "\t")
 fwrite(ctrl, file.path(out, "ldw_units.tsv"), sep = "\t")
 say("wrote %s\n", out)
+
+## ---- 4. reverse direction: how many ld_w peaks lie in outlier regions? -------
+## Peaks = runs of markers at or above a genome-wide ld_w percentile, split at
+## gaps > GAP bp, with >= 3 markers. Overlap with the marine-freshwater regions
+## (and with reported consensus regions) is compared with random placement of
+## each peak on its own chromosome (200 replicates).
+LEN <- as.data.table(sc$chrom_lengths)[, .(Chr = as.character(chr), len)]
+overlapping <- function(p, iv) {
+  iv <- copy(iv); setkey(iv, Chr, from, to)
+  unique(foverlaps(p[, .(Chr, from, to, pid)], iv, nomatch = NULL)$pid)
+}
+peaks <- rbindlist(lapply(c(0.95, 0.99), function(q) rbindlist(lapply(c(1e4, 5e4), function(gap) {
+  thr <- quantile(mk$ldw, q)
+  hi <- mk[ldw >= thr][, grp := cumsum(c(TRUE, diff(Pos) > gap | Chr[-1] != Chr[-.N]))]
+  pk <- hi[, .(from = min(Pos), to = max(Pos), n = .N), by = .(Chr, grp)][n >= 3][, pid := .I]
+  set.seed(1L)
+  rnd <- replicate(200, {
+    r <- pk[LEN, on = "Chr", nomatch = NULL][, s := runif(.N, 0, len - (to - from))][, `:=`(from = s, to = s + (to - from))]
+    length(overlapping(r, sets$marine_freshwater)) / nrow(r)
+  })
+  data.table(percentile = q, gap_bp = gap, n_peaks = nrow(pk), median_span_kb = median(pk$to - pk$from) / 1e3,
+             pct_in_marine_freshwater = 100 * length(overlapping(pk, sets$marine_freshwater)) / nrow(pk),
+             pct_expected_random = 100 * mean(rnd),
+             pct_in_reported_consensus = 100 * length(overlapping(pk, sets$consensus)) / nrow(pk))
+}))))
+print(peaks)
+fwrite(peaks, file.path(out, "ldw_peaks_in_regions.tsv"), sep = "\t")
+say("wrote %s\n", file.path(out, "ldw_peaks_in_regions.tsv"))
