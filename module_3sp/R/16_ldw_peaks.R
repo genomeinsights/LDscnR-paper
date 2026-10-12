@@ -174,3 +174,31 @@ low[, pct_low := 100 * n_low / n]
 print(low)
 fwrite(low, file.path(out, "ldw_low_regions.tsv"), sep = "\t")
 say("wrote %s\n", file.path(out, "ldw_low_regions.tsv"))
+
+## ---- 6. would an ld_w-restricted analysis have missed reported regions? -----
+## For each reported region, whether any marker of its significant Stage-1
+## units reaches the genome-wide 75th/90th/95th ld_w percentile. Regions with
+## none would be lost entirely if analyses were restricted to high-ld_w markers.
+ldw_by_marker <- as.data.table(b$map)[!is.na(ld_w_095), .(marker, Pos, ldw = ld_w_095)]
+cl_pos <- as.data.table(b$stage1$clusters)[n_snps >= SIZE_FLOOR]
+cl_pos[, `:=`(from = vapply(members, function(x) min(as.numeric(sub(".*:", "", x))), 0),
+              to   = vapply(members, function(x) max(as.numeric(sub(".*:", "", x))), 0))]
+filt <- rbindlist(lapply(c("consensus", "simes"), function(st) {
+  u <- merge(sc[[st]]$test$units[significant == TRUE],
+             cl_pos[, .(Chr = as.character(Chr), from, to, n_markers = n_snps, members)],
+             by = c("Chr", "from", "to", "n_markers"))
+  stopifnot(nrow(u) == sum(sc[[st]]$test$units$significant))
+  mm <- merge(u[, .(marker = unlist(members)), by = Chr], ldw_by_marker, by = "marker")
+  rg <- copy(sc[[st]]$test$regions)[, rid := .I]; setkey(rg, Chr, from, to)
+  x <- foverlaps(mm[, .(Chr, from = Pos, to = Pos, ldw)], rg[, .(Chr, from, to, rid)], nomatch = NULL)
+  rbindlist(lapply(c(0.75, 0.90, 0.95), function(q) {
+    thr <- quantile(ldw_by_marker$ldw, q)
+    k <- x[, .(any_hi = any(ldw >= thr)), by = rid]
+    data.table(set = st, percentile = q, ldw_threshold = thr, n_regions = nrow(rg),
+               n_without_high_ldw_marker = sum(!k$any_hi))
+  }))
+}))
+filt[, pct_without := 100 * n_without_high_ldw_marker / n_regions]
+print(filt)
+fwrite(filt, file.path(out, "ldw_filter_missed_regions.tsv"), sep = "\t")
+say("wrote %s\n", file.path(out, "ldw_filter_missed_regions.tsv"))
