@@ -1,0 +1,4 @@
+set	n	n_low	n_on_mf	n_on_mf_low	pct_below_p75	pct_above_p90	pct_low
+marine_freshwater	215	57			49.3023255813954	32.5581395348837	26.5116279069767
+consensus	39	4	13	1			10.2564102564103
+simes	35	6	10	1			17.1428571428571

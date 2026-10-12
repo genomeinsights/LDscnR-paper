@@ -139,3 +139,38 @@ peaks <- rbindlist(lapply(c(0.95, 0.99), function(q) rbindlist(lapply(c(1e4, 5e4
 print(peaks)
 fwrite(peaks, file.path(out, "ldw_peaks_in_regions.tsv"), sep = "\t")
 say("wrote %s\n", file.path(out, "ldw_peaks_in_regions.tsv"))
+
+## ---- 5. low-ld_w outlier regions --------------------------------------------
+## For each interval, the percentile of its mean ld_w among 2,000 random
+## placements of the same span on the same chromosome. "Low" = below the
+## median of its own random placements, i.e. no elevation at all.
+interval_pctl <- function(iv) {
+  iv <- copy(iv)[Chr %chin% names(chr_idx)]
+  iv[, c("m", "pctl") := {
+    d <- chr_idx[[.BY$Chr]]; lo <- min(d$Pos); hi <- max(d$Pos)
+    res <- mapply(function(f, t) {
+      w <- win(d, f, t); if (w$n == 0) return(c(NA_real_, NA_real_))
+      st <- runif(2000, lo, max(lo, hi - (t - f))); r <- win(d, st, st + (t - f))
+      c(w$s / w$n, mean((r$s / pmax(r$n, 1))[r$n > 0] < w$s / w$n))
+    }, from, to)
+    list(res[1, ], res[2, ])
+  }, by = Chr][!is.na(m)]
+}
+set.seed(2L)
+mf <- interval_pctl(sets$marine_freshwater)
+low <- rbindlist(lapply(c("consensus", "simes"), function(st) {
+  rg <- interval_pctl(sets[[st]])
+  e <- copy(sets$marine_freshwater); setkey(e, Chr, from, to); r2 <- copy(rg); setkey(r2, Chr, from, to)
+  on <- unique(foverlaps(r2, e, nomatch = NULL)[, paste(Chr, i.from, i.to)])
+  rg[, on_mf := paste(Chr, from, to) %chin% on]
+  data.table(set = st, n = nrow(rg), n_low = sum(rg$pctl < 0.5), n_on_mf = sum(rg$on_mf),
+             n_on_mf_low = sum(rg$on_mf & rg$pctl < 0.5))
+}))
+low <- rbind(data.table(set = "marine_freshwater", n = nrow(mf), n_low = sum(mf$pctl < 0.5),
+                        n_on_mf = NA_integer_, n_on_mf_low = NA_integer_,
+                        pct_below_p75 = 100 * mean(mf$pctl < 0.75), pct_above_p90 = 100 * mean(mf$pctl > 0.9)),
+             low, fill = TRUE)
+low[, pct_low := 100 * n_low / n]
+print(low)
+fwrite(low, file.path(out, "ldw_low_regions.tsv"), sep = "\t")
+say("wrote %s\n", file.path(out, "ldw_low_regions.tsv"))
