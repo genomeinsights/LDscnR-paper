@@ -15,6 +15,7 @@
 ## the _labelled.pdf twin (title + in-plot caption, for internal review).
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figureS_simulation_env_structure_alignment ===\n\n")
 
 gp <- fread("results/simulation_env_structure_alignment.tsv")
@@ -27,7 +28,7 @@ gp[, c_val := factor(c_val, levels = c("c1", "c1.5", "c2"), labels = C_LEVELS)]
 gp[, method_label := ifelse(method == "emmax_consensus", "Consensus", "Simes")]
 gp[, tag_label := ifelse(tag == "bgs", "BGS", "No BGS")]
 
-METHOD_COLOURS <- c(Consensus = "#1565C0", Simes = "#7B1FA2")
+METHOD_COLOURS <- c(Consensus = COL_CONSENSUS, Simes = COL_SIMES)
 
 ## "not simulated" labels for the two (V,c) combinations this design doesn't
 ## include (V1_c2, V2_c2 -- this module is 7 of 9 possible (V,c) cells, see

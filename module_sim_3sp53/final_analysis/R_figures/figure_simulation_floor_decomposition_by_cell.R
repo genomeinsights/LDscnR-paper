@@ -16,44 +16,53 @@
 ## (PK, 2026-09-18 review, points 3/5).
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== figure_simulation_floor_decomposition_by_cell ===\n\n")
 
-raw <- readRDS("out_final_v1/12_floor_decomposition_raw.rds")
-
 ARM_LABELS <- c(A_unrestricted_marker = "Unrestricted marker", B_floor_filtered_marker = "Floor-filtered marker",
                 C_stage1_simes = "Stage-1 Simes", D_stage1_consensus = "Stage-1 consensus")
-ARM_COLOURS <- c("Unrestricted marker" = "#26A69A", "Floor-filtered marker" = "#546E7A",
-                 "Stage-1 Simes" = "#7B1FA2", "Stage-1 consensus" = "#1565C0")
+ARM_COLOURS <- c("Unrestricted marker" = COL_MARKER, "Floor-filtered marker" = COL_FILTERED,
+                 "Stage-1 Simes" = COL_SIMES, "Stage-1 consensus" = COL_CONSENSUS)
 
-## pool BOTH tag values and all envs within (cell, rep) -- i.e. one row per
-## (cell, method, arm, floor, rep), keeping rep as the bootstrap-resampling
-## unit (paired across tag by construction, since both tag rows are already
-## summed into it before the bootstrap ever sees them).
-rep_dt <- raw[, .(TP = sum(TP), FP = sum(FP), n_detectable_qtn = sum(n_detectable_qtn),
-                  n_recovered = sum(n_recovered), n_tests = sum(n_tests)),
-             by = .(cell, method, arm, floor, rep)]
-strata <- unique(rep_dt[, .(cell, method, arm, floor)])
-rows <- vector("list", nrow(strata))
-for (i in seq_len(nrow(strata))) {
-  s <- strata[i]
-  rd <- rep_dt[cell == s$cell & method == s$method & arm == s$arm & floor == s$floor][match(REPS_ALL, rep)]
-  rd[is.na(TP), `:=`(TP = 0L, FP = 0L, n_detectable_qtn = 0L, n_recovered = 0L, n_tests = 0L)]
-  bs <- bootstrap_rep_matrix(as.matrix(rd[, .(TP, FP, n_detectable_qtn, n_recovered, n_tests)]),
-                             N_BOOTSTRAP, SEEDS[["bootstrap"]])
-  prec_b <- bs[, "TP"] / pmax(bs[, "TP"] + bs[, "FP"], 1)
-  rec_b <- bs[, "n_recovered"] / pmax(bs[, "n_detectable_qtn"], 1)
-  prxrec_b <- prec_b * rec_b
-  point_precision <- sum(rd$TP) / pmax(sum(rd$TP) + sum(rd$FP), 1)
-  point_recall <- sum(rd$n_recovered) / pmax(sum(rd$n_detectable_qtn), 1)
-  rows[[i]] <- data.table(
-    cell = s$cell, method = s$method, arm = s$arm, floor = s$floor,
-    precision = point_precision, recall = point_recall,
-    prec_x_rec = point_precision * point_recall,
-    prec_x_rec_ci_lo = ci_quantile(prxrec_b)[1], prec_x_rec_ci_hi = ci_quantile(prxrec_b)[2])
+## Recompute from the raw floor sweep when it is present (the production
+## machine); otherwise redraw from the exported plotting data, which this
+## script wrote from the same computation.
+RAW <- "out_final_v1/12_floor_decomposition_raw.rds"
+if (file.exists(RAW)) {
+  raw <- readRDS(RAW)
+
+  ## pool BOTH tag values and all envs within (cell, rep) -- i.e. one row per
+  ## (cell, method, arm, floor, rep), keeping rep as the bootstrap-resampling
+  ## unit (paired across tag by construction, since both tag rows are already
+  ## summed into it before the bootstrap ever sees them).
+  rep_dt <- raw[, .(TP = sum(TP), FP = sum(FP), n_detectable_qtn = sum(n_detectable_qtn),
+                    n_recovered = sum(n_recovered), n_tests = sum(n_tests)),
+               by = .(cell, method, arm, floor, rep)]
+  strata <- unique(rep_dt[, .(cell, method, arm, floor)])
+  rows <- vector("list", nrow(strata))
+  for (i in seq_len(nrow(strata))) {
+    s <- strata[i]
+    rd <- rep_dt[cell == s$cell & method == s$method & arm == s$arm & floor == s$floor][match(REPS_ALL, rep)]
+    rd[is.na(TP), `:=`(TP = 0L, FP = 0L, n_detectable_qtn = 0L, n_recovered = 0L, n_tests = 0L)]
+    bs <- bootstrap_rep_matrix(as.matrix(rd[, .(TP, FP, n_detectable_qtn, n_recovered, n_tests)]),
+                               N_BOOTSTRAP, SEEDS[["bootstrap"]])
+    prec_b <- bs[, "TP"] / pmax(bs[, "TP"] + bs[, "FP"], 1)
+    rec_b <- bs[, "n_recovered"] / pmax(bs[, "n_detectable_qtn"], 1)
+    prxrec_b <- prec_b * rec_b
+    point_precision <- sum(rd$TP) / pmax(sum(rd$TP) + sum(rd$FP), 1)
+    point_recall <- sum(rd$n_recovered) / pmax(sum(rd$n_detectable_qtn), 1)
+    rows[[i]] <- data.table(
+      cell = s$cell, method = s$method, arm = s$arm, floor = s$floor,
+      precision = point_precision, recall = point_recall,
+      prec_x_rec = point_precision * point_recall,
+      prec_x_rec_ci_lo = ci_quantile(prxrec_b)[1], prec_x_rec_ci_hi = ci_quantile(prxrec_b)[2])
+  }
+  gp <- rbindlist(rows)
+  fwrite(gp, "results/figure_simulation_floor_decomposition_by_cell_data.tsv", sep = "\t")
+} else {
+  gp <- fread("results/figure_simulation_floor_decomposition_by_cell_data.tsv")
 }
-gp <- rbindlist(rows)
-fwrite(gp, "results/figure_simulation_floor_decomposition_by_cell_data.tsv", sep = "\t")
 
 gp[, engine := ifelse(method == "lfmm", "LFMM", "EMMAX")]
 gp <- gp[!(method == "lfmm" & arm == "D_stage1_consensus")]   ## no LFMM consensus arm

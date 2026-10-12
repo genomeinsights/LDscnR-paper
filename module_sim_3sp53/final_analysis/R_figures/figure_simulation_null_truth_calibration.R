@@ -10,11 +10,12 @@
 ## not run). The raw plotted points are also exported as TSV.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figure_simulation_null_truth_calibration ===\n\n")
 
 ml <- fread("results/simulation_null_truth_calibration.tsv")
 METHOD_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes")
-METHOD_COLOURS <- c("EMMAX consensus" = "#1565C0", "EMMAX Simes" = "#7B1FA2")
+METHOD_COLOURS <- c("EMMAX consensus" = COL_CONSENSUS, "EMMAX Simes" = COL_SIMES)
 SCHEME_LABELS <- c(group = "Group permutation", mvn = "Kinship-matched (MVN)", spatial = "Spatial MVN")
 
 ml[, method := factor(METHOD_LABELS[method], levels = METHOD_LABELS)]

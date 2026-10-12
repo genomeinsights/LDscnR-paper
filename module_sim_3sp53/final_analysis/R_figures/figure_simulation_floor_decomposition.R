@@ -26,6 +26,7 @@
 ## replicate), not from naively multiplying the two marginal CIs.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== figure_simulation_floor_decomposition ===\n\n")
 
@@ -33,8 +34,8 @@ raw <- readRDS("out_final_v1/12_floor_decomposition_raw.rds")
 
 ARM_LABELS <- c(A_unrestricted_marker = "Unrestricted marker", B_floor_filtered_marker = "Floor-filtered marker",
                 C_stage1_simes = "Stage-1 Simes", D_stage1_consensus = "Stage-1 consensus")
-ARM_COLOURS <- c("Unrestricted marker" = "#26A69A", "Floor-filtered marker" = "#546E7A",
-                 "Stage-1 Simes" = "#7B1FA2", "Stage-1 consensus" = "#1565C0")
+ARM_COLOURS <- c("Unrestricted marker" = COL_MARKER, "Floor-filtered marker" = COL_FILTERED,
+                 "Stage-1 Simes" = COL_SIMES, "Stage-1 consensus" = COL_CONSENSUS)
 
 ## grand-pooled point estimate + map-cluster bootstrap CI, per (method, arm, floor)
 rep_dt <- raw[, .(TP = sum(TP), FP = sum(FP), n_detectable_qtn = sum(n_detectable_qtn),

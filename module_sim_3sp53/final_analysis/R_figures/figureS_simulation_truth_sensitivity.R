@@ -11,12 +11,13 @@
 ## sensitivity check is meant to support.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figureS_simulation_truth_sensitivity ===\n\n")
 
 ts <- fread("results/simulation_truth_sensitivity.tsv")
 METHOD_LEVELS <- c("emmax_snp_region", "emmax_simes_region", "emmax_consensus_region", "lfmm_snp_region", "lfmm_simes_region")
-METHOD_LABELS <- c("emmax_snp_region" = "EMMAX unrestricted", "emmax_simes_region" = "EMMAX Simes",
-                   "emmax_consensus_region" = "EMMAX consensus", "lfmm_snp_region" = "LFMM unrestricted",
+METHOD_LABELS <- c("emmax_snp_region" = "EMMAX marker-wise", "emmax_simes_region" = "EMMAX Simes",
+                   "emmax_consensus_region" = "EMMAX consensus", "lfmm_snp_region" = "LFMM marker-wise",
                    "lfmm_simes_region" = "LFMM Simes")
 ts[, method := factor(method, levels = METHOD_LEVELS, labels = METHOD_LABELS[METHOD_LEVELS])]
 
@@ -26,16 +27,22 @@ long <- rbindlist(list(
 ))
 long[, metric := factor(metric, levels = c("Precision", "Recall"))]
 
-METHOD_COLOURS <- c("EMMAX unrestricted" = "#26A69A", "EMMAX Simes" = "#7B1FA2", "EMMAX consensus" = "#1565C0",
-                    "LFMM unrestricted" = "#EF6C00", "LFMM Simes" = "#2E7D32")
+METHOD_COLOURS <- c("EMMAX marker-wise" = COL_MARKER, "EMMAX Simes" = COL_SIMES, "EMMAX consensus" = COL_CONSENSUS,
+                    "LFMM marker-wise" = COL_MARKER, "LFMM Simes" = COL_SIMES)
+METHOD_LINETYPES <- c("EMMAX marker-wise" = "solid", "EMMAX Simes" = "solid", "EMMAX consensus" = "solid",
+                      "LFMM marker-wise" = "22", "LFMM Simes" = "22")
+METHOD_SHAPES <- c("EMMAX marker-wise" = 16, "EMMAX Simes" = 16, "EMMAX consensus" = 16,
+                   "LFMM marker-wise" = 1, "LFMM Simes" = 1)
 
-p <- ggplot(long, aes(va_share_threshold, value, colour = method)) +
+p <- ggplot(long, aes(va_share_threshold, value, colour = method, linetype = method, shape = method)) +
   geom_vline(xintercept = VA_SHARE_DETECTABLE, linetype = "dashed", colour = "grey50", linewidth = 0.3) +
-  geom_ribbon(aes(ymin = lo, ymax = hi, fill = method), alpha = 0.12, colour = NA) +
+  geom_ribbon(aes(ymin = lo, ymax = hi, fill = method), alpha = 0.12, colour = NA, linetype = 0) +
   geom_line(linewidth = 0.7) + geom_point(size = 1.6) +
   facet_wrap(~metric, scales = "free_y") +
   scale_colour_manual(values = METHOD_COLOURS, name = NULL) +
   scale_fill_manual(values = METHOD_COLOURS, guide = "none") +
+  scale_linetype_manual(values = METHOD_LINETYPES, name = NULL) +
+  scale_shape_manual(values = METHOD_SHAPES, name = NULL) +
   scale_x_continuous(breaks = VA_SHARE_SENSITIVITY_GRID) +
   labs(x = "Detectable-QTN Va-share threshold (dashed = primary, 5%)",
        y = "Grand-pooled estimate (95% map-cluster bootstrap CI)",

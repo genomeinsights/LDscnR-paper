@@ -20,14 +20,15 @@
 ## untouched by this script and remains the complementary view.
 suppressMessages({library(data.table); library(ggplot2)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figureS_simulation_floor_decomposition_c1 ===\n\n")
 
 gp <- fread("results/simulation_floor_sweep_c1.tsv")
 
 ARM_LABELS <- c(A_unrestricted_marker = "Unrestricted marker", B_floor_filtered_marker = "Floor-filtered marker",
                 C_stage1_simes = "Stage-1 Simes", D_stage1_consensus = "Stage-1 consensus")
-ARM_COLOURS <- c("Unrestricted marker" = "#26A69A", "Floor-filtered marker" = "#546E7A",
-                 "Stage-1 Simes" = "#7B1FA2", "Stage-1 consensus" = "#1565C0")
+ARM_COLOURS <- c("Unrestricted marker" = COL_MARKER, "Floor-filtered marker" = COL_FILTERED,
+                 "Stage-1 Simes" = COL_SIMES, "Stage-1 consensus" = COL_CONSENSUS)
 
 ## tests as % of the SAME method's unrestricted-marker (arm A) test count at
 ## the SAME floor -- same convention as the grand-pooled figure.
