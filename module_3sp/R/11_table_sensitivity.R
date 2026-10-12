@@ -47,7 +47,7 @@ S[, c("rho_val","sf_val") := {
   list(vapply(m, `[`, "", 2), vapply(m, `[`, "", 3))
 }]
 S[, grid_lab := sprintf("$\\rho=%s$, floor$=%s$%s", rho_val, sf_val,
-                        ifelse(is_canonical, " (canonical)", ""))]
+                        ifelse(is_canonical, " (primary)", ""))]
 
 ## on-EcoPeak as "n/N (pp%)"
 S[, on_ecopeak_lab := sprintf("%d/%d (%.0f\\%%)", on_ecopeak, regions, 100*on_ecopeak/regions)]
