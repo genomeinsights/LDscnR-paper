@@ -25,6 +25,7 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
 source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== truth_sensitivity ===\n\n")
 
 .score_one <- function(hyp_members, sig_ids, qtn_lut_match, detectable_qtn) {
@@ -79,8 +80,9 @@ score_truth_sensitivity <- function(tag, cell, rep, env) {
   }
   .from_markers <- function(sig_markers) {
     if (!length(sig_markers)) return(list())
-    disc <- vapply(cl_all$members, function(mm) any(mm %chin% sig_markers), logical(1))
-    .run_stage2(cl_all[disc])
+    ## 2026-10-13: use the shared, genomic-sorted seeding of R/05 (region_scoring_version 4);
+    ## this copy had kept the pre-2026-09-18 native row order, so marker-wise regions differed slightly.
+    .run_stage2(stage2_seed_from_markers(stage1, map0, sig_markers))
   }
 
   region_members <- list(
@@ -115,15 +117,26 @@ score_truth_sensitivity <- function(tag, cell, rep, env) {
 }
 
 if (sys.nframe() == 0L) {
-  combos <- CJ(tag = TAGS_ALL, cell = CELLS_ALL, rep = REPS_ALL, env = ENVS_ALL)
+  ## 2026-10-13: optional scenario subset (R09_CELLS="V0.5_c1,V1_c1,V2_c1") so the
+  ## high- and lower-gene-flow groups can be run on different machines; per-run
+  ## rows are always saved (R09_OUT_TAG names the file) and pooled by group in
+  ## R/30_truth_sensitivity_by_group.R. Without R09_CELLS the behaviour is unchanged.
+  CELLS_RUN <- if (nzchar(Sys.getenv("R09_CELLS"))) strsplit(Sys.getenv("R09_CELLS"), ",")[[1]] else CELLS_ALL
+  stopifnot(all(CELLS_RUN %in% CELLS_ALL))
+  combos <- CJ(tag = TAGS_ALL, cell = CELLS_RUN, rep = REPS_ALL, env = ENVS_ALL)
   say("[1] rescoring %d combos x %d Va-share thresholds x 5 region methods\n", nrow(combos), length(VA_SHARE_SENSITIVITY_GRID))
   rows <- mclapply(seq_len(nrow(combos)), function(i) {
     tryCatch(score_truth_sensitivity(combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i]),
              error = function(e) { message(sprintf("[truth_sensitivity] %s_%s_rep%d_env%d: %s",
                                                     combos$tag[i], combos$cell[i], combos$rep[i], combos$env[i], conditionMessage(e))); NULL })
-  }, mc.cores = 7)
+  }, mc.cores = as.integer(Sys.getenv("R09_CORES", "7")))
   dt <- rbindlist(rows)
   say("    %d rows\n", nrow(dt))
+  dir.create("results", showWarnings = FALSE)
+  per_run_file <- sprintf("results/simulation_truth_sensitivity_per_run_%s.tsv", Sys.getenv("R09_OUT_TAG", "all"))
+  fwrite(dt, per_run_file, sep = "\t")
+  say("    wrote %s\n", per_run_file)
+  if (!setequal(CELLS_RUN, CELLS_ALL)) { say("subset run: pooled all-scenario table not rewritten\n"); quit(save = "no") }
 
   say("\n[2] grand-pooled (ratio of pooled counts) by method x Va-share threshold\n")
   ci <- function(x, probs = c(0.025, 0.975)) stats::quantile(x, probs, na.rm = TRUE, names = FALSE)
