@@ -16,7 +16,7 @@ say("=== figure_simulation_null_truth_calibration ===\n\n")
 ml <- fread("results/simulation_null_truth_calibration.tsv")
 METHOD_LABELS <- c(emmax_consensus = "EMMAX consensus", emmax_simes = "EMMAX Simes")
 METHOD_COLOURS <- c("EMMAX consensus" = COL_CONSENSUS, "EMMAX Simes" = COL_SIMES)
-SCHEME_LABELS <- c(group = "Group permutation", mvn = "Kinship-matched (MVN)", spatial = "Spatial MVN")
+SCHEME_LABELS <- c(group = "Group permutation", mvn = "GRM-based null", spatial = "Spatial null")
 
 ml[, method := factor(METHOD_LABELS[method], levels = METHOD_LABELS)]
 ml[, scheme := factor(SCHEME_LABELS[scheme], levels = SCHEME_LABELS)]
