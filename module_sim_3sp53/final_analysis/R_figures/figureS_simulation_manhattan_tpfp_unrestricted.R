@@ -50,7 +50,7 @@ dt[, engine := factor(engine, levels = c("EMMAX", "LFMM"))]
 dt[, status := factor(status, levels = c("TP", "FP"))]
 
 status_pal <- c(TP = "#1B9E77", FP = "#D95F02")
-status_lab <- c(TP = "Linked to a detectable QTN", FP = "Not linked to a detectable QTN")
+status_lab <- c(TP = "Matched to a detectable QTN", FP = "Not matched to a detectable QTN")
 
 d_bg_dot <- dt[is_qtn == FALSE & is.na(status)]
 d_fg_dot <- dt[is_qtn == FALSE & !is.na(status)]
