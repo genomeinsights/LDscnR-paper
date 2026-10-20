@@ -1,0 +1,13 @@
+unit,correction,s1_units,s1_regions,s2_units,s2_regions,s1_inversion,s2_inversion
+minp,bonferroni,29,8,11,10,TRUE,TRUE
+minp,BH,51,24,76,75,TRUE,TRUE
+simes,bonferroni,10,5,4,4,TRUE,FALSE
+simes,BH,30,9,6,6,TRUE,TRUE
+emlg,bonferroni,13,4,4,4,TRUE,TRUE
+emlg,BH,32,11,5,5,TRUE,TRUE
+rand,bonferroni,6,3,1,1,TRUE,FALSE
+rand,BH,29,9,1,1,TRUE,FALSE
+ldw,bonferroni,9,4,1,1,TRUE,FALSE
+ldw,BH,31,10,6,5,TRUE,TRUE
+centr,bonferroni,11,5,3,3,TRUE,FALSE
+centr,BH,31,10,5,4,TRUE,TRUE
