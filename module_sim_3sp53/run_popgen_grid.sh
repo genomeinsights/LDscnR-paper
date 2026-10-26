@@ -6,6 +6,7 @@
 ## already complete for the whole grid (both tags), so this runs entirely
 ## locally regardless of which machine originally built which tag.
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 
 TAGS=(nobgs bgs)

@@ -23,8 +23,8 @@
 ## lineages are this small and lopsided (00_config.R's working hypothesis)?
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); library(digest)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_9sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp"), "R", "00_config.R"))
 STAGE <- "03b_EMMAX_sensitivity_ELAdmixed"
 say("=== %s ===\n\n", STAGE)
 

@@ -24,8 +24,8 @@
 ## region here is a real, individually reported Stage-2 candidate.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== 11_stage2_region_details ===\n\n")
 
 ## One combo -> a data.table of detailed region rows across every primary

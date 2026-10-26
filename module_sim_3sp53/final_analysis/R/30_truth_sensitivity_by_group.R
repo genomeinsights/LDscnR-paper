@@ -9,7 +9,7 @@
 ## Output: results/simulation_truth_sensitivity_by_group.tsv
 ## =============================================================================
 suppressMessages(library(data.table))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 say("=== 30_truth_sensitivity_by_group ===\n\n")
 
 files <- c(high_gene_flow = "results/simulation_truth_sensitivity_per_run_c1.tsv",

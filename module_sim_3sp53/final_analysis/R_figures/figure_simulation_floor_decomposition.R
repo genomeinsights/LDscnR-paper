@@ -25,9 +25,9 @@
 ## bootstrap draws as the Precision/Recall panels (prec_b * rec_b per
 ## replicate), not from naively multiplying the two marginal CIs.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== figure_simulation_floor_decomposition ===\n\n")
 
 raw <- readRDS("out_final_v1/12_floor_decomposition_raw.rds")

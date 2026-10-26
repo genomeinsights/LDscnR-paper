@@ -32,8 +32,8 @@
 ##     effect is then whatever visual/numeric contrast that produces between
 ##     the two tags at each cell, rather than a separate derived quantity.
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "06_popgen_summary"
 say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())

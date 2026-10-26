@@ -31,8 +31,8 @@
 ## fit, minutes for the clustering"), not a second multi-hour run.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "10_sensitivity"
 say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())
@@ -44,7 +44,7 @@ SCAN_PATH <- file.path(PATHS$out, "03_EMMAX", "scan.rds")
 LFMM_PATH <- file.path(PATHS$out, "04_lfmm", "lfmm.rds")
 sc <- readRDS(SCAN_PATH); lf <- readRDS(LFMM_PATH)
 
-LIFT <- path.expand("~/gitlab/LDscnR-paper/kingman2021/data/liftover")
+LIFT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "kingman2021/data/liftover")
 ROMAN <- c("I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV",
            "XV","XVI","XVII","XVIII","XIX","XX","XXI")
 .rd <- function(f) { x <- fread(file.path(LIFT, f), header=FALSE,

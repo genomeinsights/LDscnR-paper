@@ -9,6 +9,7 @@
 ##
 ## Usage: ./run_structured_null_sample.sh [CONCURRENCY]
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 
 TAGS=(nobgs bgs)

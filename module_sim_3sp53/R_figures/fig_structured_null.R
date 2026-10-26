@@ -21,7 +21,7 @@
 ## of two arm-level means" -- simpler, and a well-defined n/SE needs one
 ## aggregation level, not two nested means.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_structured_null ===\n\n")
 
 .se <- function(x) { x <- x[is.finite(x)]; if (length(x) < 2) return(NA_real_); stats::sd(x) / sqrt(length(x)) }

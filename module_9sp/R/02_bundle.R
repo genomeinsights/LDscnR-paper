@@ -21,8 +21,8 @@
 ## Writes nothing outside out/02_bundle/ and module_9sp/cache/.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); library(digest)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_9sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp"), "R", "00_config.R"))
 STAGE <- "02_bundle"
 invisible(check_ldscnr())
 

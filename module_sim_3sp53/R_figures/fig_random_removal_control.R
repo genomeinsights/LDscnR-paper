@@ -22,7 +22,7 @@
 ## within a combo (already averaged away inside fdr_random_conditional
 ## before this script ever sees it).
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_random_removal_control ===\n\n")
 
 FILES <- Sys.glob(file.path(PATHS$out, "14_random_removal_control", "rrc_*.rds"))

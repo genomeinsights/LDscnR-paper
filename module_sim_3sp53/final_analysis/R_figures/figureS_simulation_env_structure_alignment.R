@@ -14,8 +14,8 @@
 ## \caption{}, see the companion _caption.txt this script also writes) and
 ## the _labelled.pdf twin (title + in-plot caption, for internal review).
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figureS_simulation_env_structure_alignment ===\n\n")
 
 gp <- fread("results/simulation_env_structure_alignment.tsv")

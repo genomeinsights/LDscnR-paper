@@ -7,7 +7,7 @@
 ## results/simulation_qtn_detection_c1.tsv (R/28). Bins: equal-count bins for
 ## absolute Va; fixed bins for the share and MAF; Wilson 95% intervals.
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 d <- fread(file.path(MODULE_ROOT, "results", "simulation_qtn_detection_c1.tsv"))
 
 METH <- c(emmax_snp_region = "Marker-wise EMMAX", emmax_simes_region = "EMMAX Simes",

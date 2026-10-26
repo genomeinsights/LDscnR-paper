@@ -33,8 +33,8 @@
 ## out/02_bundle/ and module_3sp/cache/.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); library(digest)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "02_bundle"
 ## The version-pin gate, same as 03_EMMAX.R/04_lfmm.R -- and MORE needed here, not less: this
 ## is the stage a pin mismatch is most expensive to discover late in (hours into the decay

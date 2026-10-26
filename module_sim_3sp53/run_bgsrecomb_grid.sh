@@ -5,6 +5,7 @@
 ## Only needs R/02_bundle.R's output (already complete) plus the raw
 ## rec_map<rep>.rds files -- runs entirely locally.
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 
 TAGS=(nobgs bgs)

@@ -30,7 +30,7 @@
 ## No target= subdirectory: unlike 01-04, this stage pools ACROSS reps and
 ## envs, so its receipt/output are keyed by (tag, cell) only.
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "05_pool"
 say("=== %s ===\n\n", STAGE)
 

@@ -46,13 +46,15 @@
 ## effect of MERGING ITSELF from the effect of simply testing fewer, larger units.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "13_goldilocks_units"
 say("=== %s ===\n\n", STAGE)
 
-LDPP <- path.expand("~/gitlab/LD-pruning-paper")
+## LDSCNR_LDPP: a checkout of the LD-pruning-paper repository with its cache_3sp/ and
+## results_3sp/ (not part of this archive; see README, "Table 6").
+LDPP <- Sys.getenv("LDSCNR_LDPP", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LD-pruning-paper"))
 ALPHA <- 0.05; SEED <- 1L; SPAN_CAP <- 1e3; TARGET <- 100L; CGRID <- 2:400
-BND <- path.expand("~/gitlab/LDscnR-paper/3sp_data/3sp_LDscnR_data.rds")
+BND <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "3sp_data/3sp_LDscnR_data.rds")
 simes <- function(p) { p <- sort(p); min(length(p) * p / seq_along(p)) }
 
 INPUTS <- c(file.path(LDPP, "cache_3sp", "map_only.rds"), file.path(LDPP, "cache_3sp", "K_eco.rds"),

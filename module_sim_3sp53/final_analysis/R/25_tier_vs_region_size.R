@@ -11,7 +11,7 @@
 ## Reads results/floor_stability_density_half_double_region_audit.tsv (R/23).
 ## =============================================================================
 suppressMessages(library(data.table))
-a <- fread(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis/results/floor_stability_density_half_double_region_audit.tsv"))
+a <- fread(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis/results/floor_stability_density_half_double_region_audit.tsv"))
 a[, `:=`(span_kb = (to - from) / 1e3, tier = factor(tier_effective), rep = as.integer(sub(".*_rep(\\d+)_.*", "\\1", combo_id)),
          cell = sub("^[a-z]+_(V[0-9.]+_c[0-9.]+)_.*", "\\1", combo_id), tag = sub("_.*", "", combo_id))]
 size_by_tier <- a[, .(n = .N, median_span_kb = median(span_kb), median_markers = as.numeric(median(n_markers)), precision = mean(TP)), by = .(method, tier)][order(method, tier)]; print(size_by_tier)
@@ -28,7 +28,7 @@ bt <- t(replicate(1000, { r <- sample(reps, replace = TRUE); x <- rbindlist(lapp
   coef(glm(TP ~ log1p(span_kb) + log(n_markers) + method + cell + tag + tier, binomial, x))[c("tier2", "tier3")] }))
 print(round(exp(rbind(est = coef(m1)[c("tier2", "tier3")], apply(bt, 2, quantile, c(.025, .975)))), 2))
 or <- exp(rbind(est = coef(m1)[c("tier2", "tier3")], apply(bt, 2, quantile, c(.025, .975))))
-R <- function(x) file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "results", x)
+R <- function(x) file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "results", x)
 fwrite(size_by_tier, R("floor_stability_tier_size_by_tier.tsv"), sep = "\t")
 fwrite(data.table(term = c("tier2", "tier3"), odds_ratio = or["est", ], ci_lo = or["2.5%", ], ci_hi = or["97.5%", ],
                   lrt_p_tier = anova(m0, m1, test = "LRT")$`Pr(>Chi)`[2]),

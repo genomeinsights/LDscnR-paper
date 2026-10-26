@@ -7,7 +7,7 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
 
-ROOT <- path.expand("~/gitlab/LDscnR-paper")
+ROOT <- Sys.getenv("LDSCNR_PAPER_ROOT", ".")
 IN <- file.path(ROOT, "module_9sp", "out", "02b_env_structure_alignment",
                 "alignment.rds")
 FIG_DIR <- file.path(ROOT, "module_9sp", "figures")

@@ -43,8 +43,8 @@
 ## variance), so there is no reason to drop them and lose power.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(digest)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_9sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp"), "R", "00_config.R"))
 STAGE <- "03c_EMMAX_structurednull"
 say("=== %s ===\n\n", STAGE)
 

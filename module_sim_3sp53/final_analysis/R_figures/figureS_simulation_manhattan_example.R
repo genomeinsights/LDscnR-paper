@@ -14,7 +14,7 @@
 ## figureS_simulation_manhattan_tpfp.R for the actually-scored Stage-1
 ## units, coloured by TP/FP.
 suppressMessages({library(data.table); library(ggplot2); library(LDscnR)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 source(file.path(PATHS$module, "R_figures", "manhattan_example_data.R"))
 say("=== figureS_simulation_manhattan_example ===\n\n")
 

@@ -122,7 +122,7 @@
 ##    exactly once).
 ## =============================================================================
 suppressMessages({library(data.table)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 source(file.path(MODULE_ROOT, "R", "00_config.R"))
 source(file.path(MODULE_ROOT, "R", "helpers_stage2_truth.R"))   ## ci_quantile()
 source(file.path(MODULE_ROOT, "R", "15_env_structure_alignment.R"))   ## .prep()/.boot_slope() -- now top-level there (2026-09-26), does not rerun 15's own guarded analysis
@@ -222,7 +222,7 @@ say("[1] loaded %d rows from R/15's full_grid (%d combos x %d methods)\n",
 
 ## ---- 2. join Fst (full 7-cell grid, pre-correction-parser but genotype/pop- --
 ## label-based -- safe; see header) -------------------------------------------
-popgen <- readRDS(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "results", "popgen_summary.rds"))
+popgen <- readRDS(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "results", "popgen_summary.rds"))
 fst_dt <- popgen$per_replicate[, .(tag, cell, rep, env, Fst)]
 dt <- merge(full_grid, fst_dt, by = c("tag", "cell", "rep", "env"), all.x = TRUE)
 if (anyNA(dt$Fst)) stop("Fst missing for some full_grid rows -- popgen_summary.rds should cover the full 7-cell grid")

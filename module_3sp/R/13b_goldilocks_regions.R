@@ -21,11 +21,13 @@
 ## columns added. That file, not tables/table6_goldilocks_units.tex, is the one
 ## the supplement now uses.
 ## =============================================================================
-suppressMessages({library(data.table); devtools::load_all("~/gitlab/LDscnR", quiet = TRUE)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+suppressMessages({library(data.table); devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")), quiet = TRUE)})
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "13b_goldilocks_regions"
-LDPP <- path.expand("~/gitlab/LD-pruning-paper")
-BND  <- path.expand("~/gitlab/LDscnR-paper/3sp_data/3sp_LDscnR_data.rds")
+## LDSCNR_LDPP: a checkout of the LD-pruning-paper repository with its cache_3sp/ and
+## results_3sp/ (not part of this archive; see README, "Table 6").
+LDPP <- Sys.getenv("LDSCNR_LDPP", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LD-pruning-paper"))
+BND  <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "3sp_data/3sp_LDscnR_data.rds")
 ALPHA <- 0.05; INV <- list(Chr = "Chr1", from = 21.5e6, to = 21.9e6)
 OUT_DIR <- file.path(PATHS$out, STAGE); dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 

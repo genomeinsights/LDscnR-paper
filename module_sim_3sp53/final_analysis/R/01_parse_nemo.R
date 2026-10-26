@@ -44,7 +44,7 @@
 ## no caller in the real pipeline should ever pass offset=1.
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 
 ## ---- assertion bookkeeping ---------------------------------------------------
 ## Every check is a hard stop on failure (per "Add hard assertions... stop

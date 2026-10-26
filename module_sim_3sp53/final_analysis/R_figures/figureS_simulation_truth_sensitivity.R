@@ -10,8 +10,8 @@
 ## the whole grid -- no crossing lines -- which is the actual claim this
 ## sensitivity check is meant to support.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figureS_simulation_truth_sensitivity ===\n\n")
 
 ## 2026-10-13 (PK review): one row per gene-flow group instead of all scenarios

@@ -18,7 +18,7 @@
 ##    associative overdominance. Do not read panel 2 alone as "BGS
 ##    validation failed" -- panel 1 is the validated result.
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 say("=== figureS_simulation_bgs_qc ===\n\n")
 
 bv <- fread("results/simulation_bgs_validation.tsv")

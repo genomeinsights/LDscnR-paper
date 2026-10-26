@@ -31,7 +31,7 @@
 ## paired within a resampled rep.
 ## =============================================================================
 suppressMessages({library(data.table); library(ggplot2)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 source(file.path(MODULE_ROOT, "R", "00_config.R"))
 source(file.path(MODULE_ROOT, "R", "helpers_stage2_truth.R"))   ## bootstrap_rep_matrix(), ci_quantile()
 source(file.path(MODULE_ROOT, "R", "helpers_floor_stability.R"))

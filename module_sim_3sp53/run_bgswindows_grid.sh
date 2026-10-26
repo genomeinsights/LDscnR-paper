@@ -6,6 +6,7 @@
 ## each) since this stage deliberately bypasses the MAF filter baked into
 ## R/02_bundle.R's already-parsed bundles.
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 
 TAGS=(nobgs bgs)
@@ -23,7 +24,7 @@ mkdir -p out/logs
 ## [!] FIXED 2026-09-08 (module_sim_3sp53): same fix as run_grid.sh -- the
 ## inherited .tgz check always failed against prod_out's already-unpacked
 ## per-run directories.
-PROD_ROOT_CHECK="${SIM_NEMO_ROOT:-/Volumes/Large_storage/prod_out}"
+PROD_ROOT_CHECK="${LDSCNR_NEMO_RAW:-$LDSCNR_PAPER_ROOT/nemo_raw/prod_out}"
 archive_exists() {
   local tag="$1" cell="$2" rep="$3" env="$4"
   [ -d "${PROD_ROOT_CHECK}/adapt_${tag}_chr${rep}_${cell}_env${env}/GENO" ]

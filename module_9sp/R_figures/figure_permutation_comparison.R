@@ -22,11 +22,11 @@
 ## histogram is legible directly on a linear axis, and is the whole story.
 ## =============================================================================
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_9sp"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp"), "R", "00_config.R"))
 STAGE <- "figure_permutation_comparison"
 say("=== %s ===\n\n", STAGE)
 
-sc3 <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_3sp/out/03_EMMAX/scan.rds"))
+sc3 <- readRDS(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/out/03_EMMAX/scan.rds"))
 sc9 <- readRDS(file.path(PATHS$out, "03_EMMAX", "scan.rds"))
 
 ## one row per (species, statistic) -- keeps the four null objects and their labels together
@@ -96,7 +96,7 @@ ggsave(OUT_PDF, FIG, width = 9, height = 6.5, device = cairo_pdf)
 ggsave(file.path(PATHS$figures, "permutation_comparison_3sp_9sp.png"), FIG, width = 9, height = 6.5, dpi = 220)
 say("[1] wrote %s\n", OUT_PDF)
 write_receipt(STAGE,
-  inputs = c(path.expand("~/gitlab/LDscnR-paper/module_3sp/out/03_EMMAX/_receipt.rds"),
+  inputs = c(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/out/03_EMMAX/_receipt.rds"),
              file.path(PATHS$out, "03_EMMAX", "_receipt.rds")),
   params = list(), outputs = OUT_PDF)
 say("    receipt: %s\n", receipt_path(STAGE))

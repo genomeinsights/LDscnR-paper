@@ -13,7 +13,7 @@
 ## Pooled across all 7 cells (mechanism question, not a per-scenario one --
 ## see 09_bgs_recomb_pool.R's header).
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_bgs_recomb ===\n\n")
 
 POOL_PATH <- file.path(PATHS$out, "09_bgs_recomb_pool", "bgs_recomb_summary.rds")

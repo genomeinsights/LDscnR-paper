@@ -26,8 +26,8 @@
 ## rather than folded into a quantile that would otherwise span 0 to a
 ## positive value: {0, then tertiles of the nonzero distribution}.
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "08_bgs_recomb"
 say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())

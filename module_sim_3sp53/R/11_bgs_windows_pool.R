@@ -15,7 +15,7 @@
 ## no such motivation to override the reference script's own convention here,
 ## now that the effect is expected to be real and cell-dependent.)
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "11_bgs_windows_pool"
 say("=== %s ===\n\n", STAGE)
 

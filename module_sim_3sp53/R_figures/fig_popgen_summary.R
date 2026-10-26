@@ -8,7 +8,7 @@
 ## order (dispersal high->low, then selection intensity high->low) and
 ## style as fig_pooled_pr.R, for a directly comparable reading.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_popgen_summary ===\n\n")
 
 POOL_PATH <- file.path(PATHS$out, "07_popgen_pool", "popgen_summary.rds")

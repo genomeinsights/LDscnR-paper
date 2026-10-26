@@ -14,7 +14,7 @@
 ## much more power (up to 700 (cell,rep,env) triples per bin) to see clearly
 ## rather than splitting into noisy per-cell estimates.
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "09_bgs_recomb_pool"
 say("=== %s ===\n\n", STAGE)
 

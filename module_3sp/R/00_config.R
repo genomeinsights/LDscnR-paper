@@ -19,17 +19,17 @@ suppressMessages({library(data.table); library(digest)})
 ## Five locations, two of which hold data that cannot be committed. Named here so a
 ## stage never hardcodes one, and so a machine with a different layout needs one edit.
 PATHS <- list(
-  module   = path.expand("~/gitlab/LDscnR-paper/module_3sp"),
-  out      = path.expand("~/gitlab/LDscnR-paper/module_3sp/out"),
+  module   = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"),
+  out      = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/out"),
   ## ONE PLACE FOR EVERY FINAL FIGURE (PK), separate from out/<stage>/'s working files
   ## (receipts, rds, csv). Every figure-producing script writes here so the whole set can be
   ## browsed in one directory before hand-picking which ones move to
   ## LDscnR_manuscript/figures/ -- out/<stage>/ stays the place for a stage's non-figure
   ## outputs, not a second copy of the figures.
-  figures  = path.expand("~/gitlab/LDscnR-paper/module_3sp/figures"),
+  figures  = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/figures"),
   ## Same convention as figures/, for tables (PK): one place to browse every generated
   ## LaTeX table before hand-picking which move to LDscnR_manuscript/tables/.
-  tables   = path.expand("~/gitlab/LDscnR-paper/module_3sp/tables"),
+  tables   = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/tables"),
   ## RAW INPUTS -- never written by this pipeline.
   ##
   ## COPIED IN so the module is self-contained on this filesystem (PK). Both are
@@ -38,28 +38,28 @@ PATHS <- list(
   ## git -- 3sp_data.RData is 159 MB, over GitHub's 100 MB hard limit, and bzip2 only
   ## reaches 103 MB -- so this is self-containment on disk, not in the repository. Those
   ## are different properties and only the second survives a clone.
-  raw_3sp  = path.expand("~/gitlab/LDscnR-paper/module_3sp/data/3sp_data.RData"),
+  raw_3sp  = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/data/3sp_data.RData"),
   ## LFMM F-values over the FULL pre-MAF map. See LFMM_SOURCE below -- inherited, not
   ## computed by anything in any repository.
-  lfmm_F   = path.expand("~/gitlab/LDscnR-paper/module_3sp/data/lfmm_F.rds"),
+  lfmm_F   = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/data/lfmm_F.rds"),
   ## NOT copied, deliberately. These are TRACKED in this repository already and OWNED by
   ## other sessions -- the BEDs by ldscnr-fe (kingman2021), the map by ldscnr-d4. A second
   ## copy inside module_3sp would be a copy that can silently drift from the maintained
   ## one, and the failure would look like a result changing for no reason. Self-contained
   ## does not mean duplicated.
-  ecopeaks = path.expand("~/gitlab/LDscnR-paper/kingman2021/data/liftover"),
-  recmap   = path.expand("~/gitlab/LDscnR-paper/3sp_data/rec_maps/stickleback_recomb_3crosses_gasAcu1.tsv"),
+  ecopeaks = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "kingman2021/data/liftover"),
+  recmap   = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "3sp_data/rec_maps/stickleback_recomb_3crosses_gasAcu1.tsv"),
   ## Provenance of the two copied files: where they came from and their SHA-256 at copy
   ## time, as a RECORD rather than a live path. An earlier draft kept origin_* pointing at
   ## LD-scaling-genome-scans so the copies could be re-verified against them, which
   ## reintroduced exactly the external dependency the copy removed (PK). Checking against
   ## a recorded hash catches a corrupted or replaced local copy and needs no other
   ## repository to exist.
-  provenance = path.expand("~/gitlab/LDscnR-paper/module_3sp/data/PROVENANCE.csv"),
+  provenance = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/data/PROVENANCE.csv"),
   ## CACHE -- large, regenerable, gitignored. Inside the module (PK), so the whole
   ## pipeline lives under one root and nothing resolves to another repository. It will
   ## reach GB scale: the GDS, the edge lists and the bundle all land here.
-  cache    = path.expand("~/gitlab/LDscnR-paper/module_3sp/cache")
+  cache    = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/cache")
 )
 ## Edge lists from compute_LD_decay. The pipeline being replaced pointed this at
 ## /Volumes/Nemo, an external volume, which is one reason its bundle could not be
@@ -339,7 +339,7 @@ MAP_SUBSETS      <- c("all bins", "concordant only")
 ## version cited in the manuscript and deposit. Earlier stages ran against 011a165,
 ## 848e4b9, 03853fa and 5144e23 (each stage's _receipt.rds records which).
 LDSCNR_PIN <- list(
-  repo    = path.expand("~/gitlab/LDscnR"),
+  repo    = Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")),   # LDscnR v0.9.1 source (git checkout or unpacked archive)
   sha     = "24776194ce36",
   branch  = "main", # tag v0.9.1
   version = "0.9.1",
@@ -379,6 +379,9 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
   head_sha <- substr(paste(g("rev-parse","HEAD"), collapse = ""), 1, 12)
   dirty <- length(g("status","--porcelain","--untracked-files=no")) > 0
   src <- sort(g("ls-files","R/"))
+  ## an unpacked source archive (no .git): the same files, in git's byte order
+  if (!length(src) && dir.exists(file.path(LDSCNR_PIN$repo, "R")))
+    src <- file.path("R", sort(list.files(file.path(LDSCNR_PIN$repo, "R")), method = "radix"))
   cur <- if (!length(src)) NA_character_ else {
     fp <- file.path(LDSCNR_PIN$repo, src)
     substr(digest::digest(paste(vapply(fp[file.exists(fp)],

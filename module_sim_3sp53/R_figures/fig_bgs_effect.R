@@ -8,7 +8,7 @@
 ## afterward. 0 = no effect; negative = bgs lower than nobgs. Same cell
 ## order as fig_pooled_pr.R/fig_popgen_summary.R.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_bgs_effect ===\n\n")
 
 POOL_PATH <- file.path(PATHS$out, "07_popgen_pool", "popgen_summary.rds")

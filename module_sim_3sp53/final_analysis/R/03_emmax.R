@@ -27,7 +27,7 @@
 ## later, explicitly separate stage may add region-level reporting.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 
 run_emmax <- function(tag, cell, rep, env, force = FALSE) {
   STAGE <- "03_emmax"   ## LOCAL -- see 02_build_ld_units.R's comment on this exact bug

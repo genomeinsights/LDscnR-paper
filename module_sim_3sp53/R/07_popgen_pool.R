@@ -26,7 +26,7 @@
 ## No target= subdirectory: pools across reps and envs, keyed by (tag, cell)
 ## (or just cell, for bgs_effect) only, same convention as 05_pool.R.
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "07_popgen_pool"
 say("=== %s ===\n\n", STAGE)
 

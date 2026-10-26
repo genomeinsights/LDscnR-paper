@@ -20,7 +20,7 @@
 ## Output: out/16_ldw_peaks/ldw_peaks.tsv, ldw_units.tsv
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "16_ldw_peaks"
 say("=== %s ===\n\n", STAGE)
 N_ROT <- 10000L; FLANK <- 250e3

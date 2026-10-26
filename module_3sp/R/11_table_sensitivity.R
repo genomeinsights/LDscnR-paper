@@ -28,7 +28,7 @@
 ## throughout 04_lfmm.R).
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 say("=== 11_table_sensitivity ===\n\n")
 
 SENS_PATH <- file.path(PATHS$out, "10_sensitivity", "sensitivity.rds")

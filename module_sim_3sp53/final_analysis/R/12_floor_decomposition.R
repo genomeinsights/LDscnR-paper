@@ -30,8 +30,8 @@
 ## representatives, ALREADY including sub-floor units) is reused unchanged.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== 12_floor_decomposition ===\n\n")
 
 FLOOR_GRID <- c(1L, 2L, 3L, 5L, 10L, 20L)

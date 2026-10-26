@@ -38,8 +38,8 @@
 ## that module's README, "2026-09-09 CORRECTED").
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== 13_region_null_calibration ===\n\n")
 
 NULL_METHODS <- c("emmax_consensus", "emmax_simes")

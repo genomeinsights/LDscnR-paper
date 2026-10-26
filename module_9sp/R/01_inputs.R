@@ -11,7 +11,7 @@
 ## not because it does less checking of what IS declared, but because there is
 ## less declared to check.
 ## =============================================================================
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_9sp"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp"), "R", "00_config.R"))
 STAGE <- "01_inputs"
 
 INPUTS <- c(raw_9sp = PATHS$raw_9sp)

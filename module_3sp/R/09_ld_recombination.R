@@ -44,8 +44,8 @@
 ## stickleback before this script.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(pROC)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "09_ld_recombination"
 say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())

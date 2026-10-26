@@ -52,7 +52,7 @@
 ## range-xpn-nobgs.log), not a neutral/QTN pairing and not yet in scope (PK).
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "01_parse_nemo"
 say("=== %s ===\n\n", STAGE)
 

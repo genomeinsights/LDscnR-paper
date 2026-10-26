@@ -6,8 +6,8 @@
 ## genomic-coverage opportunity predicts). Reads R/14's three output TSVs;
 ## no association model or Stage-2 assembly is rerun here.
 suppressMessages({library(data.table); library(ggplot2); library(patchwork)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figureS_simulation_stage2_size_truth ===\n\n")
 
 desc <- fread("results/simulation_stage2_size_truth.tsv")

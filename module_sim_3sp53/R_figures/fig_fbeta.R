@@ -14,7 +14,7 @@
 ## six (tag,cell) panels per arm per beta, mirroring the reference figure's
 ## own "medians over N panels per arm" convention.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_fbeta ===\n\n")
 
 POOL_PATH <- file.path(PATHS$out, "05_pool", "pooled_pr.rds")

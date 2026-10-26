@@ -77,7 +77,7 @@
 ## fill=TRUE matters, older files are missing the arm/scheme columns
 ## newer ones carry.
 suppressMessages({library(data.table); library(LDscnR)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 TAG <- args[1]; CELL <- args[2]

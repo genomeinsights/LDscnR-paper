@@ -7,7 +7,7 @@
 ## continuations remain together when map/burn-in identifiers are resampled.
 ## =============================================================================
 suppressMessages(library(data.table))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"),
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"),
                  "R", "00_config.R"))
 say("=== 18_bgs_marker_noise ===\n\n")
 

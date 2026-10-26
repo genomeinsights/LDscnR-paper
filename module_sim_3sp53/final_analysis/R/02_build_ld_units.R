@@ -16,7 +16,7 @@
 ## its output -- asserted, not assumed.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); library(digest)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 
 build_ld_units <- function(tag, cell, rep, env, force = FALSE) {
   ## [!] LOCAL, not the top-level global -- run_combo.R sources 01/02/03/05

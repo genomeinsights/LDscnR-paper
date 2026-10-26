@@ -17,6 +17,7 @@
 ##   REPS_LIST     default "1 2 3 4 5 6 7 8 9 10"
 ##   ENVS_LIST     default "1 2 3 4 5 6 7 8 9 10"
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 export PATH="/usr/local/bin:$PATH"
 

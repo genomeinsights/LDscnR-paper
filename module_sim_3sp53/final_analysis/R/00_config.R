@@ -13,7 +13,7 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(digest)})
 
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 
 ## Host-aware path resolution (2026-09-10): the SAME raw NEMO output/recmaps/
 ## env files now also live on Petri's laptop, at different mount points than
@@ -38,15 +38,18 @@ PATHS <- list(
   ## identical directory listing (1540 run dirs, 125 GB) between the mini's
   ## copy and the laptop's local external-drive copy before adding the
   ## second candidate here.
-  raw_nemo       = .first_existing(c("/Volumes/Large_storage/prod_out", "/Volumes/Nemo/Nemo_sim/prod_out_3sp53")),
-  raw_recmap_dir = .first_existing(c("~/LDscnR-NEMO/params_3spC_53cM/rds", "~/gitlab/LDscnR-NEMO/params_3spC_53cM/rds")),
-  raw_env_dir    = .first_existing(c("~/LDscnR-NEMO/params_3spC_53cM", "~/gitlab/LDscnR-NEMO/params_3spC_53cM")),
+  ## Set by environment variable (see the repository README):
+  ##   LDSCNR_NEMO_RAW     unpacked Nemo production output (prod_out/, 1,540 run dirs, ~125 GB)
+  ##   LDSCNR_NEMO_PARAMS  LDscnR-NEMO/params_3spC_53cM (maps, env surfaces, rds/rec_map*.rds)
+  raw_nemo       = .first_existing(Sys.getenv("LDSCNR_NEMO_RAW", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "nemo_raw", "prod_out"))),
+  raw_recmap_dir = .first_existing(file.path(Sys.getenv("LDSCNR_NEMO_PARAMS", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR-NEMO", "params_3spC_53cM")), "rds")),
+  raw_env_dir    = .first_existing(Sys.getenv("LDSCNR_NEMO_PARAMS", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR-NEMO", "params_3spC_53cM"))),
 
   ## Parsed bundles -- NEW root, "_final_v1" suffix, same volume as the old
   ## (large) root but never the same directory. Mini-only for now (not yet
   ## copied to the laptop); stages needing this on the laptop fail loudly
   ## via .check_paths() below, same as any other missing host path.
-  parsed = "/Volumes/Large_storage/module_sim_3sp53_parsed_final_v1",
+  parsed = Sys.getenv("LDSCNR_SIM_PARSED", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "nemo_raw", "module_sim_3sp53_parsed_final_v1")),
 
   ## Everything else this subtree produces (QA reports now; stage outputs,
   ## once later phases exist) -- kept inside the git-tracked final_analysis/
@@ -154,8 +157,11 @@ SEEDS <- c(bundle = 1L, clusters = 11L, bootstrap = 41L)
 
 ## ---- 4. PROVENANCE (captured once per run, saved with every QA report) ------
 ldscnr_sha <- function() {
-  tryCatch(system2("git", c("-C", path.expand("~/gitlab/LDscnR"), "rev-parse", "--short", "HEAD"),
-                   stdout = TRUE, stderr = FALSE), error = function(e) NA_character_)
+  ## the source checkout used by devtools::load_all() (LDSCNR_SRC), else the
+  ## installed package's GitHub commit
+  sha <- tryCatch(system2("git", c("-C", Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")), "rev-parse", "--short", "HEAD"),
+                          stdout = TRUE, stderr = FALSE), error = function(e) character())
+  if (length(sha)) sha else substr(utils::packageDescription("LDscnR")$RemoteSha %||% NA_character_, 1, 7)
 }
 r_version <- function() paste(R.version$major, R.version$minor, sep = ".")
 
@@ -167,9 +173,8 @@ r_version <- function() paste(R.version$major, R.version$minor, sep = ".")
     stop("final_analysis/R/00_config.R: required path(s) not found on this host:\n  ",
          paste(missing, collapse = "\n  "),
          "\nThis pipeline expects to run on a machine holding the raw NEMO output ",
-         "(currently: Petri's mini, or Petri's laptop via /Volumes/Nemo). Add this ",
-         "host's path to the relevant .first_existing() candidate list in 00_config.R ",
-         "if that has changed.",
+         "and the LDscnR-NEMO parameter set. Set LDSCNR_NEMO_RAW and LDSCNR_NEMO_PARAMS ",
+         "(see the repository README).",
          call. = FALSE)
   }
   for (p in c(PATHS$parsed, PATHS$qc, PATHS$out)) dir.create(p, recursive = TRUE, showWarnings = FALSE)

@@ -4,6 +4,7 @@
 ## Phase 3 gate 3: all 7 cells x both tags, rep=1, env=1 (14 combinations),
 ## through the full pipeline (parse -> Stage 1/GRM -> EMMAX -> truth score).
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 export PATH="/usr/local/bin:$PATH"
 

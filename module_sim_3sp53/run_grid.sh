@@ -41,6 +41,7 @@
 ## each invocation's full output to
 ## module_sim/out/logs/<tag>_<cell>_rep<rep>_env<env>_<stage>.txt.
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 
 TAG="${1:-nobgs}"
@@ -70,7 +71,7 @@ trap 'rm -rf "$TMPDIR_TIMING"' EXIT
 ## "known missing" list -- harmless now that all 7 cells are present
 ## (NEMO session verified 1400/1400), kept for parity with module_sim/'s
 ## driver and so a future partial rerun still behaves correctly.
-PROD_ROOT_CHECK="${SIM_NEMO_ROOT:-/Volumes/Large_storage/prod_out}"
+PROD_ROOT_CHECK="${LDSCNR_NEMO_RAW:-$LDSCNR_PAPER_ROOT/nemo_raw/prod_out}"
 archive_exists() {
   local tag="$1" cell="$2" rep="$3" env="$4"
   [ -d "${PROD_ROOT_CHECK}/adapt_${tag}_chr${rep}_${cell}_env${env}/GENO" ]

@@ -6,7 +6,7 @@
 ## recombination-rate quintile (Q1 = lowest), one line per cell (never pooled
 ## across cells -- see R/11_bgs_windows_pool.R's header).
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 say("=== fig_bgs_windows ===\n\n")
 
 POOL_PATH <- file.path(PATHS$out, "11_bgs_windows_pool", "bgs_windows_summary.rds")

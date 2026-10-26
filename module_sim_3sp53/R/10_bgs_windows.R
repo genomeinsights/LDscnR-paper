@@ -29,7 +29,7 @@
 ## same rep get IDENTICAL window boundaries and rec_rate, since both share
 ## one recombination map.
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "10_bgs_windows"
 say("=== %s ===\n\n", STAGE)
 

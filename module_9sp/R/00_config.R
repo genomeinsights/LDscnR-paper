@@ -37,10 +37,10 @@ suppressMessages({library(data.table); library(digest)})
 
 ## ---- 1. WHERE THINGS ARE ------------------------------------------------------
 PATHS <- list(
-  module   = path.expand("~/gitlab/LDscnR-paper/module_9sp"),
-  out      = path.expand("~/gitlab/LDscnR-paper/module_9sp/out"),
-  figures  = path.expand("~/gitlab/LDscnR-paper/module_9sp/figures"),
-  tables   = path.expand("~/gitlab/LDscnR-paper/module_9sp/tables"),
+  module   = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp"),
+  out      = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp/out"),
+  figures  = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp/figures"),
+  tables   = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp/tables"),
   ## RAW INPUT -- copied in from LD-scaling-genome-scans (byte-verified, see
   ## data/PROVENANCE.csv), same reasoning as module_3sp's raw_3sp: 290 MB, over
   ## GitHub's 100 MB limit either way, so self-contained on disk, not in git.
@@ -49,12 +49,12 @@ PATHS <- list(
   ## basis is NOT YET CHARACTERISED (the legacy script overwrites it with its
   ## own LD-pruned-basis GRM before use -- see 00_config.R header note above;
   ## do not assume the bundled GRM is usable as-is).
-  raw_9sp  = path.expand("~/gitlab/LDscnR-paper/module_9sp/data/9sp_data.rds"),
+  raw_9sp  = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp/data/9sp_data.rds"),
   ## LFMM F-values, precomputed. Same INHERITED-not-computed status as 3sp's
   ## lfmm_F.rds -- see LFMM_SOURCE below.
-  lfmm_F   = path.expand("~/gitlab/LDscnR-paper/module_9sp/data/lfmm_F.rds"),
-  provenance = path.expand("~/gitlab/LDscnR-paper/module_9sp/data/PROVENANCE.csv"),
-  cache    = path.expand("~/gitlab/LDscnR-paper/module_9sp/cache")
+  lfmm_F   = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp/data/lfmm_F.rds"),
+  provenance = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp/data/PROVENANCE.csv"),
+  cache    = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp/cache")
 )
 dir.create(PATHS$figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(PATHS$tables, recursive = TRUE, showWarnings = FALSE)
@@ -219,7 +219,7 @@ SWEEP <- list(
 ## the two panels are not comparable "the same analyses" in the first place.
 ## =============================================================================
 LDSCNR_PIN <- list(
-  repo    = path.expand("~/gitlab/LDscnR"),
+  repo    = Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")),   # LDscnR v0.9.1 source (git checkout or unpacked archive)
   sha     = "24776194ce36",   # tag v0.9.1 (2026-10-26; was 011a165)
   branch  = "main",
   version = "0.9.1",
@@ -238,6 +238,9 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
   head_sha <- substr(paste(g("rev-parse","HEAD"), collapse = ""), 1, 12)
   dirty <- length(g("status","--porcelain","--untracked-files=no")) > 0
   src <- sort(g("ls-files","R/"))
+  ## an unpacked source archive (no .git): the same files, in git's byte order
+  if (!length(src) && dir.exists(file.path(LDSCNR_PIN$repo, "R")))
+    src <- file.path("R", sort(list.files(file.path(LDSCNR_PIN$repo, "R")), method = "radix"))
   cur <- if (!length(src)) NA_character_ else {
     fp <- file.path(LDSCNR_PIN$repo, src)
     substr(digest::digest(paste(vapply(fp[file.exists(fp)],

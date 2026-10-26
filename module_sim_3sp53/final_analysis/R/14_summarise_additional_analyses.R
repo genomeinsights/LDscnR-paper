@@ -11,8 +11,8 @@
 ## AND scored at the unit scale, not the reported-region scale).
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 say("=== 14_summarise_additional_analyses ===\n\n")
 
 REGION_METHODS <- c("emmax_snp_region", "emmax_simes_region", "emmax_consensus_region",

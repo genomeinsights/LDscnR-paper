@@ -30,10 +30,10 @@ suppressMessages({library(data.table); library(digest)})
 ## (mini2's /Volumes is not writable without sudo; checked directly, not
 ## assumed). NEMO_ROOT makes that a config value, not a code change, on either
 ## machine: unset, everything resolves exactly as before.
-NEMO_ROOT <- Sys.getenv("SIM_NEMO_ROOT", "/Volumes/Nemo/Nemo_sim")
+NEMO_ROOT <- Sys.getenv("SIM_NEMO_ROOT", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "nemo_raw"))
 PATHS <- list(
-  module = path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"),
-  out    = path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/out"),
+  module = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"),
+  out    = file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/out"),
   ## RAW SIMULATION OUTPUT -- never written by this pipeline, and NOT copied
   ## into the repository (only the subset above may be copied to a SECOND
   ## machine's disk, not into git; git remains untouched by NEMO_ROOT).
@@ -96,19 +96,21 @@ PATHS <- list(
   ## new maps have 1.5-1.8%) -- expected, not a regression, and not
   ## comparable number-for-number against bgs5's BGS-effect figures without
   ## accounting for it.
-  raw_nemo_nobgs = "/Volumes/Large_storage/prod_out",
-  raw_nemo_bgs5  = "/Volumes/Large_storage/prod_out",   # kept named _bgs5 for structural parity with module_sim/00_config.R; both tags live in the one directory here too
+  ## LDSCNR_NEMO_RAW: the unpacked production output of LDscnR-NEMO/make_prod.sh
+  ## (prod_out/, ~125 GB; not archived -- regenerate it, see README).
+  raw_nemo_nobgs = Sys.getenv("LDSCNR_NEMO_RAW", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "nemo_raw", "prod_out")),
+  raw_nemo_bgs5  = Sys.getenv("LDSCNR_NEMO_RAW", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "nemo_raw", "prod_out")),   # kept named _bgs5 for structural parity with module_sim/00_config.R; both tags live in the one directory here too
   ## Reference chromosome maps + env surfaces -- same role as raw_recmap_dir/
   ## raw_env_dir always had, new location: ~/LDscnR-NEMO/params_3spC_53cM on
   ## the mini (10 rec_map*.rds under its rds/ subdir, env_1..10.txt at top
   ## level -- verified present and correctly named, 2026-09-08).
-  raw_recmap_dir = path.expand("~/LDscnR-NEMO/params_3spC_53cM/rds"),
-  raw_env_dir    = path.expand("~/LDscnR-NEMO/params_3spC_53cM"),
+  raw_recmap_dir = file.path(Sys.getenv("LDSCNR_NEMO_PARAMS", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR-NEMO", "params_3spC_53cM")), "rds"),
+  raw_env_dir    = Sys.getenv("LDSCNR_NEMO_PARAMS", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR-NEMO", "params_3spC_53cM")),
   ## R_parsing/'s output -- same role as module_sim/00_config.R's `parsed`,
   ## a fresh directory name (not reusing module_sim's own) so a stray file
   ## from the wrong raw source can never be silently read.
-  parsed = "/Volumes/Large_storage/module_sim_3sp53_parsed",
-  cache  = file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "cache")
+  parsed = Sys.getenv("LDSCNR_SIM_PARSED_OLD", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "nemo_raw", "module_sim_3sp53_parsed")),
+  cache  = file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "cache")
 )
 ## [!] PATHS$el_dir REMOVED 2026-09-05. Was a per-combination path for
 ## compute_LD_decay's edge-list output -- nothing downstream ever read it
@@ -371,7 +373,7 @@ SWEEP <- list(
 ## branch, reused rather than duplicated with different logic that could drift.
 ## =============================================================================
 LDSCNR_PIN <- list(
-  repo    = path.expand("~/gitlab/LDscnR"),
+  repo    = Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")),   # LDscnR v0.9.1 source (git checkout or unpacked archive)
   sha     = "24776194ce36",   # tag v0.9.1 (2026-10-26; was 011a165)
   branch  = "main",
   version = "0.9.1",
@@ -395,6 +397,9 @@ check_ldscnr <- function(stop_on_fail = !nzchar(Sys.getenv("LDSCNR_LAX"))) {
   ## order the hash below is computed over, aliasing a byte-identical R/
   ## directory into two different pins. Found 2026-09-04 provisioning mini2.
   src <- sort(g("ls-files","R/"), method = "radix")
+  ## an unpacked source archive (no .git): the same files, in git's byte order
+  if (!length(src) && dir.exists(file.path(LDSCNR_PIN$repo, "R")))
+    src <- file.path("R", sort(list.files(file.path(LDSCNR_PIN$repo, "R")), method = "radix"))
   cur <- if (!length(src)) NA_character_ else {
     fp <- file.path(LDSCNR_PIN$repo, src)
     substr(digest::digest(paste(vapply(fp[file.exists(fp)],

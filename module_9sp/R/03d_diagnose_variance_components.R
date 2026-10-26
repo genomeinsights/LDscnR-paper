@@ -53,8 +53,8 @@
 ## taken as the answer without this context.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_9sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_9sp"), "R", "00_config.R"))
 STAGE <- "03d_diagnose_variance_components"
 say("=== %s ===\n\n", STAGE)
 
@@ -83,7 +83,7 @@ say("    median h2 (random) = %.4f -- sensible interior estimates, NOT a generic
 
 ## ---- 3. does module_3sp's OWN trusted phenotype/GRM hit the same boundary? ----
 say("\n[3] control: module_3sp's real ecotype phenotype, ITS OWN canonical GRM\n")
-b3 <- readRDS(path.expand("~/gitlab/LDscnR-paper/module_3sp/out/02_bundle/bundle.rds"))
+b3 <- readRDS(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/out/02_bundle/bundle.rds"))
 GRM3 <- b3$GRM; n3 <- nrow(b3$GTs)
 Kn3 <- (n3 - 1) / sum((diag(n3) - matrix(1/n3, n3, n3)) * GRM3) * GRM3
 eco3 <- as.integer(as.factor(b3$pheno$ecotype)) - 1L
@@ -165,6 +165,6 @@ saveRDS(list(
 ), OUT)
 write_receipt(STAGE, inputs = c(file.path(PATHS$out, "02_bundle", "_receipt.rds"),
                                 file.path(PATHS$out, "03_EMMAX", "_receipt.rds"),
-                                path.expand("~/gitlab/LDscnR-paper/module_3sp/out/02_bundle/_receipt.rds")),
+                                file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp/out/02_bundle/_receipt.rds")),
              params = list(size_floor = SIZE_FLOOR), outputs = OUT)
 say("\n[5] wrote %s\n    receipt: %s\n", OUT, receipt_path(STAGE))

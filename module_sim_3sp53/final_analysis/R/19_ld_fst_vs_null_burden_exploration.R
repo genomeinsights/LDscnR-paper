@@ -83,11 +83,11 @@
 ##     claim.
 ## =============================================================================
 suppressMessages({library(data.table); library(ggplot2)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 source(file.path(MODULE_ROOT, "R", "00_config.R"))
 say("=== 19_ld_fst_vs_null_burden_exploration (EXPLORATORY) ===\n\n")
 
-BUNDLE_DIR   <- path.expand("~/gitlab/LDscnR-paper/module_sim/out/02_bundle")
+BUNDLE_DIR   <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim/out/02_bundle")
 LD_DECAY_CELLS <- c("V0.5_c1", "V0.5_c2", "V1_c1.5", "V2_c1")
 
 ## ---- 1. null-discovery outcomes ---------------------------------------------
@@ -96,7 +96,7 @@ say("[1] loaded %d null-calibration rows (%d distinct tag/cell/rep/env combos)\n
     nrow(null_dt), nrow(unique(null_dt[, .(tag, cell, rep, env)])))
 
 ## ---- 2. Fst (full 7-cell grid) ----------------------------------------------
-popgen <- readRDS(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "results", "popgen_summary.rds"))
+popgen <- readRDS(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "results", "popgen_summary.rds"))
 fst_dt <- popgen$per_replicate[, .(tag, cell, rep, env, Fst)]
 say("[2] loaded Fst for %d combos (all %d cells)\n", nrow(fst_dt), uniqueN(fst_dt$cell))
 

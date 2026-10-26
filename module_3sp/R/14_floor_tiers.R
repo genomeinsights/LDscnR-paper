@@ -9,8 +9,8 @@
 ## module_sim_3sp53/final_analysis (FLOOR_SCHEME = density_half_double).
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 source(file.path(PATHS$module, "R", "helpers_floor_tiers.R"))
 STAGE <- "14_floor_tiers"
 say("=== %s ===\n\n", STAGE)

@@ -27,7 +27,7 @@
 ##   qc/qtn_index_mapping_<run>.tsv     -- full QTN-by-QTN old vs corrected mapping
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "01_parse_nemo.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "01_parse_nemo.R"))
 
 RUNS <- list(
   A = list(tag = "nobgs", cell = "V0.5_c2", rep = 1L, env = 1L),

@@ -18,7 +18,7 @@
 ## files, no raw NEMO or out_final_v1 access needed.
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 say("=== export_qc ===\n\n")
 
 rows <- list()

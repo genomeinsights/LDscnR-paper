@@ -11,7 +11,7 @@
 ## not look like one continuous path on this figure.
 ## =============================================================================
 suppressMessages({library(data.table); library(ggplot2)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 
 summ <- fread(file.path(MODULE_ROOT, "results", "floor_stability_summary.tsv"))
 tier_dt <- summ[call_set %in% c("all_ge1", "ge2", "eq3")]

@@ -17,7 +17,7 @@
 ## results/simulation_floor_sweep_c1.tsv. Summaries are in R/26.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 setwd(MODULE_ROOT)
 source(file.path(MODULE_ROOT, "R", "12_floor_decomposition.R"))   ## floor_decomposition_one_combo()
 source(file.path(MODULE_ROOT, "R", "17_marker_qtn_redundancy.R")) ## redundancy_one_combo()

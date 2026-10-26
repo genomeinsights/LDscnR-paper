@@ -8,7 +8,7 @@
 ## Output: results/simulation_marker_counts_per_run_c1.tsv
 ## =============================================================================
 suppressMessages({library(data.table); library(parallel)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 setwd(MODULE_ROOT)
 source(file.path(MODULE_ROOT, "R", "00_config.R"))
 say("=== 29_marker_counts_per_run ===\n\n")

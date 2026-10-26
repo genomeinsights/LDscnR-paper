@@ -10,7 +10,8 @@
 ## Needs on PATH: bigBedToBed, liftOver, chainSwap  (http://hgdownload.soe.ucsc.edu/admin/exe/)
 set -euo pipefail
 OUT=$(cd "$(dirname "$0")/../data/liftover" && pwd)
-TR=~/gitlab/LD-scaling-genome-scans/empirical_data/kingman2021/tracks
+## KINGMAN_TRACKS: the Kingman et al. (2021) assembly-hub track files (FigShare project 162634)
+TR="${KINGMAN_TRACKS:-$OUT/../tracks}"
 cd "$OUT"
 
 ## ---- 1. fetch the bigChain pair and rebuild a .chain --------------------------------
@@ -66,7 +67,7 @@ python3 - <<'PY'
 import csv, os
 ROMAN=["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV",
        "XVI","XVII","XVIII","XIX","XX","XXI"]
-src=os.path.expanduser("~/gitlab/LDscnR-paper/kingman2021/data/regions_tau0.05_lmin10_rho0.60.csv")
+src=os.path.join(os.getcwd(), "..", "regions_tau0.05_lmin10_rho0.60.csv")   # kingman2021/data/
 with open("lfmm_g1.bed","w") as f:
     for r in csv.DictReader(open(src)):
         if r["method"]!="LFMM": continue

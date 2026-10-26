@@ -10,6 +10,7 @@
 ## 13/14's final TSVs. Stops on the first failure (set -e) rather than
 ## silently continuing on stale/partial inputs.
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 export PATH="/usr/local/bin:$PATH"
 mkdir -p out_final_v1/logs

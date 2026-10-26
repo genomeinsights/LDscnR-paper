@@ -36,7 +36,7 @@
 ## counts themselves.
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 
 ## PRIMARY estimand (2026-09-10 update): Stage-2 ASSEMBLED REGIONS. One
 ## region = one hypothesis, member markers = the actual constituent

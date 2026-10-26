@@ -24,7 +24,7 @@
 ## as a diagnostic, not re-applied to the p-values that are actually used.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(LEA)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 
 .lfmm_scan <- function(geno_mat, y, K) {
   tmp <- tempfile(); dir.create(tmp); on.exit(unlink(tmp, recursive = TRUE), add = TRUE)

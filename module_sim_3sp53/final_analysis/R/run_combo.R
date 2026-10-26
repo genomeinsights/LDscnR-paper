@@ -9,7 +9,7 @@
 ##
 ## Usage: Rscript R/run_combo.R <tag> <cell> <rep> <env> [lfmm: 0|1]
 suppressMessages({library(data.table); library(LDscnR); library(SNPRelate); library(LEA)})
-MOD <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MOD <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 source(file.path(MOD, "R", "01_parse_nemo.R"))
 source(file.path(MOD, "R", "02_build_ld_units.R"))
 source(file.path(MOD, "R", "03_emmax.R"))

@@ -9,7 +9,7 @@
 ## Reads results/floor_stability_density_half_double_region_details.rds (R/22).
 ## =============================================================================
 suppressMessages(library(data.table))
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 Sys.setenv(FLOOR_SCHEME = "density_half_double")
 source(file.path(MODULE_ROOT, "R", "helpers_floor_stability.R"))
 d <- readRDS(file.path(MODULE_ROOT, "results", "floor_stability_density_half_double_region_details.rds"))

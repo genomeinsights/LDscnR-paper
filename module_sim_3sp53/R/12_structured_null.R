@@ -71,7 +71,7 @@
 ## -- module_3sp's own 1000/200 split, scaled down for a 14-combo sweep
 ## rather than the single-dataset case it was set for.
 suppressMessages({library(data.table); library(LDscnR)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53"), "R", "00_config.R"))
 STAGE <- "12_structured_null"
 say("=== %s ===\n\n", STAGE)
 invisible(check_ldscnr())

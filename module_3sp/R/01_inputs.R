@@ -16,7 +16,7 @@
 ## FAILS LOUDLY AND EARLY. A missing input here costs seconds; the same input missing
 ## in stage 02 costs however long the decay fit had been running.
 ## =============================================================================
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "01_inputs"
 
 INPUTS <- c(
@@ -88,7 +88,7 @@ if (file.exists(PATHS$provenance)) {
 ## 3sp_data/MANIFEST.md is ldscnr-fe's record of the same untracked inputs. Where the
 ## two overlap they must agree; a disagreement means one of us is holding a different
 ## file than we think, which is the failure this stage exists to catch.
-man <- path.expand("~/gitlab/LDscnR-paper/3sp_data/MANIFEST.md")
+man <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "3sp_data/MANIFEST.md")
 if (file.exists(man)) {
   txt <- readLines(man, warn = FALSE)
   hits <- 0L; disagree <- character()

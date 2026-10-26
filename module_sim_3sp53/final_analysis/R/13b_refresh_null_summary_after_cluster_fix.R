@@ -17,7 +17,7 @@
 ## columns (pooled_R_null_obs_ci_lo/hi, pooled_FDP_truth_ci_lo/hi) change.
 ## =============================================================================
 suppressMessages({library(data.table)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 source(file.path(MODULE_ROOT, "R", "00_config.R"))
 source(file.path(MODULE_ROOT, "R", "helpers_stage2_truth.R"))   ## ci_quantile(), bootstrap_rep_matrix()
 say("=== 13b_refresh_null_summary_after_cluster_fix ===\n\n")

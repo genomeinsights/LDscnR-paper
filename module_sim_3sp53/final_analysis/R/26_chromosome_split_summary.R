@@ -21,7 +21,7 @@
 ## together (as in the primary analysis); paired contrasts use the same draws.
 ## =============================================================================
 suppressMessages(library(data.table))
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 setwd(MODULE_ROOT)
 source(file.path(MODULE_ROOT, "R", "00_config.R"))
 say("=== 26_chromosome_split_summary ===\n\n")

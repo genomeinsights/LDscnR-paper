@@ -9,6 +9,7 @@
 ## from per-worker temp files at the end so concurrent appends never
 ## interleave (same pattern module_sim/run_grid.sh already uses for this).
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 export PATH="/usr/local/bin:$PATH"
 
@@ -18,7 +19,7 @@ REPS=(1 2 3 4 5 6 7 8 9 10)
 ENVS=(1 2 3 4 5 6 7 8 9 10)
 CONCURRENCY="${1:-7}"
 
-RAW_ROOT="/Volumes/Large_storage/prod_out"
+RAW_ROOT="${LDSCNR_NEMO_RAW:-$LDSCNR_PAPER_ROOT/nemo_raw/prod_out}"
 mkdir -p out_final_v1/logs
 MANIFEST=out_final_v1/full_grid_manifest.tsv
 NEW_MANIFEST=$([ -f "$MANIFEST" ] && echo 0 || echo 1)

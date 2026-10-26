@@ -19,8 +19,8 @@
 ## breakdown across ALL 7 cells, showing where methods fail at c=1.5/c=2) is
 ## untouched by this script and remains the complementary view.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figureS_simulation_floor_decomposition_c1 ===\n\n")
 
 gp <- fread("results/simulation_floor_sweep_c1.tsv")

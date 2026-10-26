@@ -35,8 +35,8 @@
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(ggplot2)
   library(patchwork); library(ggrastr)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "figure_manhattan"
 say("=== %s ===\n\n", STAGE)
 

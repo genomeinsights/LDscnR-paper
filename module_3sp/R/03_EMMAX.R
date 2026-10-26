@@ -30,8 +30,8 @@
 ## for exactly this reason.
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(digest)})
-devtools::load_all("~/gitlab/LDscnR")
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+devtools::load_all(Sys.getenv("LDSCNR_SRC", file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "..", "LDscnR")))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 STAGE <- "03_EMMAX"
 say("=== %s ===\n\n", STAGE)
 
@@ -47,7 +47,7 @@ say("[0] bundle: %d individuals x %s markers ; %s stage-1 units at floor %d\n",
     format(sum({cl<-stage1$clusters; nl<-if("n_loci" %in% names(cl)) cl$n_loci else cl$n_snps;
                 sum(nl >= SIZE_FLOOR)}), big.mark=","), SIZE_FLOOR)
 
-LIFT <- path.expand("~/gitlab/LDscnR-paper/kingman2021/data/liftover")
+LIFT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "kingman2021/data/liftover")
 ROMAN <- c("I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV",
            "XV","XVI","XVII","XVIII","XIX","XX","XXI")
 .rd <- function(f) { x <- fread(file.path(LIFT, f), header=FALSE,

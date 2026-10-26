@@ -9,8 +9,8 @@
 ## design used (see ADDITIONAL_ANALYSES_AUDIT.md for why the full grid was
 ## not run). The raw plotted points are also exported as TSV.
 suppressMessages({library(data.table); library(ggplot2)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R_figures", "palette.R"))
 say("=== figure_simulation_null_truth_calibration ===\n\n")
 
 ml <- fread("results/simulation_null_truth_calibration.tsv")

@@ -10,8 +10,8 @@
 ## Output: out/17_span_vs_simulation/span_comparison.tsv
 ## =============================================================================
 suppressMessages(library(data.table))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
-SIM <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
+SIM <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 d95 <- function(a) 0.95 / (a * 0.05) / 1e3   # d_from_rho(a, 0.95), in kb
 
 d <- as.data.table(readRDS(file.path(SIM, "results/simulation_stage2_region_details.rds")))

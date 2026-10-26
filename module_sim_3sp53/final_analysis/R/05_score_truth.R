@@ -46,8 +46,8 @@
 ##    test-power loss).
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))
 
 score_truth <- function(tag, cell, rep, env, force = FALSE) {
   STAGE <- "05_score_truth"   ## LOCAL -- see 02_build_ld_units.R's comment on this exact bug

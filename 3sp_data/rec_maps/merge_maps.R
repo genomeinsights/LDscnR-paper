@@ -148,7 +148,8 @@ fwrite(out, "stickleback_recomb_3crosses_gasAcu1.tsv", sep = "\t")
 cat(sprintf("\nwrote stickleback_recomb_3crosses_gasAcu1.tsv: %d bins\n", nrow(out)))
 
 ## ---- coverage against the 3sp SNP set ----
-sp <- "/Users/petrikem/gitlab/LD-scaling-genome-scans/empirical_data/3sp/SNP_res_3sp.rds"
+## optional coverage report; SNP_res_3sp.rds is in 3sp.zip of Zenodo 10.5281/zenodo.18466057
+sp <- Sys.getenv("LDSCNR_SNP_RES_3SP", "SNP_res_3sp.rds")
 if (file.exists(sp)) {
   sr <- as.data.table(readRDS(sp)); sr[, chr_i := as.integer(sub("Chr", "", Chr))]
   b <- copy(out); setkey(b, old_chr, old_start, old_end)

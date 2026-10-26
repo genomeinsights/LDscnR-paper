@@ -17,7 +17,7 @@
 ## Output: results/simulation_qtn_detection_c1.tsv (one row per QTN per run).
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
-MODULE_ROOT <- path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis")
+MODULE_ROOT <- file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis")
 setwd(MODULE_ROOT)
 source(file.path(MODULE_ROOT, "R", "00_config.R"))
 say("=== 28_qtn_detection_sensitivity ===\n\n")

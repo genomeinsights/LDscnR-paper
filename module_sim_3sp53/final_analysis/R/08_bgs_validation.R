@@ -50,7 +50,7 @@
 ## matched map, environment and seed identifiers in the same resample").
 ## =============================================================================
 suppressMessages({library(data.table); library(parallel)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
 source(file.path(PATHS$module, "R", "01_parse_nemo.R"))
 say("=== bgs_validation ===\n\n")
 

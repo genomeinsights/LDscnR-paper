@@ -33,8 +33,8 @@
 ## exist before -- see that script's own header).
 ## =============================================================================
 suppressMessages({library(data.table); library(LDscnR); library(parallel)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "00_config.R"))
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))   ## ci_quantile()
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_sim_3sp53/final_analysis"), "R", "helpers_stage2_truth.R"))   ## ci_quantile()
 say("=== 15_env_structure_alignment ===\n\n")
 
 N_AXES <- 5L

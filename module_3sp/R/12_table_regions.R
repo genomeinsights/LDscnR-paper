@@ -15,7 +15,7 @@
 ## hand-picking" convention PATHS$figures and table5 already use.
 ## =============================================================================
 suppressMessages({library(data.table)})
-source(file.path(path.expand("~/gitlab/LDscnR-paper/module_3sp"), "R", "00_config.R"))
+source(file.path(file.path(Sys.getenv("LDSCNR_PAPER_ROOT", "."), "module_3sp"), "R", "00_config.R"))
 say("=== 12_table_regions ===\n\n")
 
 SCAN_PATH <- file.path(PATHS$out, "03_EMMAX", "scan.rds")

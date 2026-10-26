@@ -8,6 +8,7 @@
 ## checked against 04_lfmm/<combo>/lfmm.rds specifically, NOT truth_scores.rds
 ## (which already exists for every combo from the primary EMMAX grid).
 set -euo pipefail
+export LDSCNR_PAPER_ROOT="${LDSCNR_PAPER_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"   # repository root, for the R scripts
 cd "$(dirname "$0")"
 export PATH="/usr/local/bin:$PATH"
 

@@ -16,7 +16,7 @@
 ## =============================================================================
 suppressMessages(library(data.table))
 
-ROOT <- path.expand("~/gitlab/LDscnR-paper")
+ROOT <- Sys.getenv("LDSCNR_PAPER_ROOT", ".")
 OUT_DIR <- file.path(ROOT, "module_9sp", "out", "02b_env_structure_alignment")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
