@@ -4,7 +4,8 @@ Dryad folder: every file (from MANIFEST.tsv) with its size and a one-line
 description, plus a column dictionary for the main tables.
 
 Usage: python3 tools/write_dryad_readme.py DRYAD_DIR README_PATH
-If README_PATH exists, only its '## Files and variables' section is replaced.
+If README_PATH exists, only its '### Files and variables' section (up to the next
+'## ' heading) is replaced.
 """
 import csv, re, sys, os
 
@@ -12,7 +13,7 @@ D, OUT = sys.argv[1], sys.argv[2]
 
 RULES = [
     # empirical, both panels
-    (r"bundle_slim\.rds$", "Stage-1 bundle without genotypes: list(n_markers, n_individuals, map [marker, Chr, Pos, maf, ld_w_095], eco [0 freshwater / 1 marine], pheno [population, locality, lineage], LD_decay [per-chromosome decay fits, decay_sum, decay_model, ld_ws], stage1 [map_snp, clusters, pruned], GRM [GCTA kinship on Stage-1 representatives], grm_markers, settings, fig1_window [chromosome-9 window r^2 for Figure 1B-C; three-spined only])."),
+    (r"bundle_slim\.rds$", "Stage-1 bundle without genotypes: list(n_markers, n_individuals, map [marker, Chr, Pos, maf, ld_w_095], eco [0 freshwater / 1 marine], pheno [index, ecotype, population, lineage, locality_group (anonymous code)], LD_decay [per-chromosome decay fits, decay_sum, decay_model, ld_ws], stage1 [map_snp, clusters, pruned], GRM [GCTA kinship on Stage-1 representatives], grm_markers, settings, fig1_window [chromosome-9 window r^2 for Figure 1B-C; three-spined only])."),
     (r"_receipt\.rds$", "Stage receipt: inputs (paths, SHA-256), parameters, LDscnR version and run time of the stage that wrote this folder."),
     (r"01_inputs/inputs\.csv$", "SHA-256 of every input file read by the module (provenance; paths are those of the original machine)."),
     (r"empirical_3sp/03_EMMAX/scan\.rds$", "EMMAX consensus and Simes results: per arm, ld_outlier_test() (units: unit_id, Chr, from, to, n_markers, p, q, significant; regions: Chr, from, to, n_units, n_markers, occupancy), ld_outlier_perm() (observed, surrogates [1,000 consensus / 200 Simes], p) and ld_region_rotation() against the EcoPeaks (observed, null_mean, fold, p); plus the EcoPeak intervals and chromosome lengths used."),
@@ -144,21 +145,24 @@ def size(b):
         b /= 1024
 total = sum(int(r["bytes"]) for r in rows)
 
-L = ["## Files and variables", "",
-     f"{len(rows) + 1} files, {total/1e9:.2f} GB, in three folders that mirror the analysis modules of the code archive "
+L = ["### Files and variables", "",
+     f"{len(rows) + 1} files ({total/1e9:.2f} GB), in three folders that mirror the analysis modules of the code archive "
      "(LDscnR-paper). Point the code at this folder with `LDSCNR_DATA=<this folder>`; the manuscript generators and figure "
      "scripts then read everything they need from it. `MANIFEST.tsv` lists every file with its size and SHA-256.",
      "",
      "**No individual-level genotypes are included.** The stickleback genotypes (Fang et al. 2021) are licensed CC-BY and are "
      "cited, not redistributed: get them from Zenodo doi:10.5281/zenodo.18466057 (exact analysis inputs) or "
      "doi:10.5281/zenodo.4722879 (raw data). The Stage-1 bundles are therefore slim copies (`bundle_slim.rds`) and the "
-     "per-individual consensus matrices of the Table 6 cache are removed. Kinship matrices (GRM, 117 x 117 and 149 x 149) "
-     "are included. `.rds` files are R serialisations (`readRDS()`); tables are tab-separated (`.tsv`) or comma-separated (`.csv`) "
-     "with a header row; `NA` marks a missing value.", "",
-     "### Main tables: columns", ""]
+     "per-individual consensus matrices of the Table 6 cache are removed; the only individual-level matrices are kinship "
+     "matrices (GRM, 117 x 117 and 149 x 149, and the 117 x 117 kinship of the Table 6 cache). Table 6 is included as output "
+     "(`empirical_3sp/13_goldilocks_units/`, `13b_goldilocks_regions/`), but recomputing it needs the genotypes from Zenodo "
+     "doi:10.5281/zenodo.18466057. Sample metadata is limited to a row index, ecotype, population and lineage labels and an "
+     "anonymous locality code (`pheno` in `bundle_slim.rds`); the full sample table, with individual IDs, localities and "
+     "coordinates, is in the cited Zenodo records.", "",
+     "#### Main tables: columns", ""]
 for f, cols in COLS.items():
     L += [f"`{f}`", "", "| column | meaning |", "|---|---|"] + [f"| `{c}` | {m} |" for c, m in cols] + [""]
-L += ["### All files", "", "| file | size | description |", "|---|---:|---|"]
+L += ["#### All files", "", "| file | size | description |", "|---|---:|---|"]
 for r in sorted(rows, key=lambda r: r["file"]):
     L.append(f"| `{r['file']}` | {size(r['bytes'])} | {describe(r['file'])} |")
 L.append("| `MANIFEST.tsv` | | Every file with size (bytes) and SHA-256. |")
@@ -166,7 +170,7 @@ section = "\n".join(L) + "\n"
 
 if os.path.exists(OUT):
     txt = open(OUT).read()
-    m = re.search(r"^## Files and variables.*?(?=^## |\Z)", txt, re.S | re.M)
+    m = re.search(r"^### Files and variables.*?(?=^## |\Z)", txt, re.S | re.M)
     txt = txt[:m.start()] + section + "\n" + txt[m.end():] if m else txt.rstrip() + "\n\n" + section
 else:
     txt = "# LDscnR manuscript: analysis outputs\n\n" + section

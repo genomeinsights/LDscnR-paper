@@ -62,13 +62,23 @@ slim_bundle <- function(b) {
       fig1 <- list(chr = W_CHR, from = W0, to = W1, markers = ms[, .(marker, Chr, Pos, CL_id)], r2 = R2)
     }
   }
+  ## Sample metadata reduced to what the analyses use: a neutral row index (rows
+  ## are aligned with eco and GRM), ecotype, population and lineage labels, and
+  ## the locality grouping the three-spined permutation null holds fixed, as an
+  ## anonymous code (L1, L2, ... in order of first appearance). Individual IDs,
+  ## locality names and coordinates are left in the cited Zenodo records.
+  ph <- as.data.table(b$pheno)
+  pheno <- data.table(index = seq_len(nrow(ph)), ecotype = ph$ecotype, population = ph$pop_ID,
+                      lineage = ph$lineage,
+                      locality_group = paste0("L", match(ph$pop_locality, unique(ph$pop_locality))))
   list(n_markers = ncol(b$GTs), n_individuals = nrow(b$GTs),
-       map = b$map, eco = b$eco, pheno = b$pheno,
+       map = b$map, eco = b$eco, pheno = pheno,
        LD_decay = b$LD_decay, stage1 = b$stage1,
        GRM = b$GRM, grm_markers = b$grm_markers, settings = b$settings,
        fig1_window = fig1,
        note = paste("Slim copy of out/02_bundle/bundle.rds: the genotype matrix (GTs) and the",
-                    "duplicate top-level ld_ws are removed; n_markers = ncol(GTs).",
+                    "duplicate top-level ld_ws are removed; n_markers = ncol(GTs); pheno reduced to",
+                    "index, ecotype, population, lineage and an anonymous locality code.",
                     "Genotypes: Zenodo 10.5281/zenodo.18466057 (CC-BY)."))
 }
 for (panel in c("3sp", "9sp")) {
