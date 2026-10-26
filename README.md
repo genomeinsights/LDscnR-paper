@@ -50,6 +50,7 @@ Nothing is hard-coded to one machine. Run scripts from the repository root, or s
 | `LDSCNR_SIM_PARSED` | `<root>/nemo_raw/module_sim_3sp53_parsed_final_v1` | parsed simulation bundles |
 | `LDSCNR_LDPP` | `<root>/../LD-pruning-paper` | inputs of Table 6 only (see below) |
 | `LDSCNR_MANUSCRIPT` | `.` | where `manuscript_scripts/R_figures/*.R` write figures |
+| `LDSCNR_DATA` | unset | unpacked Dryad folder; used by `manuscript_scripts/` instead of `module_*/out` |
 
 The shell drivers (`module_sim_3sp53/**/run_*.sh`) set `LDSCNR_PAPER_ROOT` themselves.
 
@@ -76,10 +77,15 @@ allelic values, environment surfaces and dispersal matrices, and `make_prod.sh` 
 `LDSCNR_NEMO_RAW` to the output and `LDSCNR_NEMO_PARAMS` to the parameter folder, then run
 `module_sim_3sp53/final_analysis/run_full_grid.sh`.
 
-**Large intermediate outputs** (the Stage-1 bundles, scan objects and per-run simulation outputs)
-are deposited on Dryad in the same folder layout as this repository; unpack that archive into the
-repository root to reproduce figures and values without rerunning the scans. The small summaries
-(`module_*/out/**/*.tsv|csv`, `module_sim_3sp53/final_analysis/results/`) are already here.
+**Analysis outputs (Dryad).** The Dryad data package holds `empirical_3sp/` and `empirical_9sp/`
+(the contents of `module_*/out/`, with each Stage-1 bundle replaced by `bundle_slim.rds`, which has
+no genotypes), `empirical_3sp/goldilocks_cache/` (Table 6 inputs) and `simulation/` (`results/` and
+the Nemo inputs). Set `LDSCNR_DATA` to the unpacked folder and the manuscript generators and figure
+scripts (`manuscript_scripts/`) read from it; they reproduce `values_*.tex`, the generated tables and
+Figures 1, 6 and S-decay exactly. The module scans themselves need the genotypes (see Inputs).
+`tools/make_dryad_staging.R` builds that folder and `tools/write_dryad_readme.py` its file list.
+The small summaries (`module_*/out/**/*.tsv|csv`, `module_sim_3sp53/final_analysis/results/`) are
+also in this repository.
 
 ## Running
 
