@@ -38,23 +38,23 @@ roc_df <- rbindlist(lapply(RESULTS, function(r) rbindlist(list(
   data.table(q = r$q, stat = "ld_w", spec = r$roc_ldw$specificities, sens = r$roc_ldw$sensitivities,
              auc = as.numeric(pROC::auc(r$roc_ldw)))
 ))))
-roc_df[, panel := sprintf("bottom %.0f%% (AUC: a=%.2f, ld[w]=%.2f)",
-                          100*q, auc[stat=="a"][1], auc[stat=="ld_w"][1]), by = q]
+## PK: AUCs are reported in the Supplementary text, so the strips name only the threshold
+roc_df[, panel := sprintf("Lowest %.0f%% of pedigree recombination", 100*q)]
 roc_df[, panel := factor(panel, levels = unique(panel[order(q)]))]
 
 p_roc <- ggplot(roc_df, aes(1 - spec, sens, colour = stat)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey70") +
   geom_path(linewidth = 0.8) +
   scale_colour_manual(values = c(a = "#1b7837", ld_w = "#762a83"),
-                      labels = c(a = "decay rate a", ld_w = expression(ld[w])),
+                      labels = c(a = expression("LD-decay rate "*italic(a)), ld_w = expression("Median ld"[italic(w)])),
                       name = NULL) +
   facet_wrap(~panel, nrow = 1) +
   coord_equal() +
-  labs(x = "1 - specificity", y = "sensitivity") +
+  labs(x = "1 \u2212 specificity (false-positive rate)", y = "Sensitivity (true-positive rate)") +
   theme_bw(12) + theme(panel.grid.minor = element_blank(), legend.position = "top")
 
 OUT_ROC <- file.path(PATHS$figures, "figS_roc_low_recombination.pdf")
-ggsave(OUT_ROC, p_roc, width = 10, height = 4.0, device = cairo_pdf)
+ggsave(OUT_ROC, p_roc, width = 9, height = 3.8, device = cairo_pdf)
 say("    wrote %s\n", OUT_ROC)
 
 ## ---- 2. figS:lddecay ---------------------------------------------------------
@@ -145,12 +145,13 @@ track_panel <- function(ch) {
     geom_line(data = dw, aes(x, y), colour = "#D55E00", linewidth = 0.5) +
     scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
     labs(x = "position (Mbp)", y = "scaled (0-1)",
-        title = sprintf("%s  (%d a-windows, n_win_decay = 100)", ch, nrow(dw))) +
+        title = NULL) +
     theme_classic(base_size = 9) + theme(plot.title = element_text(size = 9))
 }
-p_track100 <- (track_panel("Chr1") / track_panel("Chr4")) + plot_annotation(tag_levels = "a")
-OUT_TRACK100 <- file.path(PATHS$figures, "figS_lddecay_nwin100_illustrative.pdf")
-ggsave(OUT_TRACK100, p_track100, width = 8, height = 6, device = cairo_pdf)
+## supplement shows Chr1 only (PK, 2026-10-18); PNG keeps the ~10^5-point layer small
+p_track100 <- track_panel("Chr1")
+OUT_TRACK100 <- file.path(PATHS$figures, "figS_lddecay_nwin100_illustrative.png")
+ggsave(OUT_TRACK100, p_track100, width = 8, height = 2.5, dpi = 300)
 say("    wrote %s\n", OUT_TRACK100)
 
 ## ---- 4. Stage 1 vs Stage 2 (CANONICAL n_win=20, the real analysis), Chr1 & Chr4 ------
@@ -200,10 +201,9 @@ p_fig5a <- ggplot(W, aes(rate, a)) +
   geom_point(alpha = 0.35, size = 1, colour = "grey30") +
   geom_smooth(method = "lm", se = FALSE, colour = "#1565C0", linewidth = 0.6) +
   scale_x_log10() + scale_y_log10() +
-  labs(x = "pedigree map rate (cM/Mb, log scale)", y = "local LD-decay rate a (log scale)",
-      title = sprintf("Canonical fit, n_win_decay = 20\npooled Spearman %+.3f over %s windows",
-                      pooled, format(nrow(W), big.mark=","))) +
-  theme_bw(11) + theme(plot.title = element_text(size = 9))
+  ## Pooled rho and window count are given in the figure caption (PK: no code-style titles).
+  labs(x = "Pedigree recombination rate (cM/Mb)", y = expression("LD-decay rate " * italic(a))) +
+  theme_bw(11)
 
 ## Multi-n_win sensitivity (PK): n_win_decay = 10 and 50, genome-wide, from the analysis
 ## script's own sweep -- completes the old figure's right panel, minus n_win=5 (not
@@ -222,14 +222,14 @@ p_fig5b <- ggplot(bych_long, aes(Chr_lab, rho, colour = n_win)) +
   geom_hline(yintercept = 0, colour = "grey40") +
   geom_point(size = 2, alpha = 0.85) +
   scale_colour_manual(values = c("10" = "#66A3D2", "20" = "#1565C0", "50" = "#0B3C6E"),
-                      name = expression(n[win])) +
-  labs(x = "chromosome (ordered by within-chromosome rho, n_win_decay = 20)",
-      y = "within-chromosome Spearman",
-      title = paste("Positive on", paste(sprintf("%d/%d at n_win=%s", pos_frac$pos,
-                                                  pos_frac$n, pos_frac$n_win), collapse = ", "))) +
-  theme_bw(11) + theme(plot.title = element_text(size = 8), legend.position = "top")
+                      name = "Windows per chromosome") +
+  ## Positive-correlation counts per window count are given in the figure caption.
+  labs(x = "Chromosome (ordered by correlation with 20 windows)",
+      y = "Within-chromosome Spearman correlation") +
+  theme_bw(11) + theme(legend.position = "top")
 
-p_fig5 <- p_fig5a | p_fig5b
+p_fig5 <- (p_fig5a | p_fig5b) + plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 12))
 OUT_FIG5 <- file.path(PATHS$figures, "figure5_ld_recombination_reproduced.pdf")
 ggsave(OUT_FIG5, p_fig5, width = 11, height = 4.2, device = cairo_pdf)
 say("    wrote %s\n", OUT_FIG5)

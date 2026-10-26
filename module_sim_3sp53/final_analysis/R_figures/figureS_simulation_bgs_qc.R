@@ -32,22 +32,20 @@ p1 <- ggplot(pre[bin != "overall"], aes(bin, ratio_n_markers)) +
   geom_hline(yintercept = 1, linetype = "dashed", colour = "grey50", linewidth = 0.3) +
   geom_point(size = 2.2, colour = "#B71C1C") +
   geom_segment(aes(y = 1, yend = ratio_n_markers, x = bin, xend = bin), colour = "#B71C1C", linewidth = 0.6) +
-  labs(x = "Recombination-rate bin", y = "Retained markers, bgs / nobgs\n(pre-MAF-filter)",
-       title = "Segregating-marker retention", subtitle = "BGS's validated effect: fewer polymorphic sites, most at low recombination") +
-  theme_bw(10) + theme(panel.grid.minor = element_blank(), plot.subtitle = element_text(size = 7.5, colour = "grey30"))
+  labs(x = "Recombination class", y = "Segregating markers, BGS / no BGS\n(before MAF filtering)",
+       title = "Segregating markers") +
+  theme_bw(10) + theme(panel.grid.minor = element_blank())
 
 p2 <- ggplot(post[bin != "overall"], aes(bin, mean_diff_he)) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50", linewidth = 0.3) +
   geom_pointrange(aes(ymin = diff_ci_lo, ymax = diff_ci_hi), size = 0.4, colour = "#1565C0") +
-  labs(x = "Recombination-rate bin", y = "Mean He difference, bgs - nobgs\n(post-MAF-filter survivors)",
-       title = "Heterozygosity among MAF-filter survivors", subtitle = "The trap: positive, backwards from panel 1's effect") +
-  theme_bw(10) + theme(panel.grid.minor = element_blank(), plot.subtitle = element_text(size = 7.5, colour = "grey30"))
+  labs(x = "Recombination class", y = "Mean He, BGS minus no BGS\n(after MAF filtering)",
+       title = "Expected heterozygosity") +
+  theme_bw(10) + theme(panel.grid.minor = element_blank())
 
-p <- p1 + p2 + plot_annotation(
-  title = "BGS quality control: reduced polymorphism (correctly measured) vs the post-filter trap",
-  subtitle = sprintf("Grand-pooled (700 map/tag/env pairs, rep-cluster bootstrap CI). Overall retention ratio = %.3f [markers: nobgs=%s, bgs=%s]",
-                     pre[bin == "overall", ratio_n_markers], format(round(pre[bin=="overall",n_markers_nobgs]), big.mark=","), format(round(pre[bin=="overall",n_markers_bgs]), big.mark=",")),
-  theme = theme(plot.title = element_text(size = 11, face = "bold"), plot.subtitle = element_text(size = 8, colour = "grey30")))
+## Overall retention and marker counts are reported in the text (PK: no code-style titles).
+p <- (p1 + p2) + plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 12))
 
 FIG_DIR <- file.path(PATHS$module, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)

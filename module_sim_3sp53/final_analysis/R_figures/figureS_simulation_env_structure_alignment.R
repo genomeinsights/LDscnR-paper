@@ -84,7 +84,7 @@ pA <- ggplot(gp, aes(r2_axes, fp_prop, colour = method_label)) +
   scale_shape_manual(values = c(`No BGS` = 16, BGS = 1), name = NULL) +
   scale_size_area(max_size = 3, name = "Reported\nregions") +
   scale_y_continuous(limits = c(0, 1)) +
-  labs(x = NULL, y = "False-positive proportion among reported regions") +
+  labs(x = NULL, y = "False-discovery proportion among reported regions") +
   theme_bw(10) +
   theme(strip.background = element_blank(), panel.grid.minor = element_blank(), legend.position = "top")
 
@@ -137,7 +137,7 @@ CAPTION_THEME <- theme(plot.caption = element_text(hjust = 0, size = 8.5, linehe
 ## the manuscript's own LaTeX \caption{}, written out separately below.
 p <- (pA / pB)
 p_labelled <- (pA / pB) +
-  plot_annotation(title = "Environment-genetic-structure alignment vs. known FP proportion and spatial-null calibration",
+  plot_annotation(title = "Environment-genetic-structure alignment vs. known false-discovery proportion and spatial-null calibration",
                   caption = CAPTION, theme = CAPTION_THEME)
 
 FIG_DIR <- file.path(PATHS$module, "figures")

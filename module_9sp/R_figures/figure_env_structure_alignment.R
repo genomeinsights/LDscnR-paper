@@ -41,6 +41,8 @@ a[, species_short := factor(
 p1 <- ggplot(a, aes(species_short, r2, colour = weighting, group = weighting)) +
   geom_point(position = position_dodge(width = 0.35), size = 3) +
   scale_colour_manual(values = c("#2166AC", "#B2182B")) +
+  ## two legend rows so the labels fit under the narrow left panel
+  guides(colour = guide_legend(nrow = 2)) +
   scale_y_continuous(limits = c(0, 0.8), expand = expansion(mult = c(0, 0.04))) +
   labs(x = NULL, y = expression(R^2), colour = NULL,
        title = "Alignment with null-defining groups") +
@@ -53,20 +55,20 @@ p1 <- ggplot(a, aes(species_short, r2, colour = weighting, group = weighting)) +
 ## phenotypes are kept separate because only the latter enters the scan.
 nd[, case := fcase(
   species == "Three-spined stickleback",
-    "3sp\nraw habitat\nregional null",
+    "3sp\nraw ecotype\nregional null",
   species == "Nine-spined stickleback" & phenotype == "Raw habitat",
-    "9sp\nraw habitat\nlineage null",
+    "9sp\nraw ecotype\nlineage null",
   species == "Nine-spined stickleback" &
     phenotype == "Lineage-adjusted habitat" &
     scheme == "Within-lineage label permutation",
-    "9sp\nadjusted habitat\nlineage null",
-  default = "9sp\nadjusted habitat\nGRM null"
+    "9sp\nadjusted ecotype\nlineage null",
+  default = "9sp\nadjusted ecotype\nGRM null"
 )]
 case_levels <- c(
-  "3sp\nraw habitat\nregional null",
-  "9sp\nraw habitat\nlineage null",
-  "9sp\nadjusted habitat\nlineage null",
-  "9sp\nadjusted habitat\nGRM null"
+  "3sp\nraw ecotype\nregional null",
+  "9sp\nraw ecotype\nlineage null",
+  "9sp\nadjusted ecotype\nlineage null",
+  "9sp\nadjusted ecotype\nGRM null"
 )
 nd[, case := factor(case, levels = case_levels)]
 obs_points <- unique(nd[, .(species, phenotype, case)])
@@ -97,7 +99,7 @@ p2 <- ggplot(nd, aes(case, grm_axes_r2_population, fill = scheme)) +
         axis.text.x = element_text(size = 8.6))
 
 fig <- (p1 | p2) + plot_layout(widths = c(0.8, 1.6)) +
-  plot_annotation(tag_levels = "a") &
+  plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 12))
 
 pdf_out <- file.path(FIG_DIR, "figureS_empirical_env_structure_alignment.pdf")

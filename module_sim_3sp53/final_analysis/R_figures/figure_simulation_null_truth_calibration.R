@@ -30,15 +30,17 @@ n_above_one <- sum(plot_dt$above_one)
 n_zero_obs <- sum(is.na(ml$R_null_obs))
 
 .base_plot <- function(with_title) {
-  g <- ggplot(plot_dt, aes(FDP_truth, R_null_obs, colour = method, shape = above_one)) +
+  ## dashed 1:1 line: where points would fall if the ratio estimated the false-discovery
+  ## proportion; dotted horizontal line: ratio of one (null produces as many regions as observed)
+  g <- ggplot(plot_dt, aes(FDP_truth, R_null_obs, colour = method)) +
     geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey40", linewidth = 0.4) +
+    geom_hline(yintercept = 1, linetype = "dotted", colour = "grey20", linewidth = 0.5) +
     geom_point(size = 1.9, alpha = 0.8) +
     facet_wrap(~scheme) +
     scale_colour_manual(values = METHOD_COLOURS, name = NULL) +
-    scale_shape_manual(values = c(`FALSE` = 16, `TRUE` = 17), guide = "none") +
     coord_cartesian(xlim = c(0, 1)) +
     labs(x = "Known false-discovery proportion (truth)",
-         y = "Null-to-observed Stage-2 region ratio (raw, uncapped)") +
+         y = "Null-to-observed ratio of Stage-2 regions") +
     theme_bw(11) +
     theme(strip.background = element_blank(), panel.grid.minor = element_blank(), legend.position = "top")
   if (with_title) {
