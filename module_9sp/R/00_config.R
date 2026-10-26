@@ -220,10 +220,10 @@ SWEEP <- list(
 ## =============================================================================
 LDSCNR_PIN <- list(
   repo    = path.expand("~/gitlab/LDscnR"),
-  sha     = "011a165c8c99",
-  branch  = "outlier-scan",
-  version = "0.0.0.9000",
-  src_sha = "362892c1ee4c6628",
+  sha     = "24776194ce36",   # tag v0.9.1 (2026-10-26; was 011a165)
+  branch  = "main",
+  version = "0.9.1",
+  src_sha = "1fba54bf2928d007",
   installed_after = NULL
 )
 

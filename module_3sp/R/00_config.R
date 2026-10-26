@@ -335,14 +335,17 @@ MAP_SUBSETS      <- c("all bins", "concordant only")
 ## README.md, so no file under R/ is newer than the build. That is exactly why the check
 ## tests R/ mtimes against the build time rather than comparing SHAs alone -- a SHA
 ## comparison would demand a pointless reinstall for a documentation commit.
+## 2026-10-26: pin moved to the archived release, tag v0.9.1 (2477619) on main -- the
+## version cited in the manuscript and deposit. Earlier stages ran against 011a165,
+## 848e4b9, 03853fa and 5144e23 (each stage's _receipt.rds records which).
 LDSCNR_PIN <- list(
   repo    = path.expand("~/gitlab/LDscnR"),
-  sha     = "011a165c8c99",
-  branch  = "outlier-scan", # the promoted API is on this branch, not yet merged to main
-  version = "0.0.0.9000",
+  sha     = "24776194ce36",
+  branch  = "main", # tag v0.9.1
+  version = "0.9.1",
   ## SHA-256 over the CONCATENATED CONTENT of every tracked file under R/, taken at the
   ## moment the package was installed from this commit. This is the check that works.
-  src_sha = "362892c1ee4c6628",
+  src_sha = "1fba54bf2928d007",
   installed_after = NULL   # informational only; set at each pin refresh, never checked
 )
 
