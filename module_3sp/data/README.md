@@ -28,3 +28,18 @@ here, since the LFMM run itself took place in another repository's environment. 
 that originally produced it is preserved for provenance in `R/legacy_source.R` (not
 executable in this repository as-is; see that file's header). See `LFMM_SOURCE` in
 `00_config.R`.
+
+## Getting the files
+
+Both files are archived, byte for byte, in the LD-scaling Zenodo deposit
+(doi:[10.5281/zenodo.18466057](https://doi.org/10.5281/zenodo.18466057), `3sp.zip`, CC-BY-4.0).
+They derive from the three-spined data of Fang et al. (2021, *Mol Biol Evol* 38:4205,
+doi:10.1093/molbev/msab144; raw data doi:10.5281/zenodo.4722879). From the repository root:
+
+```bash
+Rscript R/00_fetch_inputs.R --install
+```
+
+downloads the archives, checks them against Zenodo's MD5, extracts the files to `rebuild_check/`,
+checks each against the SHA-256 in `PROVENANCE.csv`, and copies verified files here (an existing
+file is never overwritten). Use `--zip-dir=PATH` for local copies of `3sp.zip`/`9sp.zip`.

@@ -142,3 +142,6 @@ module_9sp/data/*
 module_9sp/out/**/*.rds
 !module_9sp/out/**/_receipt.rds
 module_9sp/out/run*.log
+
+# R/00_fetch_inputs.R output (downloaded archives, extracted inputs)
+rebuild_check/
