@@ -73,7 +73,7 @@ BUNDLE = ("Stage-1 bundle without genotypes, one per panel: `n_markers`, `n_indi
 ## One dictionary: columns shared by several tables are listed once.
 DICT = [
     ("`tag`, `cell`, `method`", "simulation", "BGS treatment (nobgs, bgs); selection/dispersal cell V<QTN variance>_c<dispersal>; analysis (e.g. emmax_snp_region = marker-wise, emmax_simes_region, emmax_consensus_region)"),
-    ("`TP`, `FP`, `FN`", "simulation", "reported regions matched / not matched to a detectable QTN; detectable QTN not recovered"),
+    ("`TP`, `FP`, `FN`", "simulation", "regions that matched / did not match a detectable QTN; detectable QTN not matched by any region"),
     ("`n_detectable_qtn`", "simulation", "QTN with MAF > 0.1 explaining >= 5% of its chromosome's additive variance"),
     ("`coverage`", "simulation_performance", "fraction of detectable QTN covered by an eligible Stage-1 unit"),
     ("`*_ci_lo`, `*_ci_hi`", "simulation", "95% cluster-bootstrap interval (2,000 resamples of the ten map/burn-in replicates)"),
