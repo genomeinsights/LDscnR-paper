@@ -22,7 +22,7 @@ RULES = [
     (r"^simulation/results/simulation_performance\.tsv$", "Pooled region-level precision and recall by BGS treatment, cell and method (Figure 2, Table S-performance).", None),
     (r"^simulation/results/simulation_performance_(c1|lfmm|region|diagnostic)\.tsv$", "The same scores for the 600 primary (c = 1) runs, for the LFMM arms, at region level for all methods, and the marker/unit-level diagnostics.", "simulation/results/simulation_performance_{c1,lfmm,region,diagnostic}.tsv"),
     (r"^simulation/results/simulation_(method|diagnostic)_contrasts(_c1)?\.tsv$", "Paired bootstrap differences in precision and recall between methods (primary, c = 1 and diagnostic scores).", "simulation/results/simulation_{method,diagnostic}_contrasts*.tsv"),
-    (r"^simulation/results/simulation_stage2_region_details\.(tsv|rds)$", "One row per reported Stage-2 region in every run: method, size floor, span, markers, units, truth status, member markers and units, linked QTN (TSV and R object).", "simulation/results/simulation_stage2_region_details.{tsv,rds}"),
+    (r"^simulation/results/simulation_stage2_region_details\.(tsv|rds)$", "One row per reported Stage-2 region in every run: method, size floor, span, markers, units, truth status, member markers and units, matched QTN (column `linked_qtn`); TSV and R object.", "simulation/results/simulation_stage2_region_details.{tsv,rds}"),
     (r"^simulation/results/simulation_qc\.tsv$", "QC record of the simulation pipeline (parser gates, grid completeness, marker-order checks).", None),
     (r"^simulation/results/simulation_summary_full\.rds$", "All pooled simulation summaries in one R object.", None),
     (r"^simulation/results/floor_stability_", "Floor-stability analysis of simulated regions: labels at half/double floors under three marker-density schemes, contrasts, region audits and summaries.", "simulation/results/floor_stability_*"),
@@ -73,7 +73,7 @@ BUNDLE = ("Stage-1 bundle without genotypes, one per panel: `n_markers`, `n_indi
 ## One dictionary: columns shared by several tables are listed once.
 DICT = [
     ("`tag`, `cell`, `method`", "simulation", "BGS treatment (nobgs, bgs); selection/dispersal cell V<QTN variance>_c<dispersal>; analysis (e.g. emmax_snp_region = marker-wise, emmax_simes_region, emmax_consensus_region)"),
-    ("`TP`, `FP`, `FN`", "simulation", "regions linked / not linked to a detectable QTN; detectable QTN not recovered"),
+    ("`TP`, `FP`, `FN`", "simulation", "reported regions matched / not matched to a detectable QTN; detectable QTN not recovered"),
     ("`n_detectable_qtn`", "simulation", "QTN with MAF > 0.1 explaining >= 5% of its chromosome's additive variance"),
     ("`coverage`", "simulation_performance", "fraction of detectable QTN covered by an eligible Stage-1 unit"),
     ("`*_ci_lo`, `*_ci_hi`", "simulation", "95% cluster-bootstrap interval (2,000 resamples of the ten map/burn-in replicates)"),
